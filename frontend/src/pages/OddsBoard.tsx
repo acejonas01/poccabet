@@ -111,6 +111,29 @@ export function OddsBoard() {
     resetAutoplay();
   }
 
+  const touchStart = useRef<number | null>(null);
+  const touchDelta = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  function onTouchStart(e: React.TouchEvent) {
+    touchStart.current = e.touches[0].clientX;
+    touchDelta.current = 0;
+    setAnimating(false);
+  }
+  function onTouchMove(e: React.TouchEvent) {
+    if (touchStart.current === null) return;
+    touchDelta.current = e.touches[0].clientX - touchStart.current;
+    setDragOffset(touchDelta.current);
+  }
+  function onTouchEnd() {
+    touchStart.current = null;
+    setDragOffset(0);
+    setAnimating(true);
+    if (touchDelta.current < -40) slideNext();
+    else if (touchDelta.current > 40) slidePrev();
+    touchDelta.current = 0;
+  }
+
   useEffect(() => {
     api
       .getEvents()
@@ -269,12 +292,16 @@ export function OddsBoard() {
       </div>
 
       <div className="promo-section">
-      <div className="promo-carousel">
+      <div className="promo-carousel"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
         <div
           ref={trackRef}
           className="promo-track"
           style={{
-            transform: `translateX(calc(-${trackIndex} * var(--slide-w) + var(--slide-offset)))`,
+            transform: `translateX(calc(-${trackIndex} * var(--slide-w) + var(--slide-offset) + ${dragOffset}px))`,
             transition: animating ? "transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)" : "none",
           }}
         >
