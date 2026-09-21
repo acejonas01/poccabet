@@ -1747,7 +1747,7 @@ button { font-family: inherit; cursor: pointer; }
     overflow-x: auto;
     scrollbar-width: none;
     background: var(--primary);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
   }
   .quick-nav::-webkit-scrollbar { display: none; }
   .quick-nav-item {
