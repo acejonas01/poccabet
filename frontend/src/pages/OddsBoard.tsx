@@ -230,7 +230,7 @@ export function OddsBoard() {
       <div className="promo-carousel">
         <div
           className="promo-track"
-          style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+          style={{ transform: `translateX(calc(-${activeSlide} * var(--slide-w) + var(--slide-offset)))` }}
         >
           {PROMO_SLIDES.map((src, i) => (
             <div key={i} className="promo-slide">
