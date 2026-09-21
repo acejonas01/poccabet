@@ -15,11 +15,11 @@ export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   return (
     <>
       <header className="header-primary">
-        <button className="menu-toggle" aria-label="Menu" onClick={onToggleSidebar}>
+        {/* <button className="menu-toggle" aria-label="Menu" onClick={onToggleSidebar}>
           <span />
           <span />
           <span />
-        </button>
+        </button> */}
         <Link to="/" className="brand">
           <img src="/logo.png" alt="Poccabet" className="brand-logo" />
         </Link>
