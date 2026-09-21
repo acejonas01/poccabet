@@ -276,7 +276,7 @@ export function OddsBoard() {
 
   return (
     <div className="odds-page">
-      <div className="stats-bar">
+      {/* <div className="stats-bar">
         <span>
           <strong>{sportCount}</strong> Sports
         </span>
@@ -289,7 +289,7 @@ export function OddsBoard() {
         <span>
           <strong>{oddsCount}</strong> Odds
         </span>
-      </div>
+      </div> */}
 
       <div className="quick-nav">
         {[
