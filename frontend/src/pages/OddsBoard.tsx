@@ -265,14 +265,14 @@ export function OddsBoard() {
     return tabs;
   }, []);
 
-  const sportCount = new Set(events.map((e) => e.sport.slug)).size || 21;
-  const marketCount = events.reduce((acc, e) => acc + e.markets.length, 0) || 577;
-  const oddsCount =
-    events.reduce(
-      (acc, e) =>
-        acc + e.markets.reduce((a: number, m: any) => a + m.outcomes.length, 0),
-      0
-    ) || 1094612;
+  // const sportCount = new Set(events.map((e) => e.sport.slug)).size || 21;
+  // const marketCount = events.reduce((acc, e) => acc + e.markets.length, 0) || 577;
+  // const oddsCount =
+  //   events.reduce(
+  //     (acc, e) =>
+  //       acc + e.markets.reduce((a: number, m: any) => a + m.outcomes.length, 0),
+  //     0
+  //   ) || 1094612;
 
   return (
     <div className="odds-page">
