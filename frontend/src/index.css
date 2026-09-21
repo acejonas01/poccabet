@@ -592,6 +592,8 @@ button { font-family: inherit; cursor: pointer; }
 
 .section-block { padding: 0; }
 
+.quick-nav { display: none; }
+
 .section-title-row {
   display: flex;
   align-items: stretch;
@@ -1738,6 +1740,39 @@ button { font-family: inherit; cursor: pointer; }
   .stats-bar::-webkit-scrollbar { display: none; }
   .stats-bar strong { font-size: 0.85rem; }
 
+  .quick-nav {
+    display: flex;
+    gap: 0.75rem;
+    padding: 12px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--bg-primary);
+  }
+  .quick-nav::-webkit-scrollbar { display: none; }
+  .quick-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .quick-nav-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #1e2d36;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .quick-nav-label {
+    font-size: 11px;
+    color: #ffffff;
+    white-space: nowrap;
+  }
+
   .promo-section {
     --slide-w: 82%;
     --slide-offset: 9%;
@@ -1763,10 +1798,13 @@ button { font-family: inherit; cursor: pointer; }
     background: #dc3545;
     color: #ffffff;
     clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+    flex: none;
   }
   .date-tabs {
     overflow-x: auto;
     scrollbar-width: none;
+    margin-left: -12px;
+    padding-left: 12px;
   }
   .date-tabs::-webkit-scrollbar { display: none; }
   .date-tab { padding: 0 0.55rem; font-size: 14px; }

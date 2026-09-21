@@ -291,6 +291,24 @@ export function OddsBoard() {
         </span>
       </div>
 
+      <div className="quick-nav">
+        {[
+          { label: "Football", icon: "⚽" },
+          { label: "Live", icon: "🔴" },
+          { label: "Aviator", icon: "✈️" },
+          { label: "Virtuals", icon: "🎮" },
+          { label: "Today", icon: "📅" },
+          { label: "Jackpot", icon: "🏆" },
+          { label: "Casino", icon: "🎰" },
+          { label: "Specials", icon: "⭐" },
+        ].map((item) => (
+          <a key={item.label} className="quick-nav-item" href="#">
+            <span className="quick-nav-icon">{item.icon}</span>
+            <span className="quick-nav-label">{item.label}</span>
+          </a>
+        ))}
+      </div>
+
       <div className="promo-section">
       <div className="promo-carousel"
         onTouchStart={onTouchStart}
