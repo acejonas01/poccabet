@@ -1754,7 +1754,7 @@ button { font-family: inherit; cursor: pointer; }
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 2px;
     text-decoration: none;
     flex-shrink: 0;
   }
