@@ -1770,7 +1770,10 @@ button { font-family: inherit; cursor: pointer; }
   .category-tabs {
     flex-wrap: nowrap;
     overflow-x: auto;
+    overflow-y: hidden;
     scrollbar-width: none;
+    padding-bottom: 10px;
+    touch-action: pan-x;
   }
   .category-tabs::-webkit-scrollbar { display: none; }
   .cat-tab {
