@@ -17,24 +17,44 @@ const PROMO_SLIDES = [
 
 
 
-// TEMPORARY — set to false (or delete this and the effect below) to stop the demo odds drift.
-const DEMO_ODDS_MOVEMENT = true;
+const USE_LIVE_ODDS = true;
 
 // Grouping key for the live board section.
 export const LIVE_BOARD_KEY = "__liveboard";
 const LIVE_BOARD_PER_PAGE = 5;
 const LIVE_BOARD_SIZE = 15;
 
-// The live board: the featured section at the top of the page.
-// TEMPORARY — picks its fixtures from the first 5 football events.
 function applyLiveBoard(list: any[]) {
-  if (!DEMO_ODDS_MOVEMENT || list.length === 0) return list;
+  if (list.length === 0) return list;
   const featured = new Set(
-    list.filter((e) => e.sport.slug === "football").slice(0, LIVE_BOARD_SIZE).map((e) => e.id)
+    list.filter((e) => e.sport?.slug === "football" || e.sport === "soccer_epl" || (typeof e.sport === "string" && e.sport.startsWith("soccer")))
+      .slice(0, LIVE_BOARD_SIZE).map((e) => e.id)
   );
   return list.map((e) =>
     featured.has(e.id) ? { ...e, league: LIVE_BOARD_KEY, status: "SCHEDULED" } : e
   );
+}
+
+function normalizeLiveEvent(evt: any, index: number) {
+  return {
+    id: evt.externalId || `live-${index}`,
+    sport: { slug: evt.sport, name: evt.league },
+    league: evt.league,
+    homeTeam: evt.homeTeam,
+    awayTeam: evt.awayTeam,
+    startTime: evt.startTime,
+    status: "SCHEDULED",
+    markets: (evt.markets || []).map((m: any, mi: number) => ({
+      id: `${evt.externalId}-m${mi}`,
+      type: m.type,
+      name: m.name,
+      outcomes: (m.outcomes || []).map((o: any, oi: number) => ({
+        id: `${evt.externalId}-m${mi}-o${oi}`,
+        label: o.label,
+        odds: o.odds,
+      })),
+    })),
+  };
 }
 
 
@@ -135,42 +155,40 @@ export function OddsBoard() {
   }
 
   useEffect(() => {
-    api
-      .getEvents()
-      .then((res) => setEvents(applyLiveBoard(res.events)))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    if (USE_LIVE_ODDS) {
+      api
+        .getLiveOdds()
+        .then((res) => {
+          const normalized = res.events.map(normalizeLiveEvent);
+          setEvents(applyLiveBoard(normalized));
+        })
+        .catch(() => {
+          api
+            .getEvents()
+            .then((res) => setEvents(applyLiveBoard(res.events)))
+            .catch((err) => setError(err.message));
+        })
+        .finally(() => setLoading(false));
+    } else {
+      api
+        .getEvents()
+        .then((res) => setEvents(applyLiveBoard(res.events)))
+        .catch((err) => setError(err.message))
+        .finally(() => setLoading(false));
+    }
   }, []);
 
   useEffect(() => {
-    if (DEMO_ODDS_MOVEMENT) return;
     const id = setInterval(() => {
-      api.getEvents().then((res) => setEvents(res.events)).catch(() => {});
-    }, 15000);
-    return () => clearInterval(id);
-  }, []);
-
-  // TEMPORARY — drives the odds-movement animation while there is no live price feed.
-  useEffect(() => {
-    if (!DEMO_ODDS_MOVEMENT) return;
-    const id = setInterval(() => {
-      setEvents((prev) =>
-        prev.map((e) => ({
-          ...e,
-          markets: e.markets.map((m: any) => ({
-            ...m,
-            outcomes: m.outcomes.map((o: any) =>
-              Math.random() < 0.35
-                ? {
-                    ...o,
-                    odds: +Math.max(1.05, o.odds + (Math.random() < 0.5 ? 0.15 : -0.15)).toFixed(2),
-                  }
-                : o
-            ),
-          })),
-        }))
-      );
-    }, 5000);
+      if (USE_LIVE_ODDS) {
+        api.getLiveOdds().then((res) => {
+          const normalized = res.events.map(normalizeLiveEvent);
+          setEvents(applyLiveBoard(normalized));
+        }).catch(() => {});
+      } else {
+        api.getEvents().then((res) => setEvents(res.events)).catch(() => {});
+      }
+    }, 30000);
     return () => clearInterval(id);
   }, []);
 

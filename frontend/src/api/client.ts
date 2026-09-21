@@ -37,6 +37,15 @@ export const api = {
     }),
   getWallet: () => request<{ balance: number }>("/api/wallet"),
   getEvents: () => request<{ events: any[] }>("/api/events"),
+  getLiveOdds: (sport?: string) =>
+    request<{ events: any[]; provider: string; count: number }>(
+      `/api/odds/live${sport ? `?sport=${sport}` : ""}`
+    ),
+  syncOdds: (sport?: string) =>
+    request<{ synced: number; total: number }>(
+      `/api/odds/sync${sport ? `?sport=${sport}` : ""}`,
+      { method: "POST" }
+    ),
   getMyBets: () => request<{ bets: any[] }>("/api/bets"),
   placeBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: any }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
