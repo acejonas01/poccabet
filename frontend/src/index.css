@@ -1757,10 +1757,11 @@ button { font-family: inherit; cursor: pointer; }
   }
   .section-title {
     font-size: 1rem;
-    padding: 0.5rem 0.7rem;
+    padding: 0.5rem 1.2rem 0.5rem 0.7rem;
     white-space: nowrap;
     background: #dc3545;
     color: #ffffff;
+    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
   }
   .date-tabs {
     overflow-x: auto;
