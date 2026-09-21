@@ -1765,7 +1765,7 @@ button { font-family: inherit; cursor: pointer; }
     scrollbar-width: none;
   }
   .date-tabs::-webkit-scrollbar { display: none; }
-  .date-tab { padding: 0 0.55rem; font-size: 0.7rem; }
+  .date-tab { padding: 0 0.55rem; font-size: 14px; }
 
   .category-tabs {
     flex-wrap: nowrap;
