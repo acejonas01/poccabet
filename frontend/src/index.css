@@ -1774,6 +1774,7 @@ button { font-family: inherit; cursor: pointer; }
     scrollbar-width: none;
     padding-bottom: 10px;
     touch-action: pan-x;
+    align-items: center;
   }
   .category-tabs::-webkit-scrollbar { display: none; }
   .cat-tab {
