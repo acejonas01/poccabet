@@ -45,17 +45,27 @@ export function OddsBoard() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState("all");
   const [activeSlide, setActiveSlide] = useState(0);
+  const [trackIndex, setTrackIndex] = useState(1);
+  const [animating, setAnimating] = useState(true);
   const [movements, setMovements] = useState<Record<string, "up" | "down">>({});
   const [livePage, setLivePage] = useState(1);
   const prevOdds = useRef<Record<string, number>>({});
   const slideInterval = useRef<ReturnType<typeof setInterval>>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const { selectedSport, selectedLeague, liveOnly, setSelectedSport } = useFilter();
   const { selections, addSelection } = useBetSlip();
+
+  const loopSlides = useMemo(() => [
+    PROMO_SLIDES[PROMO_SLIDES.length - 1],
+    ...PROMO_SLIDES,
+    PROMO_SLIDES[0],
+  ], []);
 
   const resetAutoplay = useCallback(() => {
     if (slideInterval.current) clearInterval(slideInterval.current);
     slideInterval.current = setInterval(() => {
-      setActiveSlide((s) => (s + 1) % PROMO_SLIDES.length);
+      setTrackIndex((t) => t + 1);
+      setAnimating(true);
     }, 7000);
   }, []);
 
@@ -64,8 +74,40 @@ export function OddsBoard() {
     return () => { if (slideInterval.current) clearInterval(slideInterval.current); };
   }, [resetAutoplay]);
 
+  useEffect(() => {
+    if (!animating) return;
+    const el = trackRef.current;
+    if (!el) return;
+    const handler = () => {
+      if (trackIndex === 0) {
+        setAnimating(false);
+        setTrackIndex(PROMO_SLIDES.length);
+      } else if (trackIndex === loopSlides.length - 1) {
+        setAnimating(false);
+        setTrackIndex(1);
+      }
+      setActiveSlide((trackIndex - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length);
+    };
+    el.addEventListener("transitionend", handler);
+    return () => el.removeEventListener("transitionend", handler);
+  }, [trackIndex, animating, loopSlides.length]);
+
   function goToSlide(i: number) {
+    setTrackIndex(i + 1);
     setActiveSlide(i);
+    setAnimating(true);
+    resetAutoplay();
+  }
+
+  function slideNext() {
+    setTrackIndex((t) => t + 1);
+    setAnimating(true);
+    resetAutoplay();
+  }
+
+  function slidePrev() {
+    setTrackIndex((t) => t - 1);
+    setAnimating(true);
     resetAutoplay();
   }
 
@@ -229,25 +271,29 @@ export function OddsBoard() {
       <div className="promo-section">
       <div className="promo-carousel">
         <div
+          ref={trackRef}
           className="promo-track"
-          style={{ transform: `translateX(calc(-${activeSlide} * var(--slide-w) + var(--slide-offset)))` }}
+          style={{
+            transform: `translateX(calc(-${trackIndex} * var(--slide-w) + var(--slide-offset)))`,
+            transition: animating ? "transform 0.5s ease" : "none",
+          }}
         >
-          {PROMO_SLIDES.map((src, i) => (
+          {loopSlides.map((src, i) => (
             <div key={i} className="promo-slide">
-              <img src={src} alt={`Promo ${i + 1}`} />
+              <img src={src} alt="Promo" />
             </div>
           ))}
         </div>
         <button
           className="promo-arrow promo-arrow-left"
-          onClick={() => goToSlide((activeSlide - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length)}
+          onClick={slidePrev}
           aria-label="Previous slide"
         >
           {"❮"}
         </button>
         <button
           className="promo-arrow promo-arrow-right"
-          onClick={() => goToSlide((activeSlide + 1) % PROMO_SLIDES.length)}
+          onClick={slideNext}
           aria-label="Next slide"
         >
           {"❯"}

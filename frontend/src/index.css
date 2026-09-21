@@ -517,7 +517,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .promo-track {
   display: flex;
-  transition: transform 0.5s ease;
 }
 .promo-slide {
   width: var(--slide-w);
