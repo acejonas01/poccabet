@@ -4,6 +4,7 @@ import authRoutes from "./routes/auth";
 import walletRoutes from "./routes/wallet";
 import eventsRoutes from "./routes/events";
 import betsRoutes from "./routes/bets";
+import oddsRoutes from "./routes/odds";
 
 const app = express();
 
@@ -20,5 +21,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/events", eventsRoutes);
 app.use("/api/bets", betsRoutes);
+app.use("/api/odds", oddsRoutes);
 
 export default app;
