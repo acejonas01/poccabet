@@ -1775,7 +1775,9 @@ button { font-family: inherit; cursor: pointer; }
   .category-tabs::-webkit-scrollbar { display: none; }
   .cat-tab {
     padding: 0.5rem 0.8rem;
-    font-size: 0.78rem;
+    font-size: 14px;
+    color: #ffffff;
+    font-weight: 700;
     flex: 0 0 auto;
   }
 
