@@ -1761,7 +1761,7 @@ button { font-family: inherit; cursor: pointer; }
     white-space: nowrap;
     background: #dc3545;
     color: #ffffff;
-    clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 100%, 0 100%);
+    clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
   }
   .date-tabs {
     overflow-x: auto;
