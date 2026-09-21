@@ -27,7 +27,7 @@ const LIVE_BOARD_SIZE = 15;
 function applyLiveBoard(list: any[]) {
   if (list.length === 0) return list;
   const featured = new Set(
-    list.filter((e) => e.sport?.slug === "football" || e.sport === "soccer_epl" || (typeof e.sport === "string" && e.sport.startsWith("soccer")))
+    list.filter((e) => e.sport?.slug === "football" || e.sport?.slug?.startsWith("soccer"))
       .slice(0, LIVE_BOARD_SIZE).map((e) => e.id)
   );
   return list.map((e) =>

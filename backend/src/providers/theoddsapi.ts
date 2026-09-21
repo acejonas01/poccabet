@@ -9,7 +9,7 @@ export class TheOddsApiProvider implements OddsProvider {
 
   constructor() {
     this.apiKey = process.env.ODDS_API_KEY || "";
-    this.regions = process.env.ODDS_REGIONS || "us";
+    this.regions = process.env.ODDS_REGIONS || "eu,uk,us";
   }
 
   async getSupportedSports() {
