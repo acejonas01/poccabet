@@ -66,7 +66,7 @@ export function OddsBoard() {
     slideInterval.current = setInterval(() => {
       setTrackIndex((t) => t + 1);
       setAnimating(true);
-    }, 7000);
+    }, 5000);
   }, []);
 
   useEffect(() => {
@@ -275,7 +275,7 @@ export function OddsBoard() {
           className="promo-track"
           style={{
             transform: `translateX(calc(-${trackIndex} * var(--slide-w) + var(--slide-offset)))`,
-            transition: animating ? "transform 0.5s ease" : "none",
+            transition: animating ? "transform 0.35s cubic-bezier(0.25, 0.1, 0.25, 1)" : "none",
           }}
         >
           {loopSlides.map((src, i) => (
