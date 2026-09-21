@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export function Header({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+export function Header({ onToggleSidebar: _onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { isAuthenticated, user, balance, logout } = useAuth();
   const location = useLocation();
   const [theme, setTheme] = useState(() => localStorage.getItem("theme") ?? "a");
