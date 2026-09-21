@@ -1746,7 +1746,7 @@ button { font-family: inherit; cursor: pointer; }
     padding: 12px 16px;
     overflow-x: auto;
     scrollbar-width: none;
-    background: var(--bg-primary);
+    background: #111b21;
   }
   .quick-nav::-webkit-scrollbar { display: none; }
   .quick-nav-item {
