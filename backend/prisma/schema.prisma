@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String
+  createdAt    DateTime @default(now())
+
+  wallet Wallet?
+  bets   Bet[]
+}
+
+model Wallet {
+  id      String @id @default(cuid())
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id])
+  balance Float  @default(0)
+
+  transactions Transaction[]
+}
+
+model Transaction {
+  id        String   @id @default(cuid())
+  walletId  String
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  type      String // DEPOSIT | WITHDRAWAL | BET_STAKE | BET_PAYOUT | BONUS
+  amount    Float
+  status    String // PENDING | COMPLETED | FAILED
+  createdAt DateTime @default(now())
+}
+
+model Sport {
+  id     String  @id @default(cuid())
+  name   String
+  slug   String  @unique
+  events Event[]
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  sportId   String
+  sport     Sport    @relation(fields: [sportId], references: [id])
+  league    String
+  homeTeam  String
+  awayTeam  String
+  startTime DateTime
+  status    String // SCHEDULED | LIVE | FINISHED | CANCELLED
+
+  markets Market[]
+}
+
+model Market {
+  id      String @id @default(cuid())
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+  type    String // MATCH_WINNER | OVER_UNDER | BOTH_TEAMS_TO_SCORE | ...
+  name    String
+
+  outcomes Outcome[]
+}
+
+model Outcome {
+  id       String @id @default(cuid())
+  marketId String
+  market   Market @relation(fields: [marketId], references: [id])
+  label    String // e.g. "Home", "Draw", "Away", "Over 2.5"
+  odds     Float
+
+  selections BetSelection[]
+}
+
+model Bet {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id])
+  stake            Float
+  potentialPayout  Float
+  type             String // SINGLE | ACCUMULATOR
+  status           String // PENDING | WON | LOST | CASHED_OUT | VOID
+  createdAt        DateTime  @default(now())
+  settledAt        DateTime?
+
+  selections BetSelection[]
+}
+
+model BetSelection {
+  id              String  @id @default(cuid())
+  betId           String
+  bet             Bet     @relation(fields: [betId], references: [id])
+  outcomeId       String
+  outcome         Outcome @relation(fields: [outcomeId], references: [id])
+  oddsAtPlacement Float
+  result          String // PENDING | WON | LOST | VOID
+}

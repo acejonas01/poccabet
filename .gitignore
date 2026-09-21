@@ -1,0 +1,19 @@
+# dependencies and build output
+node_modules/
+dist/
+
+# secrets and local databases
+.env
+.env.*
+*.db
+*.db-journal
+
+# OS / editor / tooling
+.DS_Store
+.claude/
+
+# personal files kept out of the public repo
+raw/
+*.pptx
+generate_ip_pptx.js
+*.psd
