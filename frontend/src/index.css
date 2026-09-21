@@ -1496,7 +1496,7 @@ button { font-family: inherit; cursor: pointer; }
   .odds-table { font-size: 0.72rem; }
   .odds-table .th-event { min-width: 150px; }
   .stats-bar { gap: 1rem; font-size: 0.72rem; }
-  .section-block { padding: 0.6rem; }
+  .section-block { padding: 0; }
 }
 
 @media (min-width: 901px) {
