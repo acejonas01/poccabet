@@ -1759,8 +1759,8 @@ button { font-family: inherit; cursor: pointer; }
     flex-shrink: 0;
   }
   .quick-nav-icon {
-    width: 42px;
-    height: 42px;
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     background: #131b1f;
     display: flex;
@@ -1768,8 +1768,8 @@ button { font-family: inherit; cursor: pointer; }
     justify-content: center;
   }
   .quick-nav-img {
-    width: 32px;
-    height: 32px;
+    width: 50px;
+    height: 50px;
     object-fit: contain;
   }
   .quick-nav-img--muted {
