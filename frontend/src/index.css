@@ -1800,7 +1800,7 @@ button { font-family: inherit; cursor: pointer; }
     font-size: 1rem;
     padding: 0.5rem 1.2rem 0.5rem 0.7rem;
     white-space: nowrap;
-    background: #dc3545;
+    background: #e31d2c;
     color: #ffffff;
     clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
     flex: none;
