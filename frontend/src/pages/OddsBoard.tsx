@@ -311,17 +311,19 @@ export function OddsBoard() {
 
       <div className="quick-nav">
         {[
-          { label: "Football", icon: "⚽" },
-          { label: "Live", icon: "🔴" },
-          { label: "Aviator", icon: "✈️" },
-          { label: "Virtuals", icon: "🎮" },
-          { label: "Today", icon: "📅" },
-          { label: "Jackpot", icon: "🏆" },
-          { label: "Casino", icon: "🎰" },
-          { label: "Specials", icon: "⭐" },
+          { label: "Football", icon: "/icons/soccer-ball.png" },
+          { label: "Live", icon: "/icons/live-3.png" },
+          { label: "Aviator", icon: "/icons/aviator.png" },
+          { label: "Virtuals", icon: "/icons/visuals.png" },
+          { label: "Today", icon: "/icons/today.png" },
+          { label: "Jackpot", icon: "/icons/jackpot.png" },
+          { label: "Casino", icon: "/icons/casino.png" },
+          { label: "Specials", icon: "/icons/Specials.png" },
         ].map((item) => (
           <a key={item.label} className="quick-nav-item" href="#">
-            <span className="quick-nav-icon">{item.icon}</span>
+            <span className="quick-nav-icon">
+              <img src={item.icon} alt={item.label} className="quick-nav-img" />
+            </span>
             <span className="quick-nav-label">{item.label}</span>
           </a>
         ))}
