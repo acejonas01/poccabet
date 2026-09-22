@@ -311,18 +311,18 @@ export function OddsBoard() {
 
       <div className="quick-nav">
         {[
-          { label: "Football", icon: "/icons/soccer-ball.png" },
-          { label: "Live", icon: "/icons/live-3.png" },
-          { label: "Aviator", icon: "/icons/aviator.png" },
-          { label: "Virtuals", icon: "/icons/visuals.png" },
-          { label: "Today", icon: "/icons/today.png" },
-          { label: "Jackpot", icon: "/icons/jackpot.png" },
-          { label: "Casino", icon: "/icons/casino.png" },
-          { label: "Specials", icon: "/icons/Specials.png" },
+          { label: "Football", icon: "/icons/soccer-ball.png", color: false },
+          { label: "Live", icon: "/icons/live-3.png", color: false },
+          { label: "Aviator", icon: "/icons/aviator.png", color: false },
+          { label: "Virtuals", icon: "/icons/visuals.png", color: false },
+          { label: "Today", icon: "/icons/today.png", color: false },
+          { label: "Jackpot", icon: "/icons/jackpot.png", color: false },
+          { label: "Casino", icon: "/icons/casino.png", color: true },
+          { label: "Specials", icon: "/icons/Specials.png", color: true },
         ].map((item) => (
           <a key={item.label} className="quick-nav-item" href="#">
             <span className="quick-nav-icon">
-              <img src={item.icon} alt={item.label} className="quick-nav-img" />
+              <img src={item.icon} alt={item.label} className={`quick-nav-img${item.color ? "" : " quick-nav-img--muted"}`} />
             </span>
             <span className="quick-nav-label">{item.label}</span>
           </a>
