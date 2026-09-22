@@ -192,6 +192,7 @@ export function OddsBoard() {
     return () => clearInterval(id);
   }, []);
 
+
   useEffect(() => {
     const current: Record<string, number> = {};
     const moved: Record<string, "up" | "down"> = {};
@@ -366,14 +367,14 @@ export function OddsBoard() {
       </div>
 
       <div className="promo-dots">
-        {PROMO_SLIDES.map((_, i) => (
+        {["⚽", "🏈", "🎾", "🏀", "🥊"].map((icon, i) => (
           <button
             key={i}
             className={`promo-dot ${activeSlide === i ? "active" : ""}`}
             onClick={() => goToSlide(i)}
             aria-label={`Go to slide ${i + 1}`}
           >
-            {"⚽"}
+            {icon}
           </button>
         ))}
       </div>
@@ -381,7 +382,7 @@ export function OddsBoard() {
 
       <div className="section-block">
         <div className="section-title-row">
-          <h2 className="section-title">Most Popular Bets</h2>
+          <h2 className="section-title">Popular Bets</h2>
           <div className="date-tabs">
             {dateTabs.map((tab) => (
               <button

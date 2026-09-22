@@ -561,7 +561,8 @@ button { font-family: inherit; cursor: pointer; }
   align-items: center;
   gap: 0.6rem;
   background: #1f2c33;
-  padding: 0.55rem 0;
+  padding: 9px 0;
+  margin-top: 2px;
 }
 
 /* Theme B — overlaid bottom-right of the slides */
@@ -1773,7 +1774,7 @@ button { font-family: inherit; cursor: pointer; }
     object-fit: contain;
   }
   .quick-nav-img--muted {
-    filter: brightness(0) invert(0.6) sepia(0.1) saturate(0.5) hue-rotate(180deg);
+    filter: brightness(0) saturate(100%) invert(60%) sepia(5%) saturate(500%) hue-rotate(180deg) brightness(95%);
   }
   .quick-nav-label {
     font-size: 10px;
@@ -1785,7 +1786,7 @@ button { font-family: inherit; cursor: pointer; }
     --slide-w: 82%;
     --slide-offset: 9%;
     overflow: hidden;
-    margin-top: 6px;
+    margin-top: 2px;
   }
   .promo-carousel { overflow: visible; }
   .promo-slide { padding: 0 4px; box-sizing: border-box; }

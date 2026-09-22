@@ -5,9 +5,64 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Poccabet - Sports Betting</title>
+
+    <!-- SEO & link previews -->
+    <meta name="description" content="Poccabet — live football odds, casino, virtuals and more. Bet smart, win big." />
+    <meta property="og:title" content="Poccabet - Sports Betting" />
+    <meta property="og:description" content="Live football odds, casino, virtuals and more. Bet smart, win big." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://poccabet.vercel.app" />
+    <meta property="og:image" content="https://poccabet.vercel.app/favicon.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Poccabet - Sports Betting" />
+    <meta name="twitter:description" content="Live football odds, casino, virtuals and more. Bet smart, win big." />
+
+    <!-- Loading skeleton styles (shown until JS hydrates) -->
+    <style>
+      #app-loader {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: #1f2c33;
+        color: #8a9098;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        gap: 1rem;
+      }
+      #app-loader img { width: 64px; height: 64px; }
+      #app-loader .loader-text { font-size: 14px; letter-spacing: 1px; }
+      #app-loader .loader-bar {
+        width: 120px;
+        height: 3px;
+        background: #2a3a42;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #app-loader .loader-bar::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        background: #4ba586;
+        border-radius: 3px;
+        animation: slide 1s ease-in-out infinite;
+      }
+      @keyframes slide {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Loading skeleton — removed automatically when React mounts -->
+      <div id="app-loader">
+        <img src="/favicon.png" alt="Poccabet" />
+        <span class="loader-text">POCCABET</span>
+        <div class="loader-bar"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
