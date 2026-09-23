@@ -1,7 +1,7 @@
 // API-Football (api-sports.io) — live games + in-play odds, and upcoming games + pre-match odds.
 // Free plan = 100 requests/day, so every call goes through a shared server cache.
 //   LIVE refresh     = 2 requests (/fixtures?live=all, /odds/live)
-//   UPCOMING refresh = up to 5 requests (up to 3 /odds pages + 1 /fixtures?date per day used)
+//   UPCOMING refresh = 3 requests (2 /odds pages + today's /fixtures), +2 late in the day for tomorrow
 //   RESULTS          = 0 extra requests (finished games come from today's /fixtures?date)
 // UPCOMING_DAILY_RESERVE calls are kept back so LIVE can't starve UPCOMING.
 
@@ -177,30 +177,34 @@ async function fetchUpcoming(): Promise<{ upcoming: OddsEvent[]; finished: Finis
   const soon = Date.now() + 5 * 60 * 1000;
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const picked = new Map<number, OddsMarket[]>();
-  // Today is always fetched so finished results come along for free.
-  const daysUsed = new Set<string>([today()]);
-  let pages = 0;
-
-  // Odds come 10 fixtures per page; take games that haven't kicked off yet.
-  for (const day of [today(), tomorrow]) {
-    for (let page = 1; pages < MAX_ODDS_PAGES && picked.size < UPCOMING_SIZE; page++) {
-      const data = await apiGet(`/odds?date=${day}&bookmaker=${BET365}&page=${page}`);
-      pages++;
-      for (const o of data.response ?? []) {
-        if (new Date(o.fixture.date).getTime() < soon) continue;
-        const markets = parsePrematchOdds(o.bookmakers?.[0]?.bets ?? []);
-        if (!markets.length) continue;
-        picked.set(o.fixture.id, markets);
-        daysUsed.add(day);
-      }
-      if (page >= (data.paging?.total ?? 1)) break;
+  const takeOdds = (data: any) => {
+    for (const o of data.response ?? []) {
+      if (new Date(o.fixture.date).getTime() < soon) continue;
+      const markets = parsePrematchOdds(o.bookmakers?.[0]?.bets ?? []);
+      if (markets.length) picked.set(o.fixture.id, markets);
     }
-  }
+  };
+  const oddsPage = (day: string, page: number) =>
+    apiGet(`/odds?date=${day}&bookmaker=${BET365}&page=${page}`);
+  const dayFixtures = async (day: string) => (await apiGet(`/fixtures?date=${day}`)).response ?? [];
 
-  // Odds don't carry team names; free plan can't look up by id, so fetch the day's fixtures.
-  const fixtures: any[] = [];
-  for (const day of daysUsed) {
-    fixtures.push(...((await apiGet(`/fixtures?date=${day}`)).response ?? []));
+  // Calls run in parallel to keep the refresh fast. Odds come 10 fixtures per page and
+  // don't carry team names (free plan can't look up by id), so we also fetch the day's
+  // fixtures — today's always, which also gives finished results for free.
+  const [p1, p2, todayFixtures] = await Promise.all([
+    oddsPage(today(), 1),
+    oddsPage(today(), 2).catch(() => ({})),
+    dayFixtures(today()),
+  ]);
+  takeOdds(p1);
+  takeOdds(p2);
+  const fixtures: any[] = [...todayFixtures];
+
+  // Late in the day most of today's games have started — top up from tomorrow.
+  if (picked.size < UPCOMING_SIZE && MAX_ODDS_PAGES > 2) {
+    const [t1, tomorrowFixtures] = await Promise.all([oddsPage(tomorrow, 1), dayFixtures(tomorrow)]);
+    takeOdds(t1);
+    fixtures.push(...tomorrowFixtures);
   }
 
   const upcoming = fixtures
@@ -246,27 +250,36 @@ function cachedFeed<T>(ttl: number, reserve: number, load: () => Promise<T>) {
   let inFlight: Promise<T> | null = null;
   let failure: { error: unknown; at: number } | null = null;
 
+  const refresh = () => {
+    inFlight ??= load()
+      .then((data) => {
+        cache = { data, fetchedAt: Date.now() };
+        failure = null;
+        return data;
+      })
+      .catch((err) => {
+        failure = { error: err, at: Date.now() };
+        throw err;
+      })
+      .finally(() => { inFlight = null; });
+    return inFlight;
+  };
+
   return async () => {
     if (cache && Date.now() - cache.fetchedAt < ttl) return { ...cache, stale: false };
     // After a failed refresh, wait before spending more calls.
-    if (failure && Date.now() - failure.at < ERROR_BACKOFF) {
-      if (cache) return { ...cache, stale: true };
-      throw failure.error;
+    const backingOff = failure && Date.now() - failure.at < ERROR_BACKOFF;
+    const canRefresh = !backingOff && budgetLeft(reserve);
+
+    // Stale-while-revalidate: answer instantly with old data, refresh in the background.
+    if (cache) {
+      if (canRefresh) refresh().catch(() => {});
+      return { ...cache, stale: true };
     }
-    if (!budgetLeft(reserve)) {
-      if (cache) return { ...cache, stale: true };
-      throw new Error("API-Football daily budget used up");
-    }
-    inFlight ??= load().finally(() => { inFlight = null; });
-    try {
-      cache = { data: await inFlight, fetchedAt: Date.now() };
-      failure = null;
-      return { ...cache, stale: false };
-    } catch (err) {
-      failure = { error: err, at: Date.now() };
-      if (cache) return { ...cache, stale: true };
-      throw err;
-    }
+    if (backingOff) throw failure!.error;
+    if (!canRefresh) throw new Error("API-Football daily budget used up");
+    await refresh();
+    return { ...cache!, stale: false };
   };
 }
 

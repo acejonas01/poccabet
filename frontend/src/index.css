@@ -863,6 +863,32 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-light);
   padding: 0.28rem 0;
 }
+/* S9 board loading skeleton */
+.board-skeleton { background: var(--table-row-bg); }
+.skel-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.9rem 0.45rem;
+  border-bottom: 1px solid var(--table-line);
+}
+.skel-teams { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 0; }
+.skel {
+  display: block;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--primary-light) 50%, var(--surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.2s ease-in-out infinite;
+}
+.skel-badge { width: 48px; height: 30px; flex-shrink: 0; }
+.skel-line { height: 10px; width: 75%; }
+.skel-line.short { width: 55%; }
+.skel-odds { width: 44px; height: 30px; flex-shrink: 0; }
+@keyframes skel-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
 .event-date-badge.is-live .badge-date { background: var(--live); }
 .event-date-badge.is-ft .badge-date { background: var(--text-faint); }
 .event-score {

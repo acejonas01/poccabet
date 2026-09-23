@@ -65,6 +65,30 @@ function normalizeLiveFixture(f: any, index: number) {
   };
 }
 
+// Last good feed saved on the device so tabs render instantly on the next visit,
+// then refresh in the background. Storage can be unavailable (private mode), so never throw.
+const FEED_MAX_AGE = { live: 5 * 60000, upcoming: 3 * 3600000, results: 3 * 3600000 };
+type FeedName = keyof typeof FEED_MAX_AGE;
+
+function readFeed(name: FeedName): any[] {
+  try {
+    const { at, data } = JSON.parse(localStorage.getItem(`pocca-feed-${name}`) ?? "null") ?? {};
+    const sameDay = new Date(at).toISOString().slice(0, 10) === new Date().toISOString().slice(0, 10);
+    return Array.isArray(data) && Date.now() - at < FEED_MAX_AGE[name] && sameDay ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFeed(name: FeedName, data: any[]) {
+  try {
+    localStorage.setItem(`pocca-feed-${name}`, JSON.stringify({ at: Date.now(), data }));
+  } catch {
+    // ignore — cache is a convenience only
+  }
+  return data;
+}
+
 // API-Football finished game -> board event (no markets).
 function normalizeResult(r: any) {
   return {
@@ -93,11 +117,11 @@ export function OddsBoard() {
   const [movements, setMovements] = useState<Record<string, "up" | "down">>({});
   const [livePage, setLivePage] = useState(1);
   const [catTab, setCatTab] = useState("live");
-  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const [liveEvents, setLiveEvents] = useState<any[]>(() => readFeed("live"));
   const [liveLoaded, setLiveLoaded] = useState(false);
-  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>(() => readFeed("upcoming"));
   const [upcomingLoaded, setUpcomingLoaded] = useState(false);
-  const [resultEvents, setResultEvents] = useState<any[]>([]);
+  const [resultEvents, setResultEvents] = useState<any[]>(() => readFeed("results"));
   const [resultsLoaded, setResultsLoaded] = useState(false);
   const showLiveBoard = catTab === "live" || catTab === "upcoming";
   // HIGHLIGHTS reuses the board for today's finished games (scores only, no odds).
@@ -248,7 +272,7 @@ export function OddsBoard() {
     const load = () =>
       api
         .getLiveFixtures()
-        .then((res) => setLiveEvents(res.fixtures.map(normalizeLiveFixture)))
+        .then((res) => setLiveEvents(saveFeed("live", res.fixtures.map(normalizeLiveFixture))))
         .catch(() => {})
         .finally(() => setLiveLoaded(true));
     load();
@@ -261,14 +285,14 @@ export function OddsBoard() {
     const load = () =>
       api
         .getUpcomingFixtures()
-        .then((res) => setUpcomingEvents(res.events.map(normalizeLiveEvent)))
+        .then((res) => setUpcomingEvents(saveFeed("upcoming", res.events.map(normalizeLiveEvent))))
         .catch(() => {})
         .finally(() => setUpcomingLoaded(true));
     // Results share the same backend refresh, so this costs no extra API calls.
     const loadResults = () =>
       api
         .getResults()
-        .then((res) => setResultEvents(res.results.map(normalizeResult)))
+        .then((res) => setResultEvents(saveFeed("results", res.results.map(normalizeResult))))
         .catch(() => {})
         .finally(() => setResultsLoaded(true));
     load();
@@ -339,6 +363,11 @@ export function OddsBoard() {
       : catTab === "highlights"
         ? resultEvents
         : upcomingEvents.filter((e) => new Date(e.startTime).getTime() > Date.now());
+
+  const boardLoading =
+    (catTab === "live" && !liveLoaded) ||
+    (catTab === "upcoming" && !upcomingLoaded) ||
+    (catTab === "highlights" && !resultsLoaded);
 
   function selectCatTab(tab: string, sport = "all") {
     setCatTab(tab);
@@ -517,7 +546,7 @@ export function OddsBoard() {
           </div>
         )}
 
-        {loading && <p className="state-msg">Loading events...</p>}
+        {loading && !showBoard && <p className="state-msg">Loading events...</p>}
         {error && <p className="error state-msg">Failed to load: {error}</p>}
         {!loading && !error && !showBoard && filtered.length === 0 && (
           <p className="state-msg">No events match this filter.</p>
@@ -532,6 +561,20 @@ export function OddsBoard() {
         )}
         {catTab === "highlights" && resultsLoaded && resultEvents.length === 0 && (
           <p className="state-msg">No finished games yet today.</p>
+        )}
+        {showBoard && boardLoading && boardEvents.length === 0 && (
+          <div className="board-skeleton" aria-label="Loading games" role="status">
+            {Array.from({ length: 5 }, (_, i) => (
+              <div className="skel-row" key={i}>
+                <span className="skel skel-badge" />
+                <span className="skel-teams">
+                  <span className="skel skel-line" />
+                  <span className="skel skel-line short" />
+                </span>
+                {showOdds && Array.from({ length: 3 }, (_, j) => <span className="skel skel-odds" key={j} />)}
+              </div>
+            ))}
+          </div>
         )}
         {showBoard && boardEvents.length > 0 && (
               <div className="league-section live-board">
