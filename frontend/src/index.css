@@ -863,6 +863,10 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-light);
   padding: 0.28rem 0;
 }
+/* S7 CategoryTabs: POCCANEWS tab */
+.cat-tab-brand { font-style: italic; }
+.news-accent { color: var(--badge-date-bg); }
+
 /* S9 board loading skeleton */
 .board-skeleton { background: var(--table-row-bg); }
 .skel-row {

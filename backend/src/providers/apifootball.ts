@@ -5,6 +5,7 @@
 //   RESULTS          = 0 extra requests (finished games come from today's /fixtures?date)
 // UPCOMING_DAILY_RESERVE calls are kept back so LIVE can't starve UPCOMING.
 
+import { cachedFeed } from "../lib/cachedFeed";
 import type { OddsEvent, OddsMarket } from "./types";
 
 const BASE_URL = "https://v3.football.api-sports.io";
@@ -12,7 +13,6 @@ const LIVE_TTL = Number(process.env.LIVE_CACHE_SECONDS || 300) * 1000;
 const UPCOMING_TTL = Number(process.env.UPCOMING_CACHE_SECONDS || 10800) * 1000;
 const DAILY_BUDGET = Number(process.env.API_FOOTBALL_DAILY_BUDGET || 95);
 const UPCOMING_RESERVE = Number(process.env.UPCOMING_DAILY_RESERVE || 40);
-const ERROR_BACKOFF = 10 * 60 * 1000;
 const UPCOMING_SIZE = 15;
 const MAX_ODDS_PAGES = 3;
 const BET365 = 8;
@@ -243,49 +243,17 @@ async function fetchUpcoming(): Promise<{ upcoming: OddsEvent[]; finished: Finis
   return { upcoming, finished };
 }
 
-// Shared cache: serves fresh data within ttl, collapses concurrent refreshes,
-// and falls back to the last good data when out of budget or on errors.
-function cachedFeed<T>(ttl: number, reserve: number, load: () => Promise<T>) {
-  let cache: { data: T; fetchedAt: number } | null = null;
-  let inFlight: Promise<T> | null = null;
-  let failure: { error: unknown; at: number } | null = null;
-
-  const refresh = () => {
-    inFlight ??= load()
-      .then((data) => {
-        cache = { data, fetchedAt: Date.now() };
-        failure = null;
-        return data;
-      })
-      .catch((err) => {
-        failure = { error: err, at: Date.now() };
-        throw err;
-      })
-      .finally(() => { inFlight = null; });
-    return inFlight;
-  };
-
-  return async () => {
-    if (cache && Date.now() - cache.fetchedAt < ttl) return { ...cache, stale: false };
-    // After a failed refresh, wait before spending more calls.
-    const backingOff = failure && Date.now() - failure.at < ERROR_BACKOFF;
-    const canRefresh = !backingOff && budgetLeft(reserve);
-
-    // Stale-while-revalidate: answer instantly with old data, refresh in the background.
-    if (cache) {
-      if (canRefresh) refresh().catch(() => {});
-      return { ...cache, stale: true };
-    }
-    if (backingOff) throw failure!.error;
-    if (!canRefresh) throw new Error("API-Football daily budget used up");
-    await refresh();
-    return { ...cache!, stale: false };
-  };
-}
-
-export const getLiveFixtures = cachedFeed(LIVE_TTL, UPCOMING_RESERVE, fetchLive);
+export const getLiveFixtures = cachedFeed({
+  ttl: LIVE_TTL,
+  canCall: () => budgetLeft(UPCOMING_RESERVE),
+  load: fetchLive,
+});
 // Upcoming games and today's results share one cached refresh.
-export const getUpcomingAndResults = cachedFeed(UPCOMING_TTL, 0, fetchUpcoming);
+export const getUpcomingAndResults = cachedFeed({
+  ttl: UPCOMING_TTL,
+  canCall: () => budgetLeft(),
+  load: fetchUpcoming,
+});
 
 export function getApiFootballUsage() {
   budgetLeft();

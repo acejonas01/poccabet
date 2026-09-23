@@ -524,7 +524,7 @@ export function OddsBoard() {
           >
             Highlights
           </button>
-          <button className="cat-tab">PoccaTV</button>
+          <button className="cat-tab"><span className="cat-tab-brand">Pocca</span><span className="news-accent">Sports</span></button>
           {sports.map((s) => (
             <button
               key={s.slug}

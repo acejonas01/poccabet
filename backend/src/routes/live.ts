@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { getUpcomingMerged } from "../providers/aggregate";
 import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
 
 const router = Router();
@@ -13,11 +14,11 @@ router.get("/", async (_req, res) => {
   }
 });
 
-// GET /api/live/upcoming — not-yet-played football games with pre-match odds (cached 3h)
+// GET /api/live/upcoming — not-yet-played games from every provider, merged (each provider cached)
 router.get("/upcoming", async (_req, res) => {
   try {
-    const { data, fetchedAt, stale } = await getUpcomingAndResults();
-    res.json({ count: data.upcoming.length, fetchedAt: new Date(fetchedAt), stale, events: data.upcoming });
+    const { events, sources } = await getUpcomingMerged();
+    res.json({ count: events.length, sources, events });
   } catch (err: any) {
     res.status(502).json({ error: err.message });
   }
