@@ -767,6 +767,13 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .table-wrap { overflow-x: auto; }
+
+.live-slider-wrap { overflow: hidden; }
+.live-slider-track { display: flex; transition: transform 0.4s ease; }
+.live-slider-page { flex: 1 0 0%; }
+.odds-table-head { margin-bottom: 0; }
+.odds-table-body { margin-top: 0; }
+
 .odds-table {
   width: 100%;
   border-collapse: collapse;
@@ -1508,8 +1515,12 @@ button { font-family: inherit; cursor: pointer; }
   }
   .mobile-close-btn { display: inline; }
 
-  .odds-table { font-size: 0.72rem; }
-  .odds-table .th-event { min-width: 150px; font-size: 0.8rem; }
+  .odds-table { font-size: 0.72rem; table-layout: fixed; }
+  .odds-table .th-event { width: 55%; min-width: 150px; font-size: 0.8rem; }
+  .odds-table th:not(.th-event):not(.th-more) { width: calc(45% / 3 - 12px); }
+  .odds-table .th-more { width: 40px; }
+  .odds-table-body .td-event { width: 55%; }
+  .odds-table-body .td-more { width: 40px; }
   .stats-bar { gap: 1rem; font-size: 14px; }
   .section-block { padding: 0; }
 }
@@ -1867,7 +1878,7 @@ button { font-family: inherit; cursor: pointer; }
   .event-info { gap: 0.4rem; }
   .td-odds { min-width: 44px; font-size: 0.8rem; }
   .td-odds > span { padding: 0.4rem 0.2rem; }
-  .th-more, .td-more { width: 34px; }
+  .th-more, .td-more { width: 40px; padding-right: 0.3rem !important; }
   .more-btn { width: 20px; height: 20px; }
   .more-btn-icon { width: 24px; height: 24px; }
 

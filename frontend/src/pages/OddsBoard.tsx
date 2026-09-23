@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import { HotGames } from "../components/HotGames";
 import { MarketFilter } from "../components/MarketFilter";
@@ -14,12 +14,8 @@ const PROMO_SLIDES = [
   "/slides/Slide-5.jpg",
 ];
 
-
-
-
 const USE_LIVE_ODDS = true;
 
-// Grouping key for the live board section.
 export const LIVE_BOARD_KEY = "__liveboard";
 const LIVE_BOARD_PER_PAGE = 5;
 const LIVE_BOARD_SIZE = 15;
@@ -56,8 +52,6 @@ function normalizeLiveEvent(evt: any, index: number) {
     })),
   };
 }
-
-
 
 export function OddsBoard() {
   const [events, setEvents] = useState<any[]>([]);
@@ -192,7 +186,6 @@ export function OddsBoard() {
     return () => clearInterval(id);
   }, []);
 
-
   useEffect(() => {
     const current: Record<string, number> = {};
     const moved: Record<string, "up" | "down"> = {};
@@ -249,7 +242,6 @@ export function OddsBoard() {
 
   const isSelected = (id: string) => selections.some((s) => s.outcomeId === id);
 
-
   function handleOddsClick(outcome: any, marketType: string, event: any) {
     if (!outcome) return;
     const market =
@@ -284,31 +276,8 @@ export function OddsBoard() {
     return tabs;
   }, []);
 
-  // const sportCount = new Set(events.map((e) => e.sport.slug)).size || 21;
-  // const marketCount = events.reduce((acc, e) => acc + e.markets.length, 0) || 577;
-  // const oddsCount =
-  //   events.reduce(
-  //     (acc, e) =>
-  //       acc + e.markets.reduce((a: number, m: any) => a + m.outcomes.length, 0),
-  //     0
-  //   ) || 1094612;
-
   return (
     <div className="odds-page">
-      {/* <div className="stats-bar">
-        <span>
-          <strong>{sportCount}</strong> Sports
-        </span>
-        <span>
-          <strong>{events.length || 577}</strong> Events
-        </span>
-        <span>
-          <strong>{marketCount}</strong> Matches
-        </span>
-        <span>
-          <strong>{oddsCount}</strong> Odds
-        </span>
-      </div> */}
 
       <div className="quick-nav">
         {[
@@ -433,140 +402,111 @@ export function OddsBoard() {
         {grouped
           .filter(([league]) => league === LIVE_BOARD_KEY)
           .map(([league, leagueEvents]) => (
-            <Fragment key={league}>
-          <div
-            className={`league-section ${league === LIVE_BOARD_KEY ? "live-board" : ""}`}
-          >
-            <div className="table-wrap">
-              <table className="odds-table">
-                <thead>
-                  <tr className="market-group-row">
-                    <th></th>
-                    <th colSpan={3}>1x2</th>
-                    <th colSpan={3}>Double Chance</th>
-                    <th colSpan={2}>Over/Under 2.5</th>
-                    <th></th>
-                  </tr>
-                  <tr>
-                    <th className="th-event">
-                      {league === LIVE_BOARD_KEY ? <><img src="/icons/stream.png" alt="" className="live-icon" /> Live Football</> : "Events"}
-                    </th>
-                    {ALL_COLUMNS.map((col) => (
-                      <th key={col.key}>{col.label}</th>
-                    ))}
-                    <th className="th-more">more</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(league === LIVE_BOARD_KEY
-                    ? leagueEvents.slice(
-                        (livePage - 1) * LIVE_BOARD_PER_PAGE,
-                        livePage * LIVE_BOARD_PER_PAGE
-                      )
-                    : leagueEvents
-                  ).map((event: any) => {
-                    const odds = getOdds(event);
-                    const eventTime = new Date(event.startTime);
-                    const timeStr = eventTime.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    const dateStr = eventTime.toLocaleDateString([], {
-                      day: "2-digit",
-                      month: "short",
-                    });
-                    const code = getEventCode(event.id);
+              <div className="league-section live-board" key={league}>
+                <table className="odds-table odds-table-head">
+                  <thead>
+                    <tr className="market-group-row">
+                      <th></th>
+                      <th colSpan={3}>1x2</th>
+                      <th colSpan={3}>Double Chance</th>
+                      <th colSpan={2}>Over/Under 2.5</th>
+                      <th></th>
+                    </tr>
+                    <tr>
+                      <th className="th-event">
+                        <img src="/icons/stream.png" alt="" className="live-icon" /> Live Football
+                      </th>
+                      {ALL_COLUMNS.map((col) => (
+                        <th key={col.key}>{col.label}</th>
+                      ))}
+                      <th className="th-more">more</th>
+                    </tr>
+                  </thead>
+                </table>
 
+                <div className="live-slider-wrap">
+                  {(() => {
+                    const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
                     return (
-                      <tr
-                        key={event.id}
-                        className={event.status === "LIVE" ? "live-row" : ""}
+                      <div
+                        className="live-slider-track"
+                        style={{
+                          width: `${pageCount * 100}%`,
+                          transform: `translateX(-${((livePage - 1) / pageCount) * 100}%)`,
+                        }}
                       >
-                        <td className="td-event">
-                          <div className="event-info">
-                            <img src="/icons/stats.png" alt="" className="event-chart-icon" />
-                            <strong className="event-code">{code}</strong>
-                            <span className="event-date-badge">
-                              <span className="badge-date">{dateStr}</span>
-                              <span className="badge-time">{timeStr}</span>
-                            </span>
-                            <span className="event-teams-col">
-                              <span className="team-row">
-                                <span className="team-name">{event.homeTeam}</span>
-                              </span>
-                              <span className="team-row">
-                                <span className="team-name">{event.awayTeam}</span>
-                              </span>
-                            </span>
+                        {Array.from({ length: pageCount }, (_, pageIdx) => (
+                          <div className="live-slider-page" key={pageIdx}>
+                            <table className="odds-table odds-table-body">
+                              <tbody>
+                                {leagueEvents
+                                  .slice(pageIdx * LIVE_BOARD_PER_PAGE, (pageIdx + 1) * LIVE_BOARD_PER_PAGE)
+                                  .map((event: any) => {
+                                    const odds = getOdds(event);
+                                    const eventTime = new Date(event.startTime);
+                                    const timeStr = eventTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                                    const dateStr = eventTime.toLocaleDateString([], { day: "2-digit", month: "short" });
+                                    const code = getEventCode(event.id);
+                                    return (
+                                      <tr key={event.id}>
+                                        <td className="td-event">
+                                          <div className="event-info">
+                                            <img src="/icons/stats.png" alt="" className="event-chart-icon" />
+                                            <strong className="event-code">{code}</strong>
+                                            <span className="event-date-badge">
+                                              <span className="badge-date">{dateStr}</span>
+                                              <span className="badge-time">{timeStr}</span>
+                                            </span>
+                                            <span className="event-teams-col">
+                                              <span className="team-row"><span className="team-name">{event.homeTeam}</span></span>
+                                              <span className="team-row"><span className="team-name">{event.awayTeam}</span></span>
+                                            </span>
+                                          </div>
+                                        </td>
+                                        {ALL_COLUMNS.map((col) => {
+                                          const outcome = (odds as any)[col.key];
+                                          const sel = outcome ? isSelected(outcome.id) : false;
+                                          const move = outcome ? movements[outcome.id] : undefined;
+                                          return (
+                                            <td
+                                              key={col.key}
+                                              data-col={col.label}
+                                              className={`td-odds ${col.gold ? "gold" : ""} ${sel ? "selected" : ""} ${!outcome ? "empty" : ""} ${move ? `move-${move}` : ""}`}
+                                              onClick={() => outcome && handleOddsClick(outcome, col.type === "ou" ? "ou" : "mw", event)}
+                                            >
+                                              <span>{outcome ? outcome.odds.toFixed(2) : "-"}</span>
+                                            </td>
+                                          );
+                                        })}
+                                        <td className="td-more">
+                                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                              </tbody>
+                            </table>
                           </div>
-                        </td>
-                        {ALL_COLUMNS.map((col) => {
-                          const outcome = (odds as any)[col.key];
-                          const sel = outcome ? isSelected(outcome.id) : false;
-                          const move = outcome ? movements[outcome.id] : undefined;
-                          return (
-                            <td
-                              key={col.key}
-                              data-col={col.label}
-                              className={`td-odds ${col.gold ? "gold" : ""} ${sel ? "selected" : ""} ${!outcome ? "empty" : ""} ${move ? `move-${move}` : ""}`}
-                              onClick={() =>
-                                outcome &&
-                                handleOddsClick(
-                                  outcome,
-                                  col.type === "ou" ? "ou" : "mw",
-                                  event
-                                )
-                              }
-                            >
-                              <span>{outcome ? outcome.odds.toFixed(2) : "-"}</span>
-                            </td>
-                          );
-                        })}
-                        <td className="td-more">
-                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
-                        </td>
-                      </tr>
+                        ))}
+                      </div>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                  })()}
+                </div>
 
-            {league === LIVE_BOARD_KEY &&
-              leagueEvents.length > LIVE_BOARD_PER_PAGE &&
-              (() => {
-                const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
-                return (
-                  <div className="pagination">
-                    <button
-                      className="page-arrow"
-                      onClick={() => setLivePage((p) => Math.max(1, p - 1))}
-                      disabled={livePage === 1}
-                      aria-label="Previous page"
-                    >
-                      {"‹"}
-                    </button>
-                    {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        className={`page-num ${p === livePage ? "active" : ""}`}
-                        onClick={() => setLivePage(p)}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      className="page-arrow"
-                      onClick={() => setLivePage((p) => Math.min(pageCount, p + 1))}
-                      disabled={livePage === pageCount}
-                      aria-label="Next page"
-                    >
-                      {"›"}
-                    </button>
-                  </div>
-                );
-              })()}
-          </div>            </Fragment>
+                {leagueEvents.length > LIVE_BOARD_PER_PAGE &&
+                  (() => {
+                    const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
+                    return (
+                      <div className="pagination">
+                        <button className="page-arrow" onClick={() => setLivePage((p) => Math.max(1, p - 1))} disabled={livePage === 1} aria-label="Previous page">{"‹"}</button>
+                        {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
+                          <button key={p} className={`page-num ${p === livePage ? "active" : ""}`} onClick={() => setLivePage(p)}>{p}</button>
+                        ))}
+                        <button className="page-arrow" onClick={() => setLivePage((p) => Math.min(pageCount, p + 1))} disabled={livePage === pageCount} aria-label="Next page">{"›"}</button>
+                      </div>
+                    );
+                  })()}
+              </div>
           ))}
 
         <HotGames />
@@ -575,140 +515,73 @@ export function OddsBoard() {
         {grouped
           .filter(([league]) => league !== LIVE_BOARD_KEY)
           .map(([league, leagueEvents]) => (
-            <Fragment key={league}>
-          <div
-            className={`league-section ${league === LIVE_BOARD_KEY ? "live-board" : ""}`}
-          >
-            <div className="table-wrap">
-              <table className="odds-table">
-                <thead>
-                  <tr className="market-group-row">
-                    <th></th>
-                    <th colSpan={3}>1x2</th>
-                    <th colSpan={3}>Double Chance</th>
-                    <th colSpan={2}>Over/Under 2.5</th>
-                    <th></th>
-                  </tr>
-                  <tr>
-                    <th className="th-event">
-                      {league === LIVE_BOARD_KEY ? <><img src="/icons/stream.png" alt="" className="live-icon" /> Live Football</> : "Events"}
-                    </th>
-                    {ALL_COLUMNS.map((col) => (
-                      <th key={col.key}>{col.label}</th>
-                    ))}
-                    <th className="th-more">more</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(league === LIVE_BOARD_KEY
-                    ? leagueEvents.slice(
-                        (livePage - 1) * LIVE_BOARD_PER_PAGE,
-                        livePage * LIVE_BOARD_PER_PAGE
-                      )
-                    : leagueEvents
-                  ).map((event: any) => {
-                    const odds = getOdds(event);
-                    const eventTime = new Date(event.startTime);
-                    const timeStr = eventTime.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    const dateStr = eventTime.toLocaleDateString([], {
-                      day: "2-digit",
-                      month: "short",
-                    });
-                    const code = getEventCode(event.id);
-
-                    return (
-                      <tr
-                        key={event.id}
-                        className={event.status === "LIVE" ? "live-row" : ""}
-                      >
-                        <td className="td-event">
-                          <div className="event-info">
-                            <img src="/icons/stats.png" alt="" className="event-chart-icon" />
-                            <strong className="event-code">{code}</strong>
-                            <span className="event-date-badge">
-                              <span className="badge-date">{dateStr}</span>
-                              <span className="badge-time">{timeStr}</span>
-                            </span>
-                            <span className="event-teams-col">
-                              <span className="team-row">
-                                <span className="team-name">{event.homeTeam}</span>
+            <div className="league-section" key={league}>
+              <div className="table-wrap">
+                <table className="odds-table">
+                  <thead>
+                    <tr className="market-group-row">
+                      <th></th>
+                      <th colSpan={3}>1x2</th>
+                      <th colSpan={3}>Double Chance</th>
+                      <th colSpan={2}>Over/Under 2.5</th>
+                      <th></th>
+                    </tr>
+                    <tr>
+                      <th className="th-event">Events</th>
+                      {ALL_COLUMNS.map((col) => (
+                        <th key={col.key}>{col.label}</th>
+                      ))}
+                      <th className="th-more">more</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leagueEvents.map((event: any) => {
+                      const odds = getOdds(event);
+                      const eventTime = new Date(event.startTime);
+                      const timeStr = eventTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                      const dateStr = eventTime.toLocaleDateString([], { day: "2-digit", month: "short" });
+                      const code = getEventCode(event.id);
+                      return (
+                        <tr key={event.id}>
+                          <td className="td-event">
+                            <div className="event-info">
+                              <img src="/icons/stats.png" alt="" className="event-chart-icon" />
+                              <strong className="event-code">{code}</strong>
+                              <span className="event-date-badge">
+                                <span className="badge-date">{dateStr}</span>
+                                <span className="badge-time">{timeStr}</span>
                               </span>
-                              <span className="team-row">
-                                <span className="team-name">{event.awayTeam}</span>
+                              <span className="event-teams-col">
+                                <span className="team-row"><span className="team-name">{event.homeTeam}</span></span>
+                                <span className="team-row"><span className="team-name">{event.awayTeam}</span></span>
                               </span>
-                            </span>
-                          </div>
-                        </td>
-                        {ALL_COLUMNS.map((col) => {
-                          const outcome = (odds as any)[col.key];
-                          const sel = outcome ? isSelected(outcome.id) : false;
-                          const move = outcome ? movements[outcome.id] : undefined;
-                          return (
-                            <td
-                              key={col.key}
-                              data-col={col.label}
-                              className={`td-odds ${col.gold ? "gold" : ""} ${sel ? "selected" : ""} ${!outcome ? "empty" : ""} ${move ? `move-${move}` : ""}`}
-                              onClick={() =>
-                                outcome &&
-                                handleOddsClick(
-                                  outcome,
-                                  col.type === "ou" ? "ou" : "mw",
-                                  event
-                                )
-                              }
-                            >
-                              <span>{outcome ? outcome.odds.toFixed(2) : "-"}</span>
-                            </td>
-                          );
-                        })}
-                        <td className="td-more">
-                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                            </div>
+                          </td>
+                          {ALL_COLUMNS.map((col) => {
+                            const outcome = (odds as any)[col.key];
+                            const sel = outcome ? isSelected(outcome.id) : false;
+                            const move = outcome ? movements[outcome.id] : undefined;
+                            return (
+                              <td
+                                key={col.key}
+                                data-col={col.label}
+                                className={`td-odds ${col.gold ? "gold" : ""} ${sel ? "selected" : ""} ${!outcome ? "empty" : ""} ${move ? `move-${move}` : ""}`}
+                                onClick={() => outcome && handleOddsClick(outcome, col.type === "ou" ? "ou" : "mw", event)}
+                              >
+                                <span>{outcome ? outcome.odds.toFixed(2) : "-"}</span>
+                              </td>
+                            );
+                          })}
+                          <td className="td-more">
+                            <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
-
-            {league === LIVE_BOARD_KEY &&
-              leagueEvents.length > LIVE_BOARD_PER_PAGE &&
-              (() => {
-                const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
-                return (
-                  <div className="pagination">
-                    <button
-                      className="page-arrow"
-                      onClick={() => setLivePage((p) => Math.max(1, p - 1))}
-                      disabled={livePage === 1}
-                      aria-label="Previous page"
-                    >
-                      {"‹"}
-                    </button>
-                    {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                      <button
-                        key={p}
-                        className={`page-num ${p === livePage ? "active" : ""}`}
-                        onClick={() => setLivePage(p)}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <button
-                      className="page-arrow"
-                      onClick={() => setLivePage((p) => Math.min(pageCount, p + 1))}
-                      disabled={livePage === pageCount}
-                      aria-label="Next page"
-                    >
-                      {"›"}
-                    </button>
-                  </div>
-                );
-              })()}
-          </div>            </Fragment>
           ))}
       </div>
     </div>
