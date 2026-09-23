@@ -449,7 +449,7 @@ export function OddsBoard() {
                   </tr>
                   <tr>
                     <th className="th-event">
-                      {league === LIVE_BOARD_KEY ? "Live Football" : "Events"}
+                      {league === LIVE_BOARD_KEY ? <><img src="/icons/stream.png" alt="" className="live-icon" /> Live Football</> : "Events"}
                     </th>
                     {ALL_COLUMNS.map((col) => (
                       <th key={col.key}>{col.label}</th>
@@ -523,7 +523,7 @@ export function OddsBoard() {
                           );
                         })}
                         <td className="td-more">
-                          <button className="more-btn">{"➡"}</button>
+                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
                         </td>
                       </tr>
                     );
@@ -591,7 +591,7 @@ export function OddsBoard() {
                   </tr>
                   <tr>
                     <th className="th-event">
-                      {league === LIVE_BOARD_KEY ? "Live Football" : "Events"}
+                      {league === LIVE_BOARD_KEY ? <><img src="/icons/stream.png" alt="" className="live-icon" /> Live Football</> : "Events"}
                     </th>
                     {ALL_COLUMNS.map((col) => (
                       <th key={col.key}>{col.label}</th>
@@ -665,7 +665,7 @@ export function OddsBoard() {
                           );
                         })}
                         <td className="td-more">
-                          <button className="more-btn">{"➡"}</button>
+                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
                         </td>
                       </tr>
                     );

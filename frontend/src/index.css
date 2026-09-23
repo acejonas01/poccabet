@@ -698,7 +698,7 @@ button { font-family: inherit; cursor: pointer; }
   background: #111b21;
   height: 35px;
   padding: 0 0.4rem;
-  font-size: 0.78rem;
+  font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-light);
   text-align: center;
@@ -778,7 +778,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0 0.4rem;
   text-align: center;
   font-weight: 600;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--text-light);
   border: 1px solid var(--table-line);
   white-space: nowrap;
@@ -790,6 +790,13 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
   color: var(--text);
   border-right: none;
+}
+.live-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 4px;
 }
 .odds-table .th-more { width: 40px; }
 .odds-table td {
@@ -948,20 +955,22 @@ button { font-family: inherit; cursor: pointer; }
   0%, 60% { opacity: 1; }
   100%    { opacity: 0; }
 }
-.td-more { text-align: center; }
+.td-more { text-align: center; vertical-align: middle; }
 .more-btn {
-  background: var(--accent);
-  color: var(--more-arrow);
+  background: none;
   border: none;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 0.78rem;
-  line-height: 1;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  align-self: center;
+}
+.more-btn-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  position: relative;
+  top: 2px;
 }
 /* .live-row { background: rgba(255, 140, 0, 0.08) !important; } */
 
@@ -1500,7 +1509,7 @@ button { font-family: inherit; cursor: pointer; }
   .mobile-close-btn { display: inline; }
 
   .odds-table { font-size: 0.72rem; }
-  .odds-table .th-event { min-width: 150px; }
+  .odds-table .th-event { min-width: 150px; font-size: 0.8rem; }
   .stats-bar { gap: 1rem; font-size: 14px; }
   .section-block { padding: 0; }
 }
@@ -1852,14 +1861,15 @@ button { font-family: inherit; cursor: pointer; }
     display: none;
   }
 
-  .odds-table th { font-size: 0.68rem; height: 34px; padding: 0 0.2rem; }
-  .odds-table td { padding: 0.45rem 0.2rem; }
+  .odds-table th { font-size: 0.8rem; height: 34px; padding: 0 0.2rem; font-weight: 700; }
+  .odds-table td { padding: calc(0.45rem + 5px) 0.2rem; }
   .td-event { padding-left: 0.45rem !important; }
   .event-info { gap: 0.4rem; }
   .td-odds { min-width: 44px; font-size: 0.8rem; }
   .td-odds > span { padding: 0.4rem 0.2rem; }
   .th-more, .td-more { width: 34px; }
-  .more-btn { width: 20px; height: 20px; font-size: 0.7rem; }
+  .more-btn { width: 20px; height: 20px; }
+  .more-btn-icon { width: 24px; height: 24px; }
 
 }
 
