@@ -78,6 +78,7 @@ export function OddsBoard() {
   const [catTab, setCatTab] = useState("live");
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [liveLoaded, setLiveLoaded] = useState(false);
+  const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
   const showLiveBoard = catTab === "live" || catTab === "upcoming";
   const prevOdds = useRef<Record<string, number>>({});
   const slideInterval = useRef<ReturnType<typeof setInterval>>(null);
@@ -183,6 +184,8 @@ export function OddsBoard() {
       api
         .getLiveOdds()
         .then((res) => {
+          // Empty feed (e.g. provider out of credits) falls back to DB events.
+          if (res.events.length === 0) throw new Error("empty odds feed");
           const normalized = res.events.map(normalizeLiveEvent);
           setEvents(applyLiveBoard(normalized));
         })
@@ -206,6 +209,7 @@ export function OddsBoard() {
     const id = setInterval(() => {
       if (USE_LIVE_ODDS) {
         api.getLiveOdds().then((res) => {
+          if (res.events.length === 0) return;
           const normalized = res.events.map(normalizeLiveEvent);
           setEvents(applyLiveBoard(normalized));
         }).catch(() => {});
@@ -229,11 +233,23 @@ export function OddsBoard() {
     return () => clearInterval(id);
   }, []);
 
+  // Upcoming games from API-Football (backend caches for hours, so this poll is free).
+  useEffect(() => {
+    const load = () =>
+      api
+        .getUpcomingFixtures()
+        .then((res) => setUpcomingEvents(res.events.map(normalizeLiveEvent)))
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 10 * 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const current: Record<string, number> = {};
     const moved: Record<string, "up" | "down"> = {};
 
-    for (const e of [...events, ...liveEvents]) {
+    for (const e of [...events, ...liveEvents, ...upcomingEvents]) {
       for (const m of e.markets) {
         for (const o of m.outcomes) {
           current[o.id] = o.odds;
@@ -250,7 +266,7 @@ export function OddsBoard() {
     setMovements(moved);
     const t = setTimeout(() => setMovements({}), 1800);
     return () => clearTimeout(t);
-  }, [events, liveEvents]);
+  }, [events, liveEvents, upcomingEvents]);
 
   const sports = useMemo(() => {
     const map = new Map<string, { slug: string; name: string; count: number }>();
@@ -283,11 +299,13 @@ export function OddsBoard() {
     return Array.from(map.entries());
   }, [filtered]);
 
-  // LIVE tab = real in-play games; UPCOMING = featured games not yet played.
+  // LIVE = real in-play games; UPCOMING = API-Football games not yet played (DB games as fallback).
   const boardEvents =
     catTab === "live"
       ? liveEvents
-      : grouped.find(([league]) => league === LIVE_BOARD_KEY)?.[1] ?? [];
+      : upcomingEvents.length > 0
+        ? upcomingEvents
+        : grouped.find(([league]) => league === LIVE_BOARD_KEY)?.[1] ?? [];
 
   function selectCatTab(tab: string, sport = "all") {
     setCatTab(tab);
@@ -489,7 +507,7 @@ export function OddsBoard() {
                     </tr>
                     <tr>
                       <th className="th-event">
-                        <img src="/icons/stream.png" alt="" className="live-icon" /> Live Football
+                        <img src="/icons/stream.png" alt="" className="live-icon" /> {catTab === "live" ? "Live Football" : "Upcoming Football"}
                       </th>
                       {ALL_COLUMNS.map((col) => (
                         <th key={col.key}>{col.label}</th>
