@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getApiFootballUsage, getLiveFixtures, getUpcomingFixtures } from "../providers/apifootball";
+import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
 
 const router = Router();
 
@@ -16,8 +16,18 @@ router.get("/", async (_req, res) => {
 // GET /api/live/upcoming — not-yet-played football games with pre-match odds (cached 3h)
 router.get("/upcoming", async (_req, res) => {
   try {
-    const { data: events, fetchedAt, stale } = await getUpcomingFixtures();
-    res.json({ count: events.length, fetchedAt: new Date(fetchedAt), stale, events });
+    const { data, fetchedAt, stale } = await getUpcomingAndResults();
+    res.json({ count: data.upcoming.length, fetchedAt: new Date(fetchedAt), stale, events: data.upcoming });
+  } catch (err: any) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/live/results — today's finished games (free: shares the upcoming refresh)
+router.get("/results", async (_req, res) => {
+  try {
+    const { data, fetchedAt, stale } = await getUpcomingAndResults();
+    res.json({ count: data.finished.length, fetchedAt: new Date(fetchedAt), stale, results: data.finished });
   } catch (err: any) {
     res.status(502).json({ error: err.message });
   }

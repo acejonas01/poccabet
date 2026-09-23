@@ -2,6 +2,7 @@
 // Free plan = 100 requests/day, so every call goes through a shared server cache.
 //   LIVE refresh     = 2 requests (/fixtures?live=all, /odds/live)
 //   UPCOMING refresh = up to 5 requests (up to 3 /odds pages + 1 /fixtures?date per day used)
+//   RESULTS          = 0 extra requests (finished games come from today's /fixtures?date)
 // UPCOMING_DAILY_RESERVE calls are kept back so LIVE can't starve UPCOMING.
 
 import type { OddsEvent, OddsMarket } from "./types";
@@ -15,6 +16,22 @@ const ERROR_BACKOFF = 10 * 60 * 1000;
 const UPCOMING_SIZE = 15;
 const MAX_ODDS_PAGES = 3;
 const BET365 = 8;
+const RESULTS_SIZE = 30;
+const FINISHED = new Set(["FT", "AET", "PEN"]);
+// Popular leagues (API-Football ids) listed first in results: UCL, UEL, UECL,
+// EPL, La Liga, Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira Liga, NPFL.
+const POPULAR_LEAGUES = [2, 3, 848, 39, 140, 135, 78, 61, 88, 94, 399];
+
+export interface FinishedFixture {
+  externalId: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  startTime: Date;
+  status: string; // FT, AET, PEN
+  homeGoals: number | null;
+  awayGoals: number | null;
+}
 
 export interface LiveFixture {
   externalId: number;
@@ -156,11 +173,12 @@ function parsePrematchOdds(bets: any[]): OddsMarket[] {
   return markets;
 }
 
-async function fetchUpcoming(): Promise<OddsEvent[]> {
+async function fetchUpcoming(): Promise<{ upcoming: OddsEvent[]; finished: FinishedFixture[] }> {
   const soon = Date.now() + 5 * 60 * 1000;
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const picked = new Map<number, OddsMarket[]>();
-  const daysUsed = new Set<string>();
+  // Today is always fetched so finished results come along for free.
+  const daysUsed = new Set<string>([today()]);
   let pages = 0;
 
   // Odds come 10 fixtures per page; take games that haven't kicked off yet.
@@ -178,7 +196,6 @@ async function fetchUpcoming(): Promise<OddsEvent[]> {
       if (page >= (data.paging?.total ?? 1)) break;
     }
   }
-  if (picked.size === 0) return [];
 
   // Odds don't carry team names; free plan can't look up by id, so fetch the day's fixtures.
   const fixtures: any[] = [];
@@ -186,7 +203,7 @@ async function fetchUpcoming(): Promise<OddsEvent[]> {
     fixtures.push(...((await apiGet(`/fixtures?date=${day}`)).response ?? []));
   }
 
-  return fixtures
+  const upcoming = fixtures
     .filter((f: any) => picked.has(f.fixture.id))
     .map((f: any) => ({
       externalId: `af-${f.fixture.id}`,
@@ -199,13 +216,34 @@ async function fetchUpcoming(): Promise<OddsEvent[]> {
     }))
     .sort((a: OddsEvent, b: OddsEvent) => a.startTime.getTime() - b.startTime.getTime())
     .slice(0, UPCOMING_SIZE);
+
+  const rank = (f: any) => {
+    const i = POPULAR_LEAGUES.indexOf(f.league.id);
+    return i === -1 ? POPULAR_LEAGUES.length : i;
+  };
+  const finished = fixtures
+    .filter((f: any) => FINISHED.has(f.fixture.status.short))
+    .sort((a: any, b: any) => rank(a) - rank(b) || b.fixture.timestamp - a.fixture.timestamp)
+    .slice(0, RESULTS_SIZE)
+    .map((f: any) => ({
+      externalId: `af-${f.fixture.id}`,
+      league: f.league.name,
+      homeTeam: f.teams.home.name,
+      awayTeam: f.teams.away.name,
+      startTime: new Date(f.fixture.date),
+      status: f.fixture.status.short,
+      homeGoals: f.goals.home,
+      awayGoals: f.goals.away,
+    }));
+
+  return { upcoming, finished };
 }
 
 // Shared cache: serves fresh data within ttl, collapses concurrent refreshes,
 // and falls back to the last good data when out of budget or on errors.
-function cachedFeed<T>(ttl: number, reserve: number, load: () => Promise<T[]>) {
-  let cache: { data: T[]; fetchedAt: number } | null = null;
-  let inFlight: Promise<T[]> | null = null;
+function cachedFeed<T>(ttl: number, reserve: number, load: () => Promise<T>) {
+  let cache: { data: T; fetchedAt: number } | null = null;
+  let inFlight: Promise<T> | null = null;
   let failure: { error: unknown; at: number } | null = null;
 
   return async () => {
@@ -233,7 +271,8 @@ function cachedFeed<T>(ttl: number, reserve: number, load: () => Promise<T[]>) {
 }
 
 export const getLiveFixtures = cachedFeed(LIVE_TTL, UPCOMING_RESERVE, fetchLive);
-export const getUpcomingFixtures = cachedFeed(UPCOMING_TTL, 0, fetchUpcoming);
+// Upcoming games and today's results share one cached refresh.
+export const getUpcomingAndResults = cachedFeed(UPCOMING_TTL, 0, fetchUpcoming);
 
 export function getApiFootballUsage() {
   budgetLeft();

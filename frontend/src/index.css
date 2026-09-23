@@ -864,6 +864,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 0.28rem 0;
 }
 .event-date-badge.is-live .badge-date { background: var(--live); }
+.event-date-badge.is-ft .badge-date { background: var(--text-faint); }
 .event-score {
   display: flex;
   flex-direction: column;

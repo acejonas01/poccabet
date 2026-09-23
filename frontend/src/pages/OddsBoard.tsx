@@ -65,6 +65,23 @@ function normalizeLiveFixture(f: any, index: number) {
   };
 }
 
+// API-Football finished game -> board event (no markets).
+function normalizeResult(r: any) {
+  return {
+    id: r.externalId,
+    sport: { slug: "football", name: "Football" },
+    league: r.league,
+    homeTeam: r.homeTeam,
+    awayTeam: r.awayTeam,
+    startTime: r.startTime,
+    status: "FINISHED",
+    period: r.status,
+    homeGoals: r.homeGoals,
+    awayGoals: r.awayGoals,
+    markets: [],
+  };
+}
+
 export function OddsBoard() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,7 +96,13 @@ export function OddsBoard() {
   const [liveEvents, setLiveEvents] = useState<any[]>([]);
   const [liveLoaded, setLiveLoaded] = useState(false);
   const [upcomingEvents, setUpcomingEvents] = useState<any[]>([]);
+  const [upcomingLoaded, setUpcomingLoaded] = useState(false);
+  const [resultEvents, setResultEvents] = useState<any[]>([]);
+  const [resultsLoaded, setResultsLoaded] = useState(false);
   const showLiveBoard = catTab === "live" || catTab === "upcoming";
+  // HIGHLIGHTS reuses the board for today's finished games (scores only, no odds).
+  const showBoard = showLiveBoard || catTab === "highlights";
+  const showOdds = catTab !== "highlights";
   const prevOdds = useRef<Record<string, number>>({});
   const slideInterval = useRef<ReturnType<typeof setInterval>>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -239,9 +262,18 @@ export function OddsBoard() {
       api
         .getUpcomingFixtures()
         .then((res) => setUpcomingEvents(res.events.map(normalizeLiveEvent)))
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setUpcomingLoaded(true));
+    // Results share the same backend refresh, so this costs no extra API calls.
+    const loadResults = () =>
+      api
+        .getResults()
+        .then((res) => setResultEvents(res.results.map(normalizeResult)))
+        .catch(() => {})
+        .finally(() => setResultsLoaded(true));
     load();
-    const id = setInterval(load, 10 * 60000);
+    loadResults();
+    const id = setInterval(() => { load(); loadResults(); }, 10 * 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -299,13 +331,14 @@ export function OddsBoard() {
     return Array.from(map.entries());
   }, [filtered]);
 
-  // LIVE = real in-play games; UPCOMING = API-Football games not yet played (DB games as fallback).
+  // LIVE = real in-play games; UPCOMING = real games that haven't kicked off yet.
+  // The upcoming feed is cached for hours, so drop games whose kickoff has passed.
   const boardEvents =
     catTab === "live"
       ? liveEvents
-      : upcomingEvents.length > 0
-        ? upcomingEvents
-        : grouped.find(([league]) => league === LIVE_BOARD_KEY)?.[1] ?? [];
+      : catTab === "highlights"
+        ? resultEvents
+        : upcomingEvents.filter((e) => new Date(e.startTime).getTime() > Date.now());
 
   function selectCatTab(tab: string, sport = "all") {
     setCatTab(tab);
@@ -486,7 +519,7 @@ export function OddsBoard() {
 
         {loading && <p className="state-msg">Loading events...</p>}
         {error && <p className="error state-msg">Failed to load: {error}</p>}
-        {!loading && !error && catTab !== "live" && filtered.length === 0 && (
+        {!loading && !error && !showBoard && filtered.length === 0 && (
           <p className="state-msg">No events match this filter.</p>
         )}
 
@@ -494,25 +527,33 @@ export function OddsBoard() {
         {showLiveBoard && catTab === "live" && liveLoaded && liveEvents.length === 0 && (
           <p className="state-msg">No live games right now.</p>
         )}
-        {showLiveBoard && boardEvents.length > 0 && (
+        {showLiveBoard && catTab === "upcoming" && upcomingLoaded && boardEvents.length === 0 && (
+          <p className="state-msg">No upcoming games right now.</p>
+        )}
+        {catTab === "highlights" && resultsLoaded && resultEvents.length === 0 && (
+          <p className="state-msg">No finished games yet today.</p>
+        )}
+        {showBoard && boardEvents.length > 0 && (
               <div className="league-section live-board">
                 <table className="odds-table odds-table-head">
                   <thead>
-                    <tr className="market-group-row">
-                      <th></th>
-                      <th colSpan={3}>1x2</th>
-                      <th colSpan={3}>Double Chance</th>
-                      <th colSpan={2}>Over/Under 2.5</th>
-                      <th></th>
-                    </tr>
+                    {showOdds && (
+                      <tr className="market-group-row">
+                        <th></th>
+                        <th colSpan={3}>1x2</th>
+                        <th colSpan={3}>Double Chance</th>
+                        <th colSpan={2}>Over/Under 2.5</th>
+                        <th></th>
+                      </tr>
+                    )}
                     <tr>
                       <th className="th-event">
-                        <img src="/icons/stream.png" alt="" className="live-icon" /> {catTab === "live" ? "Live Football" : "Upcoming Football"}
+                        <img src="/icons/stream.png" alt="" className="live-icon" /> {{ live: "Live Football", upcoming: "Upcoming Football", highlights: "Today's Results" }[catTab]}
                       </th>
-                      {ALL_COLUMNS.map((col) => (
+                      {showOdds && ALL_COLUMNS.map((col) => (
                         <th key={col.key}>{col.label}</th>
                       ))}
-                      <th className="th-more">more</th>
+                      {showOdds && <th className="th-more">more</th>}
                     </tr>
                   </thead>
                 </table>
@@ -551,6 +592,11 @@ export function OddsBoard() {
                                                 <span className="badge-date">LIVE</span>
                                                 <span className="badge-time">{event.period === "HT" ? "HT" : `${event.minute ?? 0}'`}</span>
                                               </span>
+                                            ) : event.status === "FINISHED" ? (
+                                              <span className="event-date-badge is-ft">
+                                                <span className="badge-date">{event.period}</span>
+                                                <span className="badge-time">{timeStr}</span>
+                                              </span>
                                             ) : (
                                               <span className="event-date-badge">
                                                 <span className="badge-date">{dateStr}</span>
@@ -561,7 +607,7 @@ export function OddsBoard() {
                                               <span className="team-row"><span className="team-name">{event.homeTeam}</span></span>
                                               <span className="team-row"><span className="team-name">{event.awayTeam}</span></span>
                                             </span>
-                                            {event.status === "LIVE" && (
+                                            {(event.status === "LIVE" || event.status === "FINISHED") && (
                                               <span className="event-score">
                                                 <span>{event.homeGoals ?? 0}</span>
                                                 <span>{event.awayGoals ?? 0}</span>
@@ -569,7 +615,7 @@ export function OddsBoard() {
                                             )}
                                           </div>
                                         </td>
-                                        {ALL_COLUMNS.map((col) => {
+                                        {showOdds && ALL_COLUMNS.map((col) => {
                                           const outcome = (odds as any)[col.key];
                                           const sel = outcome ? isSelected(outcome.id) : false;
                                           const move = outcome ? movements[outcome.id] : undefined;
@@ -584,9 +630,11 @@ export function OddsBoard() {
                                             </td>
                                           );
                                         })}
-                                        <td className="td-more">
-                                          <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
-                                        </td>
+                                        {showOdds && (
+                                          <td className="td-more">
+                                            <button className="more-btn"><img src="/icons/arrow-right.png" alt="" className="more-btn-icon" /></button>
+                                          </td>
+                                        )}
                                       </tr>
                                     );
                                   })}
