@@ -452,7 +452,11 @@ export function OddsBoard() {
         >
           {loopSlides.map((src, i) => (
             <div key={i} className="promo-slide">
-              <img src={src} alt="Promo" />
+              {/* Phones get the 1080×400 mobile artwork; desktop keeps the wide banner */}
+              <picture>
+                <source media="(max-width: 900px)" srcSet={src.replace(".jpg", "-m.jpg")} />
+                <img src={src} alt="Promo" />
+              </picture>
             </div>
           ))}
         </div>

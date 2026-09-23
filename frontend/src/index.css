@@ -904,7 +904,7 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.25;
-  color: var(--badge-date-bg);
+  color: var(--text-light);
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
@@ -1856,7 +1856,8 @@ button { font-family: inherit; cursor: pointer; }
   .promo-carousel { overflow: visible; }
   .promo-slide { padding: 0 4px; box-sizing: border-box; }
   .promo-slide img {
-    height: 110px;
+    height: auto;
+    aspect-ratio: 1080 / 400; /* matches mobile artwork, so nothing gets cropped */
     border-radius: 8px;
   }
   .promo-arrow { display: none; }
