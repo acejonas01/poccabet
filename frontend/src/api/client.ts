@@ -41,6 +41,8 @@ export const api = {
     request<{ events: any[]; provider: string; count: number }>(
       `/api/odds/live${sport ? `?sport=${sport}` : ""}`
     ),
+  getLiveFixtures: () =>
+    request<{ fixtures: any[]; count: number; fetchedAt: string; stale: boolean }>("/api/live"),
   syncOdds: (sport?: string) =>
     request<{ synced: number; total: number }>(
       `/api/odds/sync${sport ? `?sport=${sport}` : ""}`,

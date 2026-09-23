@@ -14,6 +14,7 @@ export function Header({ onToggleSidebar: _onToggleSidebar }: { onToggleSidebar:
 
   return (
     <>
+      {/* ===== S1 · TopBar ===== */}
       <header className="header-primary">
         {/* <button className="menu-toggle" aria-label="Menu" onClick={onToggleSidebar}>
           <span />
@@ -66,6 +67,7 @@ export function Header({ onToggleSidebar: _onToggleSidebar }: { onToggleSidebar:
           )}
         </div>
       </header>
+      {/* ===== S2 · SubNav ===== */}
       <div className="header-secondary">
         <nav className="header-nav-secondary">
           <Link to="/" className={location.pathname === "/" ? "active" : ""}>Home</Link>

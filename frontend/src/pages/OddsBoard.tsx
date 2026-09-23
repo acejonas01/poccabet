@@ -53,6 +53,18 @@ function normalizeLiveEvent(evt: any, index: number) {
   };
 }
 
+// API-Football live fixture -> board event (reuses the odds normalizer for markets).
+function normalizeLiveFixture(f: any, index: number) {
+  return {
+    ...normalizeLiveEvent({ ...f, externalId: `af-${f.externalId}`, sport: "football" }, index),
+    status: "LIVE",
+    minute: f.minute,
+    period: f.status,
+    homeGoals: f.homeGoals,
+    awayGoals: f.awayGoals,
+  };
+}
+
 export function OddsBoard() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +75,10 @@ export function OddsBoard() {
   const [animating, setAnimating] = useState(true);
   const [movements, setMovements] = useState<Record<string, "up" | "down">>({});
   const [livePage, setLivePage] = useState(1);
+  const [catTab, setCatTab] = useState("live");
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+  const [liveLoaded, setLiveLoaded] = useState(false);
+  const showLiveBoard = catTab === "live" || catTab === "upcoming";
   const prevOdds = useRef<Record<string, number>>({});
   const slideInterval = useRef<ReturnType<typeof setInterval>>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -78,14 +94,28 @@ export function OddsBoard() {
   const resetAutoplay = useCallback(() => {
     if (slideInterval.current) clearInterval(slideInterval.current);
     slideInterval.current = setInterval(() => {
-      setTrackIndex((t) => t + 1);
+      setTrackIndex((t) => Math.min(t + 1, loopSlides.length - 1));
       setAnimating(true);
     }, 5000);
-  }, []);
+  }, [loopSlides.length]);
 
   useEffect(() => {
     resetAutoplay();
-    return () => { if (slideInterval.current) clearInterval(slideInterval.current); };
+    // Hidden tabs skip transitionend, so pause autoplay and snap back to a real slide on return.
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (slideInterval.current) clearInterval(slideInterval.current);
+        return;
+      }
+      setAnimating(false);
+      setTrackIndex((t) => ((t - 1 + PROMO_SLIDES.length) % PROMO_SLIDES.length) + 1);
+      resetAutoplay();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      if (slideInterval.current) clearInterval(slideInterval.current);
+    };
   }, [resetAutoplay]);
 
   useEffect(() => {
@@ -93,10 +123,10 @@ export function OddsBoard() {
     const el = trackRef.current;
     if (!el) return;
     const handler = () => {
-      if (trackIndex === 0) {
+      if (trackIndex <= 0) {
         setAnimating(false);
         setTrackIndex(PROMO_SLIDES.length);
-      } else if (trackIndex === loopSlides.length - 1) {
+      } else if (trackIndex >= loopSlides.length - 1) {
         setAnimating(false);
         setTrackIndex(1);
       }
@@ -114,13 +144,13 @@ export function OddsBoard() {
   }
 
   function slideNext() {
-    setTrackIndex((t) => t + 1);
+    setTrackIndex((t) => Math.min(t + 1, loopSlides.length - 1));
     setAnimating(true);
     resetAutoplay();
   }
 
   function slidePrev() {
-    setTrackIndex((t) => t - 1);
+    setTrackIndex((t) => Math.max(t - 1, 0));
     setAnimating(true);
     resetAutoplay();
   }
@@ -186,11 +216,24 @@ export function OddsBoard() {
     return () => clearInterval(id);
   }, []);
 
+  // Real in-play games. The backend caches API-Football, so polling here costs no credits.
+  useEffect(() => {
+    const load = () =>
+      api
+        .getLiveFixtures()
+        .then((res) => setLiveEvents(res.fixtures.map(normalizeLiveFixture)))
+        .catch(() => {})
+        .finally(() => setLiveLoaded(true));
+    load();
+    const id = setInterval(load, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     const current: Record<string, number> = {};
     const moved: Record<string, "up" | "down"> = {};
 
-    for (const e of events) {
+    for (const e of [...events, ...liveEvents]) {
       for (const m of e.markets) {
         for (const o of m.outcomes) {
           current[o.id] = o.odds;
@@ -207,7 +250,7 @@ export function OddsBoard() {
     setMovements(moved);
     const t = setTimeout(() => setMovements({}), 1800);
     return () => clearTimeout(t);
-  }, [events]);
+  }, [events, liveEvents]);
 
   const sports = useMemo(() => {
     const map = new Map<string, { slug: string; name: string; count: number }>();
@@ -239,6 +282,18 @@ export function OddsBoard() {
     }
     return Array.from(map.entries());
   }, [filtered]);
+
+  // LIVE tab = real in-play games; UPCOMING = featured games not yet played.
+  const boardEvents =
+    catTab === "live"
+      ? liveEvents
+      : grouped.find(([league]) => league === LIVE_BOARD_KEY)?.[1] ?? [];
+
+  function selectCatTab(tab: string, sport = "all") {
+    setCatTab(tab);
+    setSelectedSport(sport);
+    setLivePage(1);
+  }
 
   const isSelected = (id: string) => selections.some((s) => s.outcomeId === id);
 
@@ -279,6 +334,7 @@ export function OddsBoard() {
   return (
     <div className="odds-page">
 
+      {/* ===== S3 · QuickNav ===== */}
       <div className="quick-nav">
         {[
           { label: "Football", icon: "/icons/soccer-ball.png", color: false },
@@ -300,6 +356,7 @@ export function OddsBoard() {
       </div>
 
       <div className="promo-section">
+      {/* ===== S4 · PromoCarousel ===== */}
       <div className="promo-carousel"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
@@ -335,6 +392,7 @@ export function OddsBoard() {
         </button>
       </div>
 
+      {/* ===== S5 · PromoDots ===== */}
       <div className="promo-dots">
         {["⚽", "🏈", "🎾", "🏀", "🥊"].map((icon, i) => (
           <button
@@ -350,6 +408,7 @@ export function OddsBoard() {
       </div>
 
       <div className="section-block">
+        {/* ===== S6 · PopularBetsHeader ===== */}
         <div className="section-title-row">
           <h2 className="section-title">Popular Bets</h2>
           <div className="date-tabs">
@@ -365,21 +424,32 @@ export function OddsBoard() {
           </div>
         </div>
 
+        {/* ===== S7 · CategoryTabs ===== */}
         <div className="category-tabs">
-          <button className="cat-tab">Favourites</button>
-          <button className="cat-tab">Virtuals</button>
           <button
-            className={`cat-tab ${selectedSport === "all" && !liveOnly ? "active" : ""}`}
-            onClick={() => setSelectedSport("all")}
+            className={`cat-tab ${catTab === "live" ? "active" : ""}`}
+            onClick={() => selectCatTab("live")}
           >
-            Top Events
+            Live
+          </button>
+          <button
+            className={`cat-tab ${catTab === "upcoming" ? "active" : ""}`}
+            onClick={() => selectCatTab("upcoming")}
+          >
+            Upcoming
+          </button>
+          <button
+            className={`cat-tab ${catTab === "highlights" ? "active" : ""}`}
+            onClick={() => selectCatTab("highlights")}
+          >
+            Highlights
           </button>
           <button className="cat-tab">PoccaTV</button>
           {sports.map((s) => (
             <button
               key={s.slug}
-              className={`cat-tab ${selectedSport === s.slug ? "active" : ""}`}
-              onClick={() => setSelectedSport(s.slug)}
+              className={`cat-tab ${catTab === s.slug ? "active" : ""}`}
+              onClick={() => selectCatTab(s.slug, s.slug)}
             >
               {s.name}
             </button>
@@ -387,22 +457,27 @@ export function OddsBoard() {
           <button className="cat-tab">Promotions</button>
         </div>
 
-        <div className="market-tabs">
-          <span className="mkt-tab active">1x2</span>
-          <span className="mkt-tab">Double Chance</span>
-          <span className="mkt-tab">Over/Under (J2.5)</span>
-        </div>
+        {/* ===== S8 · MarketTabs (LIVE + UPCOMING tabs) ===== */}
+        {showLiveBoard && (
+          <div className="market-tabs">
+            <span className="mkt-tab active">1x2</span>
+            <span className="mkt-tab">Double Chance</span>
+            <span className="mkt-tab">Over/Under (J2.5)</span>
+          </div>
+        )}
 
         {loading && <p className="state-msg">Loading events...</p>}
         {error && <p className="error state-msg">Failed to load: {error}</p>}
-        {!loading && !error && filtered.length === 0 && (
+        {!loading && !error && catTab !== "live" && filtered.length === 0 && (
           <p className="state-msg">No events match this filter.</p>
         )}
 
-        {grouped
-          .filter(([league]) => league === LIVE_BOARD_KEY)
-          .map(([league, leagueEvents]) => (
-              <div className="league-section live-board" key={league}>
+        {/* ===== S9 · LiveBoard (LIVE + UPCOMING tabs) ===== */}
+        {showLiveBoard && catTab === "live" && liveLoaded && liveEvents.length === 0 && (
+          <p className="state-msg">No live games right now.</p>
+        )}
+        {showLiveBoard && boardEvents.length > 0 && (
+              <div className="league-section live-board">
                 <table className="odds-table odds-table-head">
                   <thead>
                     <tr className="market-group-row">
@@ -426,7 +501,7 @@ export function OddsBoard() {
 
                 <div className="live-slider-wrap">
                   {(() => {
-                    const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
+                    const pageCount = Math.ceil(boardEvents.length / LIVE_BOARD_PER_PAGE);
                     return (
                       <div
                         className="live-slider-track"
@@ -439,7 +514,7 @@ export function OddsBoard() {
                           <div className="live-slider-page" key={pageIdx}>
                             <table className="odds-table odds-table-body">
                               <tbody>
-                                {leagueEvents
+                                {boardEvents
                                   .slice(pageIdx * LIVE_BOARD_PER_PAGE, (pageIdx + 1) * LIVE_BOARD_PER_PAGE)
                                   .map((event: any) => {
                                     const odds = getOdds(event);
@@ -453,14 +528,27 @@ export function OddsBoard() {
                                           <div className="event-info">
                                             <img src="/icons/stats.png" alt="" className="event-chart-icon" />
                                             <strong className="event-code">{code}</strong>
-                                            <span className="event-date-badge">
-                                              <span className="badge-date">{dateStr}</span>
-                                              <span className="badge-time">{timeStr}</span>
-                                            </span>
+                                            {event.status === "LIVE" ? (
+                                              <span className="event-date-badge is-live">
+                                                <span className="badge-date">LIVE</span>
+                                                <span className="badge-time">{event.period === "HT" ? "HT" : `${event.minute ?? 0}'`}</span>
+                                              </span>
+                                            ) : (
+                                              <span className="event-date-badge">
+                                                <span className="badge-date">{dateStr}</span>
+                                                <span className="badge-time">{timeStr}</span>
+                                              </span>
+                                            )}
                                             <span className="event-teams-col">
                                               <span className="team-row"><span className="team-name">{event.homeTeam}</span></span>
                                               <span className="team-row"><span className="team-name">{event.awayTeam}</span></span>
                                             </span>
+                                            {event.status === "LIVE" && (
+                                              <span className="event-score">
+                                                <span>{event.homeGoals ?? 0}</span>
+                                                <span>{event.awayGoals ?? 0}</span>
+                                              </span>
+                                            )}
                                           </div>
                                         </td>
                                         {ALL_COLUMNS.map((col) => {
@@ -493,9 +581,9 @@ export function OddsBoard() {
                   })()}
                 </div>
 
-                {leagueEvents.length > LIVE_BOARD_PER_PAGE &&
+                {boardEvents.length > LIVE_BOARD_PER_PAGE &&
                   (() => {
-                    const pageCount = Math.ceil(leagueEvents.length / LIVE_BOARD_PER_PAGE);
+                    const pageCount = Math.ceil(boardEvents.length / LIVE_BOARD_PER_PAGE);
                     return (
                       <div className="pagination">
                         <button className="page-arrow" onClick={() => setLivePage((p) => Math.max(1, p - 1))} disabled={livePage === 1} aria-label="Previous page">{"‹"}</button>
@@ -507,8 +595,9 @@ export function OddsBoard() {
                     );
                   })()}
               </div>
-          ))}
+        )}
 
+        {/* ===== S10 · HotGames ===== */}
         <HotGames />
         <MarketFilter />
 

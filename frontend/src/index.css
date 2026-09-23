@@ -863,6 +863,20 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-light);
   padding: 0.28rem 0;
 }
+.event-date-badge.is-live .badge-date { background: var(--live); }
+.event-score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  margin-left: auto;
+  padding-right: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--badge-date-bg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .live-badge-sm {
   background: var(--live);
   color: white;
@@ -1855,6 +1869,7 @@ button { font-family: inherit; cursor: pointer; }
     color: #ffffff;
     font-weight: 700;
     flex: 0 0 auto;
+    text-transform: uppercase;
   }
 
   .event-code { display: none; }

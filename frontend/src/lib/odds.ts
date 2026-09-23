@@ -56,6 +56,10 @@ export function getOdds(event: any) {
   const draw = outcomes.length === 3 ? outcomes[1] : null;
   const away = outcomes[outcomes.length - 1] ?? null;
 
+  // Real in-play games never get made-up placeholder odds.
+  const placeholder = (id: string, label: string) =>
+    event.status === "LIVE" ? null : placeholderOutcome(id, label);
+
   return {
     home,
     draw,
@@ -65,10 +69,10 @@ export function getOdds(event: any) {
     dc2x: doubleChance(draw, away, `${event.id}-dc2x`, "2X"),
     over:
       ou?.outcomes?.find((o: any) => o.label.includes("Over")) ??
-      placeholderOutcome(`${event.id}-over`, "Over 2.5"),
+      placeholder(`${event.id}-over`, "Over 2.5"),
     under:
       ou?.outcomes?.find((o: any) => o.label.includes("Under")) ??
-      placeholderOutcome(`${event.id}-under`, "Under 2.5"),
+      placeholder(`${event.id}-under`, "Under 2.5"),
   };
 }
 
