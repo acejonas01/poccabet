@@ -203,16 +203,19 @@ export function teamCode(name: string) {
   return (words[0][0] + words[words.length - 1].slice(0, 2)).toUpperCase();
 }
 
+// Sections are keyed by country + league: many countries share league names
+// ("Premier League" in England, Ghana, Ukraine…), and each division gets its own section.
 export function groupByLeague(matches: TCMatch[]) {
   const map = new Map<string, TCMatch[]>();
   for (const m of matches) {
-    const list = map.get(m.league) ?? [];
+    const key = `${m.country}|${m.league}`;
+    const list = map.get(key) ?? [];
     list.push(m);
-    map.set(m.league, list);
+    map.set(key, list);
   }
-  return [...map.entries()]
-    .sort((a, b) => leagueRank(a[0]) - leagueRank(b[0]) || a[0].localeCompare(b[0]))
-    .map(([name, list]) => ({ name, country: (list[0].country || "").toUpperCase(), matches: list }));
+  return [...map.values()]
+    .map((list) => ({ key: `${list[0].country}|${list[0].league}`, name: list[0].league, country: (list[0].country || "").toUpperCase(), matches: list }))
+    .sort((a, b) => leagueRank(a.name) - leagueRank(b.name) || a.name.localeCompare(b.name) || a.country.localeCompare(b.country));
 }
 
 // Date filter options: All dates, Today, Tomorrow, then the next two days ("Sat 26").

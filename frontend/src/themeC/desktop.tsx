@@ -201,7 +201,7 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
     <div style={{ ...card, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Pills pill={pill} setPill={setPill} />
       {leagues.map((lg) => (
-        <section key={lg.name} style={{ display: "flex", flexDirection: "column" }}>
+        <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "12px 20px 8px", background: "#1E282E" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "#8B95A1" }}>{lg.country}</span>

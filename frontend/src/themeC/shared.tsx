@@ -8,7 +8,7 @@ import { CheckIcon, CloseIcon, LockIcon, ReceiptIcon } from "./icons";
 import { MK, SHEET_GROUPS } from "./markets";
 
 export const ACCENT = "#F5C518";
-export const WELCOME_BONUS_AMOUNT = "[AMOUNT]"; // TODO: real welcome-bonus amount
+export const WELCOME_BONUS_AMOUNT = "₦50,000";
 // One switch for the featured-match card at the top of the Live, Upcoming and Top leagues tabs.
 export const SHOW_TAB_FEATURE = true;
 

@@ -231,11 +231,8 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
     </div>
   );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "6px 16px 8px", borderTop: "1px solid #2E3A41" }}>
-      <span style={{ paddingLeft: 32, fontSize: 11, lineHeight: "12px", marginBottom: 2, fontWeight: 600, color: "#8B95A1", display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-        <Flag country={m.country} size={14} />
-        <span style={ellipsis}>{m.country ? `${m.country} · ` : ""}{m.league}</span>
-      </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 16px", borderTop: "1px solid #2E3A41" }}>
+      {/* League/country is already in the section header above — not repeated per match. */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, height: 48 }}>
         <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-start", height: 48 }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: m.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>{m.clock}</span>
@@ -408,7 +405,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, op
       <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
 
       {leagues.map((lg) => (
-        <section key={lg.name} style={{ display: "flex", flexDirection: "column" }}>
+        <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} live={isLive} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
