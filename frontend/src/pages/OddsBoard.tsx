@@ -124,7 +124,7 @@ export function OddsBoard() {
   const [resultEvents, setResultEvents] = useState<any[]>(() => readFeed("results"));
   const [resultsLoaded, setResultsLoaded] = useState(false);
   // Backend is serving generated games (FEED_MODE=simulation) — flag it in the UI.
-  const [simulated, setSimulated] = useState(false);
+  const [_simulated, setSimulated] = useState(false); // read by the DEMO pill (hidden for now)
   const showLiveBoard = catTab === "live" || catTab === "upcoming";
   // HIGHLIGHTS reuses the board for today's finished games (scores only, no odds).
   const showBoard = showLiveBoard || catTab === "highlights";
@@ -601,7 +601,7 @@ export function OddsBoard() {
                     <tr>
                       <th className="th-event">
                         <img src="/icons/stream.png" alt="" className="live-icon" /> {{ live: "Live Football", upcoming: "Upcoming Football", highlights: "Today's Results" }[catTab]}
-                        {simulated && <span className="demo-pill">DEMO</span>}
+                        {/* {_simulated && <span className="demo-pill">DEMO</span>} */}
                       </th>
                       {showOdds && ALL_COLUMNS.map((col) => (
                         <th key={col.key}>{col.label}</th>

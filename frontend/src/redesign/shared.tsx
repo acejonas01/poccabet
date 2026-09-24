@@ -396,10 +396,12 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
 }
 
 // Small "demo data" tag shown while the backend serves simulated games.
+// Hidden for now: uncomment the <span> (and remove `return null`) to show it again next to the logo.
 export function DemoTag() {
-  return (
-    <span style={{ padding: "1px 6px", borderRadius: 4, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>DEMO</span>
-  );
+  return null;
+  // return (
+  //   <span style={{ padding: "1px 6px", borderRadius: 4, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>DEMO</span>
+  // );
 }
 
 // ---------- one match, every market ----------

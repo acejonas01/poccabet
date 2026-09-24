@@ -76,3 +76,41 @@ export const LockIcon = ({ size = 16, width = 2.2 }: P & { width?: number }) => 
 export const SearchIcon = ({ size = 16 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(2)}><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
 );
+
+// Quick-nav extras and sport glyphs for the Shortcuts panel (same 24px line style).
+export const HeadsetIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><path d="M4 14h3v6H5.5A1.5 1.5 0 0 1 4 18.5zM20 14h-3v6h1.5a1.5 1.5 0 0 0 1.5-1.5z" /><path d="M18 20c0 1.2-2 2-5 2" /></svg>
+);
+export const MoreIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><circle cx="8" cy="12" r="0.6" fill="currentColor" /><circle cx="12" cy="12" r="0.6" fill="currentColor" /><circle cx="16" cy="12" r="0.6" fill="currentColor" /></svg>
+);
+export const BasketballIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3v18" /><path d="M5.6 5.6c3.2 3.4 3.2 9.4 0 12.8M18.4 5.6c-3.2 3.4-3.2 9.4 0 12.8" /></svg>
+);
+export const TennisIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><path d="M5 5.5c3.5 3.5 3.5 9.5 0 13M19 5.5c-3.5 3.5-3.5 9.5 0 13" /></svg>
+);
+export const TableTennisIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="10" cy="10" r="6.5" /><path d="M14.6 14.6l5.4 5.4" /><circle cx="19" cy="5" r="1.6" /></svg>
+);
+export const IceHockeyIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M7 3l6 14h7v3h-8.5L4.5 4" /><ellipse cx="6" cy="19" rx="3" ry="1.5" /></svg>
+);
+export const VolleyballIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><path d="M12 3c-1 4 0 7 3 9M3.5 9c4-1 8 0 10.5 3M7 19.5c3-3 5-5 7-7.5M21 12c-3 1.5-5 1.5-7 0" /></svg>
+);
+export const BaseballIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><path d="M6 5.2c2.4 3.8 2.4 9.8 0 13.6M18 5.2c-2.4 3.8-2.4 9.8 0 13.6" /></svg>
+);
+export const AmFootballIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M4 20C4 11 11 4 20 4c0 9-7 16-16 16z" /><path d="M9 15l6-6M10.5 10.5l3 3M12.5 8.5l3 3M8.5 12.5l3 3" /></svg>
+);
+export const BoxingIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M7 11V7.5A4.5 4.5 0 0 1 11.5 3h2A4.5 4.5 0 0 1 18 7.5V12a5 5 0 0 1-5 5H9a2 2 0 0 1-2-2z" /><path d="M8 17v4h8v-4M7 12h4" /></svg>
+);
+export const DartsIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="11" cy="13" r="8" /><circle cx="11" cy="13" r="4" /><path d="M11 13l9-9M17 4h3v3" /></svg>
+);
+export const CricketIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M15 3l5 5-10 10-5-5z" /><path d="M5 13l-2 2 3 3" /><circle cx="18" cy="18" r="2" /></svg>
+);

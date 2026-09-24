@@ -2,7 +2,7 @@
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
 import { useState, type ReactNode } from "react";
-import { Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
@@ -10,6 +10,8 @@ import { type TCMatch, leagueSlug, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
 import { BottomNav, type HomeTab, LeaguePage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
+import { ShortcutsPanel, SupportSheet } from "./shortcuts";
+import { SportListPage, SportPage } from "./sports";
 import "./redesign.css";
 
 
@@ -30,7 +32,7 @@ export function RedesignApp() {
   const [tab, setTab] = useState<HomeTab>("upcoming");
   const [dateId, setDateId] = useState("all");
   const [market, setMarket] = useState("1x2");
-  const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | null>(null);
+  const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | "shortcuts" | "support" | null>(null);
   // Match whose markets sheet is open — looked up live so its odds keep updating.
   const [matchId, setMatchId] = useState<string | null>(null);
   const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
@@ -42,6 +44,8 @@ export function RedesignApp() {
   // Quick nav: Sports = back to the default Home (all upcoming) at the top,
   // Live = Live tab, Today = Upcoming filtered to today.
   const onSection = (key: SectionKey) => {
+    if (key === "more") return setSheet("shortcuts");
+    if (key === "support") return setSheet("support");
     if (key === "sports") {
       setTab("upcoming");
       setDateId("all");
@@ -61,7 +65,7 @@ export function RedesignApp() {
   };
 
   const onRoot = location.pathname === "/";
-  const onLeague = location.pathname.startsWith("/league/");
+  const onLeague = location.pathname.startsWith("/league/") || location.pathname.startsWith("/sports");
   const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
   const home = desk ? (
@@ -97,6 +101,13 @@ export function RedesignApp() {
           ? <DeskLeague render={(name) => deskShell(<DesktopHome upcoming={data.upcoming} live={data.live} tab="upcoming" setTab={setTab} search={search} league={name} />)} all={[...data.live, ...data.upcoming]} />
           : <LeaguePage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} market={market} setMarket={setMarket}
               openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }} />} />
+        {/* Sports pages are mobile-only for now; desktop keeps its sidebar and goes home. */}
+        <Route path="/sports" element={<Navigate to="/sports/football" replace />} />
+        <Route path="/sports/:sport" element={desk ? <Navigate to="/" replace /> : <SportPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} />} />
+        <Route path="/sports/:sport/:view" element={desk ? <Navigate to="/" replace /> : (
+          <SportListPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} market={market} setMarket={setMarket}
+            openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }} />
+        )} />
         <Route path="/login" element={page(<Auth mode="login" />)} />
         <Route path="/signup" element={page(<Auth mode="signup" />)} />
         <Route path="/my-bets" element={page(<MyBets />)} />
@@ -124,6 +135,8 @@ export function RedesignApp() {
       )}
       {sheet === "account" && <AccountSheet onClose={() => setSheet(null)} />}
       {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
+      {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
+      {sheet === "support" && <SupportSheet onClose={() => setSheet(null)} />}
     </div>
   );
 }

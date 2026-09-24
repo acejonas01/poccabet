@@ -142,7 +142,7 @@ function scheduleFor(day: string): SimMatch[] {
   }
 
   dayCache.set(day, matches);
-  if (dayCache.size > 4) dayCache.delete(dayCache.keys().next().value!);
+  if (dayCache.size > 10) dayCache.delete(dayCache.keys().next().value!); // yesterday … a week ahead
   return matches;
 }
 
@@ -269,11 +269,27 @@ export function simLive(now = Date.now()): LiveFixture[] {
     .sort((a, b) => (b.minute ?? 0) - (a.minute ?? 0));
 }
 
+// Beyond the next 30 games, a sample of each of the coming days (demo only), so the
+// date filters (Tomorrow, Saturday… a week ahead) have fixtures to show.
+const AHEAD_DAYS = 6;
+const AHEAD_PER_DAY = 12;
+
 export function simUpcoming(now = Date.now()): OddsEvent[] {
   const soon = now + 5 * 60000;
-  return [...scheduleFor(isoDay(now)), ...scheduleFor(isoDay(now + 86400000))]
+  const next = [...scheduleFor(isoDay(now)), ...scheduleFor(isoDay(now + 86400000))]
     .filter((m) => m.kickoff > soon)
-    .slice(0, UPCOMING_SIZE)
+    .slice(0, UPCOMING_SIZE);
+  const taken = new Set(next.map((m) => m.id));
+  const ahead: SimMatch[] = [];
+  for (let d = 1; d <= AHEAD_DAYS; d++) {
+    const day = scheduleFor(isoDay(now + d * 86400000));
+    const step = Math.max(1, Math.floor(day.length / AHEAD_PER_DAY));
+    for (let i = 0; i < day.length; i += step) {
+      const m = day[i];
+      if (m.kickoff > soon && !taken.has(m.id)) { ahead.push(m); taken.add(m.id); }
+    }
+  }
+  return [...next, ...ahead]
     .map((m) => ({
       externalId: `af-${m.id}`,
       sport: "football",

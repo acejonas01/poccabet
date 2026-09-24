@@ -6,7 +6,7 @@ import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
 } from "./data";
 import {
-  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HomeIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
+  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -67,9 +67,9 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
 // ---------- sections nav (Sports / Aviator / Virtuals / Jackpot / Casino) ----------
 // Theme A's quick-nav items and icon artwork. Single-colour glyphs are recoloured to Theme C
 // through a CSS mask (yellow when active, grey otherwise); Casino and Specials keep their
-// original colours, as in Theme A.
-export type SectionKey = "sports" | "live" | "today";
-const SECTIONS: { key: string; label: string; icon: string; original: boolean }[] = [
+// original colours, as in Theme A. Support and More use line icons (no artwork yet).
+export type SectionKey = "sports" | "live" | "today" | "support" | "more";
+const SECTIONS: { key: string; label: string; icon?: string; Svg?: typeof MoreIcon; original: boolean }[] = [
   { key: "sports", label: "Sports", icon: "/icons/soccer-ball.png", original: false },
   { key: "live", label: "Live", icon: "/icons/live-3.png", original: false },
   { key: "aviator", label: "Aviator", icon: "/icons/aviator.png", original: false },
@@ -78,6 +78,8 @@ const SECTIONS: { key: string; label: string; icon: string; original: boolean }[
   { key: "jackpot", label: "Jackpot", icon: "/icons/jackpot.png", original: false },
   { key: "casino", label: "Casino", icon: "/icons/casino.png", original: true },
   { key: "specials", label: "Specials", icon: "/icons/Specials.png", original: true },
+  { key: "support", label: "Support", Svg: HeadsetIcon, original: false },
+  { key: "more", label: "More", Svg: MoreIcon, original: false },
 ];
 
 function NavIcon({ src, original }: { src: string; original: boolean }) {
@@ -94,16 +96,16 @@ function NavIcon({ src, original }: { src: string; original: boolean }) {
 export function SectionsNav({ active, onSelect }: { active: SectionKey; onSelect: (key: SectionKey) => void }) {
   return (
     <nav aria-label="Sections" className="tc-hscroll" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid var(--tc-divider)", overflowX: "auto" }}>
-      {SECTIONS.map(({ key, label, icon, original }) => {
+      {SECTIONS.map(({ key, label, icon, Svg, original }) => {
         const on = key === active;
-        const action = key === "sports" || key === "live" || key === "today" ? (key as SectionKey) : null;
+        const action = ["sports", "live", "today", "support", "more"].includes(key) ? (key as SectionKey) : null;
         return (
           <button key={key} aria-current={on ? "page" : undefined} onClick={action ? () => onSelect(action) : undefined} style={{
             flex: "0 0 auto", minWidth: 64, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 6px 10px",
             background: "transparent", border: "none", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`,
             color: on ? ACCENT : "var(--tc-muted)", fontSize: 12, fontWeight: on ? 700 : 600,
           }}>
-            <NavIcon src={icon} original={original} />
+            {Svg ? <Svg size={26} /> : icon && <NavIcon src={icon} original={original} />}
             {label}
           </button>
         );
@@ -549,74 +551,94 @@ function GroupHeader({ title, live, market }: { title: string; live?: boolean; m
   );
 }
 
-export function LeaguePage({ upcoming, live, loaded, market, setMarket, openSheet, onOpenMatch }: {
-  upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; market: string; setMarket: (id: string) => void;
-  openSheet: () => void; onOpenMatch: (m: TCMatch) => void;
+// Back returns to where you came from; opened from a shared link, it goes home.
+export function useBack() {
+  const navigate = useNavigate();
+  return () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+}
+
+// Sticky title bar for inner pages: back arrow, optional flag, title and a small line under it.
+export function PageHeader({ title, sub, country }: { title: string; sub?: string; country?: string }) {
+  const back = useBack();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px 8px 4px", borderBottom: "1px solid var(--tc-divider)" }}>
+      <button aria-label="Back" onClick={back} style={{ width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <ChevronLeft size={20} />
+      </button>
+      {country && <Flag country={country} size={24} />}
+      <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+        <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, ...ellipsis }}>{title}</h1>
+        {sub && <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+const plural = (n: number) => `${n} match${n === 1 ? "" : "es"}`;
+
+// A full page of matches (league page, "Today's games", "Live", a date…).
+// group "day": one league — live first, then a heading per day, rows show just the time.
+// group "league": many leagues — a league header per league, like the home list.
+export function MatchListPage({ title, sub, country, liveList, upList, loaded, group, resetKey, market, setMarket, openSheet, onOpenMatch }: {
+  title: string; sub?: string; country?: string; liveList: TCMatch[]; upList: TCMatch[]; loaded: boolean; group: "day" | "league";
+  resetKey: string; market: string; setMarket: (id: string) => void; openSheet: () => void; onOpenMatch: (m: TCMatch) => void;
 }) {
-  const { slug = "" } = useParams();
   const navigate = useNavigate();
   const [limit, setLimit] = useState(20);
-  useEffect(() => { window.scrollTo(0, 0); setLimit(20); }, [slug]);
+  useEffect(() => { window.scrollTo(0, 0); setLimit(20); }, [resetKey]);
 
-  const inLeague = (m: TCMatch) => leagueSlug(m.country, m.league) === slug;
-  const liveList = live.filter(inLeague);
-  const upList = upcoming.filter(inLeague).sort((a, b) => a.start - b.start);
-  const sample = liveList[0] ?? upList[0];
-  const known = QUICK_LINKS.find((q) => leagueSlug(q.country, q.name) === slug);
-  const name = sample?.league ?? known?.name ?? "League";
-  const country = sample?.country ?? known?.country ?? "";
-  const total = liveList.length + upList.length;
-
+  const ups = [...upList].sort((a, b) => a.start - b.start);
+  const total = liveList.length + ups.length;
+  const shown = ups.slice(0, limit);
   const days: { key: string; title: string; matches: TCMatch[] }[] = [];
-  for (const m of upList.slice(0, limit)) {
-    const key = new Date(m.start).toDateString();
-    const last = days[days.length - 1];
-    if (last?.key === key) last.matches.push(m);
-    else days.push({ key, title: dayHeading(m.start), matches: [m] });
+  if (group === "day") {
+    for (const m of shown) {
+      const key = new Date(m.start).toDateString();
+      const last = days[days.length - 1];
+      if (last?.key === key) last.matches.push(m);
+      else days.push({ key, title: dayHeading(m.start), matches: [m] });
+    }
   }
-  // Back returns to where you came from; opened from a shared link, it goes home.
-  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
 
   return (
     <div className="tc-mobile-page">
       <div style={{ position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "var(--tc-page)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px 8px 4px", borderBottom: "1px solid var(--tc-divider)" }}>
-          <button aria-label="Back" onClick={back} style={{ width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <ChevronLeft size={20} />
-          </button>
-          <Flag country={country} size={24} />
-          <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, ...ellipsis }}>{name}</h1>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>
-              {country}{loaded ? ` · ${total} match${total === 1 ? "" : "es"}` : ""}
-            </span>
-          </div>
-        </div>
+        <PageHeader title={title} country={country} sub={[sub, loaded ? plural(total) : ""].filter(Boolean).join(" · ")} />
         <div style={{ borderBottom: "1px solid var(--tc-divider)" }}>
           <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
         </div>
       </div>
 
-      {liveList.length > 0 && (
+      {liveList.length > 0 && (group === "day" ? (
         <section>
           <GroupHeader title="Live now" live market={market} />
           {liveList.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
-      )}
-      {days.map((d) => (
+      ) : groupByLeague(liveList).map((lg) => (
+        <section key={`live-${lg.key}`}>
+          <LeagueHeader country={lg.country} name={lg.name} market={market} />
+          {lg.matches.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
+        </section>
+      )))}
+      {group === "day" ? days.map((d) => (
         <section key={d.key}>
           <GroupHeader title={d.title} market={market} />
           {d.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} timeOnly />)}
+        </section>
+      )) : groupByLeague(shown).map((lg) => (
+        <section key={lg.key}>
+          <LeagueHeader country={lg.country} name={lg.name} market={market} />
+          {lg.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
       ))}
 
       {loaded && total === 0 && (
         <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)", textAlign: "center" }}>No {name} matches right now. Check back soon.</p>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)", textAlign: "center" }}>No matches here right now. Check back soon.</p>
           <button onClick={() => navigate("/")} style={{ height: 44, padding: "0 20px", borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Back to home</button>
         </div>
       )}
-      {upList.length > limit && (
+      {ups.length > limit && (
         <div style={{ padding: 16 }}>
           <button onClick={() => setLimit((l) => l + 20)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
         </div>
@@ -625,6 +647,20 @@ export function LeaguePage({ upcoming, live, loaded, market, setMarket, openShee
       <SiteFooter />
     </div>
   );
+}
+
+type ListPageProps = { upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; market: string; setMarket: (id: string) => void; openSheet: () => void; onOpenMatch: (m: TCMatch) => void };
+
+export function LeaguePage({ upcoming, live, loaded, ...rest }: ListPageProps) {
+  const { slug = "" } = useParams();
+  const inLeague = (m: TCMatch) => leagueSlug(m.country, m.league) === slug;
+  const liveList = live.filter(inLeague);
+  const upList = upcoming.filter(inLeague);
+  const sample = liveList[0] ?? upList[0];
+  const known = QUICK_LINKS.find((q) => leagueSlug(q.country, q.name) === slug);
+  const name = sample?.league ?? known?.name ?? "League";
+  const country = sample?.country ?? known?.country ?? "";
+  return <MatchListPage title={name} sub={country} country={country} liveList={liveList} upList={upList} loaded={loaded} group="day" resetKey={slug} {...rest} />;
 }
 
 export function StatBar({ label, h, a, big }: { label: string; h: number; a: number; big?: boolean }) {

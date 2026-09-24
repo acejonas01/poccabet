@@ -112,7 +112,7 @@ export function PromoSlider({ desktop = false }: { desktop?: boolean }) {
 }
 
 // ---------- hot games strip ----------
-const GAMES = [
+export const GAMES = [
   { name: "Aviator", tag: "₦1,000,000 free bet", img: "/games/aviator.jpg" },
   { name: "Gigahot 40", tag: "Slots", img: "/games/gigahot-40.jpg" },
   { name: "Mines", tag: "Poccabet Originals", img: "/games/mines.jpg" },
