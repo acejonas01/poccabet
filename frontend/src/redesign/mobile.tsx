@@ -11,6 +11,7 @@ import {
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
+import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
 
 const barlow = "'Barlow Condensed', sans-serif";
@@ -482,6 +483,9 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
           <button onClick={() => setLimit((l) => l + 12)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
         </div>
       )}
+
+      <WinnersStrip />
+      <SiteFooter />
     </div>
   );
 }

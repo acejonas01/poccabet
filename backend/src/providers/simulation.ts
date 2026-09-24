@@ -348,6 +348,30 @@ export function simTopPick(now = Date.now()) {
   };
 }
 
+// ---------- simulated big winners (demo mode only; live mode shows real winning bets) ----------
+// A fresh winner lands every ~90 seconds; the list shows the latest 12. Same for everyone.
+const WIN_PRODUCTS = ["Sports", "Sports", "Sports", "Sports", "Aviator", "Virtuals", "Casino"];
+export function simWinners(now = Date.now()) {
+  const SLOT = 90000;
+  const latest = Math.floor(now / SLOT);
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    const slot = latest - i;
+    const r = rng(hash(`winner-${slot}`));
+    // Mostly five-figure wins, now and then a big one.
+    const big = r() < 0.18;
+    const amount = Math.round((big ? 150000 + r() * 850000 : 8000 + r() * 140000) * 100) / 100;
+    out.push({
+      id: `w-${slot}`,
+      player: `*********${Math.floor(r() * 10)}`,
+      amount,
+      product: WIN_PRODUCTS[Math.floor(r() * WIN_PRODUCTS.length)],
+      at: new Date(slot * SLOT + Math.floor(r() * (SLOT - 5000))),
+    });
+  }
+  return out;
+}
+
 export function simResults(now = Date.now()): FinishedFixture[] {
   const popular = LEAGUES.map((l) => l.id);
   return scheduleFor(isoDay(now))

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getUpcomingMerged } from "../providers/aggregate";
 import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
-import { simLive, simResults, simUpcoming } from "../providers/simulation";
+import { simLive, simResults, simUpcoming, simWinners } from "../providers/simulation";
 import { SIMULATE } from "../lib/feedMode";
 
 const router = Router();
@@ -47,6 +47,13 @@ router.get("/results", async (_req, res) => {
   } catch (err: any) {
     res.status(502).json({ error: err.message });
   }
+});
+
+// GET /api/live/winners — recent big wins. Demo mode: simulated. Live mode: real winning bets
+// only (none until bet settlement exists), so the section stays hidden rather than faking it.
+router.get("/winners", (_req, res) => {
+  if (SIMULATE) return res.json({ simulated: true, winners: simWinners() });
+  res.json({ simulated: false, winners: [] });
 });
 
 // GET /api/live/usage — how many API-Football calls we've spent today
