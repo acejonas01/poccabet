@@ -80,7 +80,7 @@ export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined
     if (m) {
       const n: number = top.count;
       const p = build(m, top.market, top.selection,
-        `${n.toLocaleString("en-US")} ${n === 1 ? "bettor is" : "bettors are"} backing ${crowdTarget(top.market, top.selection, m)}. Can't beat them? Join them.`);
+        `${n.toLocaleString("en-US")} ${n === 1 ? "bettor is" : "bettors are"} on ${crowdTarget(top.market, top.selection, m)}. Do you think they're right or wrong?`);
       if (p) return p;
     }
   }
@@ -89,7 +89,7 @@ export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined
   if (!fallback) return null;
   const homeFav = fallback.o[0] <= fallback.o[2];
   // No crowd count available here, so the line makes no claim about numbers.
-  return build(fallback, "1x2", homeFav ? "1" : "2", "Can't beat them? Join them.");
+  return build(fallback, "1x2", homeFav ? "1" : "2", "Think you can call this one? Prove it.");
 }
 
 // What the crowd is on, for the note: a team, "the draw", or the selection's name.
