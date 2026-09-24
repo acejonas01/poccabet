@@ -80,7 +80,9 @@ export function OddButton({
   // One odds-tile colour everywhere (the live tile colour), so every tab looks the same.
   const idle = "var(--tc-odd)";
   const lockedBg = variant === "desk" ? "var(--tc-panel-2)" : "var(--tc-panel)";
-  const showArrow = !!dir && !locked && variant !== "home";
+  // The arrow only appears when this price just moved, and flashes once (keyed on the value,
+  // so the next move restarts it).
+  const showArrow = !!dir && !locked;
   return (
     <button
       className="tc-odd-btn"
@@ -99,6 +101,7 @@ export function OddButton({
       {locked && <LockIcon size={lockSize ?? (variant === "desk" ? 15 : 16)} />}
       {showArrow && (
         <span
+          key={`${value}-${dir}`}
           aria-hidden="true"
           className="tc-odds-trend"
           style={{
@@ -106,7 +109,7 @@ export function OddButton({
             bottom: dir === "down" ? 4 : "auto", left: dir === "down" ? 4 : "auto",
             background: on ? "#13171C" : dir === "up" ? "#2AB572" : "#E5484D",
             transform: dir === "down" ? "rotate(180deg)" : "none",
-            animation: `odds-flash 7s linear ${((flash * 1.3) % 6).toFixed(1)}s infinite both`,
+            animation: `odds-flash 7s linear ${((flash * 0.15) % 0.9).toFixed(2)}s 1 both`,
           }}
         />
       )}

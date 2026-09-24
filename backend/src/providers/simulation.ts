@@ -182,7 +182,16 @@ function toOdds(p: number) {
   return Math.min(MAX_ODDS, Math.max(1.01, Math.round((1 / (p * (1 + MARGIN))) * 100) / 100));
 }
 
-function markets(m: SimMatch, minute: number, homeGoals: number, awayGoals: number): OddsMarket[] {
+// Market movement: a small, deterministic wobble (±2.5%) that changes once per time bucket,
+// so every server shows the same prices and they visibly move like a real market.
+function jitter(m: SimMatch, bucket: number | null, key: string) {
+  if (bucket === null) return 1;
+  return 1 + (rng(hash(`move-${m.id}-${bucket}-${key}`))() - 0.5) * 0.05;
+}
+
+function markets(m: SimMatch, minute: number, homeGoals: number, awayGoals: number, bucket: number | null = null): OddsMarket[] {
+  const odds = (p: number, key: string) =>
+    Math.min(MAX_ODDS, Math.max(1.01, Math.round(toOdds(p) * jitter(m, bucket, key) * 100) / 100));
   const left = Math.max(0, (90 - minute) / 90);
   const lh = m.lambdaHome * left;
   const la = m.lambdaAway * left;
@@ -200,9 +209,9 @@ function markets(m: SimMatch, minute: number, homeGoals: number, awayGoals: numb
     type: "MATCH_WINNER",
     name: "Match Winner",
     outcomes: [
-      { label: "Home", odds: toOdds(pH) },
-      { label: "Draw", odds: toOdds(pD) },
-      { label: "Away", odds: toOdds(pA) },
+      { label: "Home", odds: odds(pH, "h") },
+      { label: "Draw", odds: odds(pD, "d") },
+      { label: "Away", odds: odds(pA, "a") },
     ],
   }];
   // Once 3+ goals are in, Over 2.5 is settled — no market.
@@ -211,8 +220,8 @@ function markets(m: SimMatch, minute: number, homeGoals: number, awayGoals: numb
       type: "OVER_UNDER",
       name: "Over/Under",
       outcomes: [
-        { label: "Over 2.5", odds: toOdds(pOver) },
-        { label: "Under 2.5", odds: toOdds(1 - pOver) },
+        { label: "Over 2.5", odds: odds(pOver, "o") },
+        { label: "Under 2.5", odds: odds(1 - pOver, "u") },
       ],
     });
   }
@@ -248,7 +257,7 @@ export function simLive(now = Date.now()): LiveFixture[] {
         minute,
         startTime: new Date(m.kickoff),
         // Markets lock after a goal and in the last minutes.
-        markets: justScored || minute >= 88 ? [] : markets(m, minute, score.home, score.away),
+        markets: justScored || minute >= 88 ? [] : markets(m, minute, score.home, score.away, Math.floor(now / 30000)),
         stats: {
           possession: [m.possessionHome, 100 - m.possessionHome] as [number, number],
           shots: [Math.round((m.shotRate[0] * minute) / 90), Math.round((m.shotRate[1] * minute) / 90)] as [number, number],
@@ -275,7 +284,7 @@ export function simUpcoming(now = Date.now()): OddsEvent[] {
       homeLogo: crest(m.home),
       awayLogo: crest(m.away),
       startTime: new Date(m.kickoff),
-      markets: markets(m, 0, 0, 0),
+      markets: markets(m, 0, 0, 0, Math.floor(now / 60000)),
     }));
 }
 

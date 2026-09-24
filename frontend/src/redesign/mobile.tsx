@@ -219,7 +219,7 @@ function useOdds(m: TCMatch, market: string, variant: "home" | "live", flashBase
         variant={variant}
         value={values[i] ?? 0}
         on={isOn(id)}
-        dir={variant === "live" ? ((dirMap[market]?.[i] ?? "") as "up" | "down" | "") : ""}
+        dir={(dirMap[market]?.[i] ?? "") as "up" | "down" | ""}
         flash={flashBase + i}
         aria={`${m.home} vs ${m.away} ${def.label} ${c}`}
         onPick={() => pick(m, market, def.label, c, values[i])}
@@ -305,7 +305,7 @@ function OddsCol({ m, col, i, pct, top }: { m: TCMatch; col: string; i: number; 
       <div style={{ height: 4, borderRadius: 2, background: "var(--tc-track)", overflow: "hidden" }}>
         <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: top ? ACCENT : "var(--tc-bar-mid)" }} />
       </div>
-      <OddButton variant="home" value={m.o[i]} on={isOn(id)} aria={`${m.home} vs ${m.away} 1X2 ${col}`}
+      <OddButton variant="home" value={m.o[i]} on={isOn(id)} dir={m.dirs["1x2"][i]} aria={`${m.home} vs ${m.away} 1X2 ${col}`}
         onPick={() => pick(m, "1x2", "1X2", col, m.o[i])} style={{ height: 44, fontSize: 19, width: "100%" }} />
     </div>
   );

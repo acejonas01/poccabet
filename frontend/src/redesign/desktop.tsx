@@ -145,7 +145,7 @@ function Pills({ pill, setPill }: { pill: string; setPill: (id: string) => void 
   );
 }
 
-function OddsGroups({ m, pill, live, flashBase }: { m: TCMatch; pill: string; live: boolean; flashBase: number }) {
+function OddsGroups({ m, pill, flashBase }: { m: TCMatch; pill: string; flashBase: number }) {
   const { isOn, pick } = usePicker();
   const all = deriveOdds(m.o, m.ou);
   const markets = DESKTOP_PILLS.find((p) => p.id === pill)!.markets;
@@ -163,7 +163,7 @@ function OddsGroups({ m, pill, live, flashBase }: { m: TCMatch; pill: string; li
               const id = `${m.id}|${mid}|${c}`;
               return (
                 <OddButton key={c} variant="desk" value={v} on={isOn(id)} flash={n++}
-                  dir={live ? ((dirMap[mid]?.[i] ?? "") as "up" | "down" | "") : ""}
+                  dir={(dirMap[mid]?.[i] ?? "") as "up" | "down" | ""}
                   aria={`${m.home} vs ${m.away} ${label} ${c}`} onPick={() => pick(m, mid, label, c, v)}
                   style={{ flexShrink: 0, width: 60, height: 44, fontSize: 19 }} />
               );
@@ -237,7 +237,7 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
                 )}
               </div>
               <a href="#" onClick={(e) => e.preventDefault()} aria-label={`All ${marketCount(m.o, m.ou)} markets for ${m.home} vs ${m.away}`} style={{ width: 44, flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>+{marketCount(m.o, m.ou)}</a>
-              <OddsGroups m={m} pill={pill} live={live} flashBase={(row++) * 5} />
+              <OddsGroups m={m} pill={pill} flashBase={(row++) * 5} />
             </div>
           ))}
         </section>

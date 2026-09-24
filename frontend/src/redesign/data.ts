@@ -112,17 +112,18 @@ function writeCache(key: string, data: TCMatch[]) {
   }
 }
 
-// Carry the last price movement forward so arrows keep flashing until the next change.
+// Mark which prices moved since the last refresh (up/down). Only an actual change sets a
+// direction — unchanged prices get none, so the arrow flashes once per move, never on its own.
 function withDirs(next: TCMatch[], prev: Map<string, TCMatch>) {
   return next.map((m) => {
     const before = prev.get(m.id);
     if (!before) return m;
-    const d = (a: number, b: number, old: Dir): Dir => (a && b && a !== b ? (a > b ? "up" : "down") : old);
+    const d = (a: number, b: number): Dir => (a && b && a !== b ? (a > b ? "up" : "down") : "");
     return {
       ...m,
       dirs: {
-        "1x2": m.o.map((v, i) => d(v, before.o[i], before.dirs["1x2"][i])),
-        ou: m.ou.map((v, i) => d(v, before.ou[i], before.dirs.ou[i])),
+        "1x2": m.o.map((v, i) => d(v, before.o[i])),
+        ou: m.ou.map((v, i) => d(v, before.ou[i])),
       },
     };
   });
@@ -135,6 +136,7 @@ export function useTCData() {
   const [upcomingLoaded, setUpcomingLoaded] = useState(false);
   const [simulated, setSimulated] = useState(false);
   const liveRef = useRef(new Map<string, TCMatch>());
+  const upcomingRef = useRef(new Map<string, TCMatch>());
 
   useEffect(() => {
     const load = () =>
@@ -159,14 +161,16 @@ export function useTCData() {
       api
         .getUpcomingFixtures()
         .then((res) => {
-          const next = res.events.map(fromUpcoming).filter((m: TCMatch) => m.o[0] > 0);
+          const next = withDirs(res.events.map(fromUpcoming).filter((m: TCMatch) => m.o[0] > 0), upcomingRef.current);
+          upcomingRef.current = new Map(next.map((m) => [m.id, m]));
           writeCache("pocca-c-upcoming", next);
           setUpcoming(next);
         })
         .catch(() => {})
         .finally(() => setUpcomingLoaded(true));
     load();
-    const id = setInterval(load, 10 * 60000);
+    // Every minute: prices move pre-match too (the server caches, so this costs no API calls).
+    const id = setInterval(load, 60000);
     return () => clearInterval(id);
   }, []);
 
