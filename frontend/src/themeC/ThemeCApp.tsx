@@ -9,7 +9,7 @@ import { MyBets } from "../pages/MyBets";
 import { useTCData } from "./data";
 import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
 import { BottomNav, type HomeTab, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { AccountSheet, BetSlipBody, MarketsSheet, Sheet, useIsDesktop } from "./shared";
+import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
 import "./themeC.css";
 
 
@@ -23,7 +23,10 @@ export function ThemeCApp() {
   const [tab, setTab] = useState<HomeTab>("upcoming");
   const [dateId, setDateId] = useState("all");
   const [market, setMarket] = useState("1x2");
-  const [sheet, setSheet] = useState<"markets" | "slip" | "account" | null>(null);
+  const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | null>(null);
+  // Match whose markets sheet is open — looked up live so its odds keep updating.
+  const [matchId, setMatchId] = useState<string | null>(null);
+  const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
   const [search, setSearch] = useState("");
   const [league, setLeague] = useState<string | null>(null);
 
@@ -57,7 +60,8 @@ export function ThemeCApp() {
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} league={league} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
-      openSheet={() => setSheet("markets")} market={market} setMarket={setMarket} />
+      openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }}
+      market={market} setMarket={setMarket} />
   );
 
   // Desktop pages keep the three-column shell; other routes get a centred column.
@@ -107,6 +111,7 @@ export function ThemeCApp() {
         </Sheet>
       )}
       {sheet === "account" && <AccountSheet onClose={() => setSheet(null)} />}
+      {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
     </div>
   );
 }

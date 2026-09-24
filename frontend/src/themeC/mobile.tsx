@@ -367,9 +367,10 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
 export type HomeTab = "upcoming" | "top" | "live";
 
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the list below.
-export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, dateId, setDateId, openSheet, market, setMarket }: {
+export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, dateId, setDateId, openSheet, onOpenMatch, market, setMarket }: {
   upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; liveLoaded: boolean; tab: HomeTab; setTab: (t: HomeTab) => void;
-  dateId: string; setDateId: (id: string) => void; openSheet: () => void; market: string; setMarket: (id: string) => void;
+  dateId: string; setDateId: (id: string) => void; openSheet: () => void; onOpenMatch: (m: TCMatch) => void;
+  market: string; setMarket: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const [limit, setLimit] = useState(12);
@@ -441,7 +442,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
           }
         />
       </div>
-      {featuredMatch && <div style={{ paddingTop: 12 }}><FeaturedMatchCard f={featuredMatch} openSheet={openSheet} /></div>}
+      {featuredMatch && <div style={{ paddingTop: 12 }}><FeaturedMatchCard f={featuredMatch} onOpenMatch={onOpenMatch} /></div>}
       {/* Market tabs stick right under the Live / Upcoming / Top leagues row. */}
       <div style={{ position: "sticky", top: "calc(var(--tc-header-h, 69px) + var(--tc-tabs-h, 45px))", zIndex: 19, background: "#222c32", borderBottom: "1px solid #232A33" }}>
         <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
@@ -452,7 +453,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
           <LeagueHeader country={lg.country} name={lg.name} market={market} live={isLive} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
-            : <UpcomingRow key={m.id} m={m} market={market} onMore={openSheet} />)}
+            : <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
       ))}
       {(isLive ? liveLoaded : loaded) && list.length === 0 && (
@@ -521,7 +522,7 @@ export function ChanceBar({ m, big }: { m: TCMatch; big?: boolean }) {
   );
 }
 
-function FeaturedMatchCard({ f, openSheet }: { f: TCMatch; openSheet: () => void }) {
+function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TCMatch) => void }) {
   const { isOn, pick } = usePicker();
   return (
     <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ margin: "4px 16px 0", padding: 16, background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
@@ -569,7 +570,7 @@ function FeaturedMatchCard({ f, openSheet }: { f: TCMatch; openSheet: () => void
         <button style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <TrackerIcon />{f.live ? "Match tracker" : "Match preview"}
         </button>
-        <button onClick={openSheet} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>
           +{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}
         </button>
       </div>

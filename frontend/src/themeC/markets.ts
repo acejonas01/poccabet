@@ -20,7 +20,6 @@ export const MK: MarketDef[] = [
   { id: "hc", label: "Handicap", group: "HANDICAP", cols: ["1 (-1)", "X (-1)", "2 (+1)"] },
   { id: "ht", label: "Halftime 1X2", group: "HALVES", cols: ["1", "X", "2"] },
 ];
-export const SHEET_GROUPS = ["MAIN", "GOALS", "HANDICAP", "HALVES"] as const;
 
 // Mobile market tabs: these four always show; picking another from "More" swaps it into slot 4.
 export const FIXED = ["1x2", "ou", "gg", "dc"];

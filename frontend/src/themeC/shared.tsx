@@ -1,11 +1,13 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useBetSlip } from "../context/BetSlipContext";
 import type { Dir, TCMatch } from "./data";
 import { CheckIcon, CloseIcon, LockIcon, ReceiptIcon } from "./icons";
-import { MK, SHEET_GROUPS } from "./markets";
+import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
+import { dayLabel, hhmm } from "./data";
+import { Crest, Flag } from "./media";
 
 export const ACCENT = "#F5C518";
 export const WELCOME_BONUS_AMOUNT = "₦50,000";
@@ -112,21 +114,63 @@ export function OddButton({
 }
 
 // ---------- bottom sheet (mobile) ----------
+// Bottom sheet. Swipe down to close: drag the handle, or anywhere once the sheet is scrolled
+// to its top. Past ~110px (or a quick flick) it closes; otherwise it springs back.
 export function Sheet({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
+  const panel = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ y: number; t: number; active: boolean } | null>(null);
+  const [dy, setDy] = useState(0);
+  const [closing, setClosing] = useState(false);
+
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, []);
+
+  const close = () => {
+    setClosing(true);
+    setTimeout(onClose, 180);
+  };
+  const onTouchStart = (e: React.TouchEvent) => {
+    drag.current = { y: e.touches[0].clientY, t: Date.now(), active: false };
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const delta = e.touches[0].clientY - d.y;
+    // Only pull the sheet down when its own content is at the top.
+    if (!d.active && (delta <= 0 || (panel.current?.scrollTop ?? 0) > 0)) return;
+    d.active = true;
+    setDy(Math.max(0, delta));
+  };
+  const onTouchEnd = () => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d?.active) return;
+    const fast = dy > 40 && Date.now() - d.t < 250;
+    if (dy > 110 || fast) close();
+    else setDy(0);
+  };
+
+  const offset = closing ? "100%" : `${dy}px`;
+  const dragging = drag.current?.active;
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(8,12,15,0.62)", zIndex: 60 }} />
-      <div role="dialog" aria-label={label} style={{
-        position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "80vh", zIndex: 61, display: "flex", flexDirection: "column",
-        background: "#1B2429", borderRadius: "18px 18px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.4)", overflowY: "auto",
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 8 }}>
+      <div onClick={close} style={{
+        position: "fixed", inset: 0, background: "rgba(8,12,15,0.62)", zIndex: 60,
+        opacity: closing ? 0 : Math.max(0.3, 1 - dy / 400), transition: "opacity 0.18s",
+      }} />
+      <div ref={panel} role="dialog" aria-label={label}
+        onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}
+        style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "80vh", zIndex: 61, display: "flex", flexDirection: "column",
+          background: "#1B2429", borderRadius: "18px 18px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.4)", overflowY: "auto",
+          overscrollBehavior: "contain", paddingBottom: "env(safe-area-inset-bottom)",
+          transform: `translateY(${offset})`, transition: dragging ? "none" : "transform 0.18s ease-out",
+        }}>
+        {/* Grab handle — a taller touch area than the bar itself */}
+        <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", padding: "8px 0 6px", touchAction: "none" }}>
           <span style={{ width: 40, height: 4, borderRadius: 2, background: "#45525A" }} />
         </div>
         {children}
@@ -146,28 +190,40 @@ export function SheetTitle({ title, onClose }: { title: string; onClose: () => v
   );
 }
 
+// Markets grouped by category, shown as wrapping chips so the sheet stays short
+// and the matches behind remain visible.
+const MARKET_SHEET_GROUPS: { title: string; groups: string[] }[] = [
+  { title: "MAIN", groups: ["MAIN"] },
+  { title: "GOALS", groups: ["GOALS"] },
+  { title: "HANDICAP & HALVES", groups: ["HANDICAP", "HALVES"] },
+];
+
 export function MarketsSheet({ active, onPick, onClose }: { active: string; onPick: (id: string) => void; onClose: () => void }) {
   return (
-    <Sheet label="All markets" onClose={onClose}>
-      <SheetTitle title="All markets" onClose={onClose} />
-      {SHEET_GROUPS.map((g) => (
-        <div key={g} style={{ display: "flex", flexDirection: "column", padding: "4px 0 8px" }}>
-          <span style={{ padding: "6px 20px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>{g}</span>
-          {MK.filter((m) => m.group === g).map((m) => {
-            const on = m.id === active;
-            return (
-              <button key={m.id} onClick={() => onPick(m.id)} style={{
-                height: 44, padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: on ? "#222c32" : "transparent", border: "none", color: on ? ACCENT : "#F2F4F6",
-                fontSize: 15, fontWeight: on ? 800 : 600, textAlign: "left",
-              }}>
-                {m.label}
-                <CheckIcon style={{ display: on ? "block" : "none" }} />
-              </button>
-            );
-          })}
-        </div>
-      ))}
+    <Sheet label="Popular markets" onClose={onClose}>
+      <SheetTitle title="Popular markets" onClose={onClose} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "0 20px 20px" }}>
+        {MARKET_SHEET_GROUPS.map((g) => (
+          <div key={g.title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>{g.title}</span>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {MK.filter((m) => g.groups.includes(m.group)).map((m) => {
+                const on = m.id === active;
+                return (
+                  <button key={m.id} aria-pressed={on} onClick={() => onPick(m.id)} style={{
+                    height: 40, padding: "0 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6,
+                    border: `1px solid ${on ? ACCENT : "#3A474F"}`, background: on ? ACCENT : "transparent",
+                    color: on ? "#13171C" : "#F2F4F6", fontSize: 14, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+                  }}>
+                    {on && <CheckIcon size={14} />}
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </Sheet>
   );
 }
@@ -336,5 +392,63 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
 export function DemoTag() {
   return (
     <span style={{ padding: "1px 6px", borderRadius: 4, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>DEMO</span>
+  );
+}
+
+// ---------- one match, every market ----------
+// Opened from "+N markets" on a match: all markets for that match, each odd tappable into the slip.
+export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => void }) {
+  const { isOn, pick } = usePicker();
+  const all = deriveOdds(m.o, m.ou);
+  const markets = [...MK, CORRECT_SCORE];
+  const team = (name: string, logo: string) => (
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center" }}>
+      <Crest name={name} url={logo} size={36} />
+      <span style={{ fontSize: 14, fontWeight: 800, maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+    </div>
+  );
+  return (
+    <Sheet label={`${m.home} vs ${m.away} markets`} onClose={onClose}>
+      <SheetTitle title="All markets" onClose={onClose} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Flag country={m.country} size={14} />{m.country ? `${m.country} · ` : ""}{m.league}</span>
+          {m.live
+            ? <span style={{ color: m.clock === "HT" ? "#A9B2BD" : "#E5484D", fontWeight: 800 }}>{m.clock}</span>
+            : <span style={{ color: "#C3CBD3", fontWeight: 800 }}>{dayLabel(m.start)} {hhmm(m.start)}</span>}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {team(m.home, m.homeLogo)}
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "#F2F4F6" : "#5E6A74" }}>
+            {m.live ? `${m.hs} – ${m.as}` : "VS"}
+          </span>
+          {team(m.away, m.awayLogo)}
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 20px 24px", borderTop: "1px solid #2E3A41" }}>
+        {markets.map((mk) => (
+          <div key={mk.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}>
+            <span style={{ fontSize: 13, fontWeight: 800 }}>{mk.label}</span>
+            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(mk.cols.length, 3)}, minmax(0, 1fr))`, gap: 6 }}>
+              {mk.cols.map((c, i) => {
+                const v = all[mk.id]?.[i] ?? 0;
+                const id = `${m.id}|${mk.id}|${c}`;
+                const on = isOn(id);
+                return (
+                  <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
+                    onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
+                      height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "0 12px", gap: 8, background: !v ? "#1B2429" : on ? ACCENT : "#2E3A42", color: !v ? "#5E6A74" : on ? "#13171C" : "#F2F4F6",
+                    }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "#5E6A74" : on ? "#13171C" : "#A9B2BD", whiteSpace: "nowrap" }}>{c}</span>
+                    {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </Sheet>
   );
 }
