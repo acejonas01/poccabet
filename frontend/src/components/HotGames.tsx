@@ -7,12 +7,11 @@ const TABS = [
 ];
 
 const GAMES = [
-  { name: "Aviator", tag: "₦1,000,000 FREE BET", img: "/games/aviator.svg" },
-  { name: "Chicken Keke", tag: "", img: "/games/chicken.svg" },
-  { name: "Gigahot 40", tag: "", img: "/games/gigahot.svg" },
-  { name: "Mines", tag: "Poccabet Originals", img: "/games/mines.svg" },
-  { name: "Multi Hot 5", tag: "", img: "/games/multihot.svg" },
-  { name: "Poccabet Spin", tag: "EXCLUSIVE", img: "/games/spin.svg" },
+  { name: "Aviator", tag: "₦1,000,000 FREE BET", img: "/games/aviator.jpg" },
+  { name: "Gigahot 40", tag: "", img: "/games/gigahot-40.jpg" },
+  { name: "Mines", tag: "Poccabet Originals", img: "/games/mines.jpg" },
+  { name: "Multi Hot 5", tag: "", img: "/games/multi-hot-5.jpg" },
+  { name: "Poccabet Spin", tag: "EXCLUSIVE", img: "/games/poccabet-spin.jpg" },
 ];
 
 export function HotGames() {

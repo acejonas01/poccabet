@@ -7,12 +7,11 @@ import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
 import { useTCData } from "./data";
-import { DesktopHeader, DesktopHome, DesktopLive, Rail, Sidebar } from "./desktop";
-import { BottomNav, type HomeTab, MobileHeader, MobileHome, MobileLive, SectionsNav } from "./mobile";
+import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
+import { BottomNav, type HomeTab, MobileHeader, MobileHome, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, Sheet, useIsDesktop } from "./shared";
 import "./themeC.css";
 
-type View = "home" | "live";
 
 export function ThemeCApp() {
   const desk = useIsDesktop();
@@ -21,29 +20,27 @@ export function ThemeCApp() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const [view, setView] = useState<View>("home");
   const [tab, setTab] = useState<HomeTab>("upcoming");
   const [market, setMarket] = useState("1x2");
   const [sheet, setSheet] = useState<"markets" | "slip" | "account" | null>(null);
   const [search, setSearch] = useState("");
   const [league, setLeague] = useState<string | null>(null);
 
-  const goHome = (t: "upcoming" | "top" = "upcoming") => { setView("home"); setTab(t); navigate("/"); window.scrollTo(0, 0); };
-  const goLive = () => { setView("live"); navigate("/"); window.scrollTo(0, 0); };
+  const goHome = () => { setTab("upcoming"); navigate("/"); window.scrollTo(0, 0); };
+  // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
+  const goLive = () => {
+    setTab("live");
+    navigate("/");
+    requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView());
+  };
 
   const onRoot = location.pathname === "/";
-  const navActive = !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : view;
+  const navActive = !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
   const home = desk ? (
-    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} onOpenLive={goLive} search={search} league={league} />
+    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} league={league} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab}
-      openSheet={() => setSheet("markets")} market={market} setMarket={setMarket} />
-  );
-  const live = desk ? (
-    <DesktopLive live={data.live} onUpcoming={() => goHome("upcoming")} onTop={() => goHome("top")} search={search} league={league} />
-  ) : (
-    <MobileLive live={data.live} loaded={data.liveLoaded} onUpcoming={() => goHome("upcoming")} onTop={() => goHome("top")}
       openSheet={() => setSheet("markets")} market={market} setMarket={setMarket} />
   );
 
@@ -67,7 +64,7 @@ export function ThemeCApp() {
       {!desk && onRoot && <SectionsNav />}
 
       <Routes>
-        <Route path="/" element={desk ? deskShell(view === "live" ? live : home) : view === "live" ? live : home} />
+        <Route path="/" element={desk ? deskShell(home) : home} />
         <Route path="/login" element={page(<Auth mode="login" />)} />
         <Route path="/signup" element={page(<Auth mode="signup" />)} />
         <Route path="/my-bets" element={page(<MyBets />)} />

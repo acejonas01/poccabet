@@ -2,14 +2,15 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, matchesDate, teamCode } from "./data";
+import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, matchesDate } from "./data";
 import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
-import { FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
-import { usePickOfTheDay } from "./potd";
-import { ACCENT, BetSlipBody, CheckBet, DemoTag, OddButton, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { Crest, Flag } from "./media";
+import { ChanceBar, FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
+import { featuredUpcoming, usePickOfTheDay } from "./potd";
+import { ACCENT, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -268,9 +269,9 @@ const matchSearch = (m: TCMatch, q: string) => !q || `${m.home} ${m.away} ${m.le
 
 // ---------- home ----------
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the table below.
-// The full live screen opens from the "Live centre" link on the Live tab.
-export function DesktopHome({ upcoming, live, tab, setTab, onOpenLive, search, league }: {
-  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; onOpenLive: () => void;
+// The Live tab leads with the featured live match (score, stats, 1X2).
+export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
+  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void;
   search: string; league: string | null;
 }) {
   const navigate = useNavigate();
@@ -288,12 +289,15 @@ export function DesktopHome({ upcoming, live, tab, setTab, onOpenLive, search, l
   const shown = featured.slice(page * 3, page * 3 + 3);
 
   const isLive = tab === "live";
-  const list = (isLive ? live : upcoming)
+  const tabList = (isLive ? live : upcoming)
     .filter((m) => isLive || matchesDate(m, dateId))
     .filter((m) => isLive || tab === "upcoming" || TOP_LEAGUES.includes(m.league))
     .filter((m) => !league || m.league === league)
     .filter((m) => matchSearch(m, search))
     .sort((a, b) => a.start - b.start);
+  // Every tab leads with a featured match (one switch turns them all off).
+  const featuredMatch = !SHOW_TAB_FEATURE ? undefined : isLive ? featuredLive(tabList) : featuredUpcoming(tabList, potd?.id);
+  const list = tabList.filter((m) => m !== featuredMatch);
 
   const potdId = potd && p ? `${potd.id}|${p.marketId}|${p.col}` : "";
   const navBtn = (disabled: boolean): CSSProperties => ({
@@ -343,14 +347,9 @@ export function DesktopHome({ upcoming, live, tab, setTab, onOpenLive, search, l
 
       <Tabs current={tab} liveCount={live.length}
         onLive={() => { setTab("live"); setLimit(15); }} onUpcoming={() => { setTab("upcoming"); setLimit(15); }} onTop={() => { setTab("top"); setLimit(15); }}
-        right={isLive ? (
-          <>
-            <Chip on>Football · {live.length}</Chip>
-            <button onClick={onOpenLive} style={{ height: 34, padding: "0 14px", borderRadius: 17, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
-              Live centre<ChevronRight />
-            </button>
-          </>
-        ) : dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
+        right={isLive ? <Chip on>Football · {live.length}</Chip> : dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
+
+      {featuredMatch && <FeaturedMatchWide f={featuredMatch} onMoreMarkets={() => setPill("dc")} />}
 
       <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} />
     </main>
@@ -358,69 +357,60 @@ export function DesktopHome({ upcoming, live, tab, setTab, onOpenLive, search, l
 }
 
 // ---------- live ----------
-export function DesktopLive({ live, onUpcoming, onTop, search, league }: {
-  live: TCMatch[]; onUpcoming: () => void; onTop: () => void; search: string; league: string | null;
-}) {
+// Featured match at the top of each table tab (wide). Live: score, minute and stats.
+// Upcoming: kickoff time and the chance implied by the odds.
+function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: () => void }) {
   const { isOn, pick } = usePicker();
-  const [pill, setPill] = useState("main");
-  const f = featuredLive(live);
-  const list = live.filter((m) => m !== f).filter((m) => !league || m.league === league).filter((m) => matchSearch(m, search));
-
   return (
-    <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
-      {f && (
-        <section aria-label="Featured live match" style={{ display: "flex", gap: 28, padding: "20px 24px", background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14 }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#8B95A1" }}>{f.country ? `${f.country} · ` : ""}{f.league}</span>
-              <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: f.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>
-                <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E5484D" }} />{f.clock}
-              </span>
+    <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ display: "flex", gap: 28, padding: "20px 24px", background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#8B95A1" }}><Flag country={f.country} size={16} />{f.country ? `${f.country} · ` : ""}{f.league}</span>
+          {f.live ? (
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: f.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E5484D" }} />{f.clock}
+            </span>
+          ) : (
+            <span style={{ fontSize: 14, fontWeight: 800, color: "#C3CBD3" }}>{dayLabel(f.start)}</span>
+          )}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {[f.home, null, f.away].map((name, i) => name === null ? (
+            <div key="mid" style={{ fontFamily: barlow, fontSize: 56, fontWeight: 700, letterSpacing: 2, lineHeight: 1 }}>{f.live ? `${f.hs} – ${f.as}` : hhmm(f.start)}</div>
+          ) : (
+            <div key={i} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
+              <Crest name={name} url={i === 0 ? f.homeLogo : f.awayLogo} size={52} fontSize={14} />
+              <span style={{ fontSize: 16, fontWeight: 800, ...ellipsis, maxWidth: "100%" }}>{name}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              {[f.home, null, f.away].map((name, i) => name === null ? (
-                <div key="score" style={{ fontFamily: barlow, fontSize: 56, fontWeight: 700, letterSpacing: 2, lineHeight: 1 }}>{f.hs} – {f.as}</div>
-              ) : (
-                <div key={i} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center" }}>
-                  <span style={{ width: 52, height: 52, borderRadius: 26, background: "#2A3440", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14 }}>{teamCode(name)}</span>
-                  <span style={{ fontSize: 16, fontWeight: 800, ...ellipsis, maxWidth: "100%" }}>{name}</span>
-                </div>
-              ))}
-            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ width: 1, background: "#2E3A41" }} />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
+        {f.live ? f.stats && <>
+          <StatBar big label="Possession" h={f.stats.possession[0]} a={f.stats.possession[1]} />
+          <StatBar big label="Shots" h={f.stats.shots[0]} a={f.stats.shots[1]} />
+          <StatBar big label="Corners" h={f.stats.corners[0]} a={f.stats.corners[1]} />
+        </> : <ChanceBar m={f} big />}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
+          <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+            {["1", "X", "2"].map((c) => <span key={c} style={{ flex: 1, textAlign: "center" }}>{c}</span>)}
           </div>
-          <div style={{ width: 1, background: "#2E3A41" }} />
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
-            {f.stats && <>
-              <StatBar big label="Possession" h={f.stats.possession[0]} a={f.stats.possession[1]} />
-              <StatBar big label="Shots" h={f.stats.shots[0]} a={f.stats.shots[1]} />
-              <StatBar big label="Corners" h={f.stats.corners[0]} a={f.stats.corners[1]} />
-            </>}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-              <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
-                {["1", "X", "2"].map((c) => <span key={c} style={{ flex: 1, textAlign: "center" }}>{c}</span>)}
+          <div style={{ display: "flex", gap: 6 }}>
+            {["1", "X", "2"].map((c, i) => (
+              <div key={c} style={{ flex: 1, display: "flex" }}>
+                <OddButton variant="desk" value={f.o[i]} on={isOn(`${f.id}|1x2|${c}`)} dir={f.dirs["1x2"][i]} flash={i}
+                  aria={`${f.home} vs ${f.away} 1X2 ${c}`} onPick={() => pick(f, "1x2", "1X2", c, f.o[i])}
+                  style={{ flexShrink: 0, width: "100%", height: 48, fontSize: 19 }} />
               </div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {["1", "X", "2"].map((c, i) => (
-                  <div key={c} style={{ flex: 1, display: "flex" }}>
-                    <OddButton variant="desk" value={f.o[i]} on={isOn(`${f.id}|1x2|${c}`)} dir={f.dirs["1x2"][i]} flash={i}
-                      aria={`${f.home} vs ${f.away} 1X2 ${c}`} onPick={() => pick(f, "1x2", "1X2", c, f.o[i])}
-                      style={{ flexShrink: 0, width: "100%", height: 48, fontSize: 19 }} />
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 700 }}>Match tracker</button>
-              <button onClick={() => setPill("dc")} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} live markets</button>
-            </div>
+            ))}
           </div>
-        </section>
-      )}
-
-      <Tabs current="live" liveCount={live.length} onLive={() => {}} onUpcoming={onUpcoming} onTop={onTop}
-        right={<Chip on>Football · {live.length}</Chip>} />
-
-      <LeagueTable matches={list} pill={pill} setPill={setPill} live />
-    </main>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
+          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
+        </div>
+      </div>
+    </section>
   );
 }

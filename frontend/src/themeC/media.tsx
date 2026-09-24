@@ -73,12 +73,11 @@ export function PromoSlider() {
 
 // ---------- hot games strip ----------
 const GAMES = [
-  { name: "Aviator", tag: "₦1,000,000 free bet", img: "/games/aviator.svg" },
-  { name: "Chicken Keke", tag: "Crash game", img: "/games/chicken.svg" },
-  { name: "Gigahot 40", tag: "Slots", img: "/games/gigahot.svg" },
-  { name: "Mines", tag: "Poccabet Originals", img: "/games/mines.svg" },
-  { name: "Multi Hot 5", tag: "Slots", img: "/games/multihot.svg" },
-  { name: "Poccabet Spin", tag: "Exclusive", img: "/games/spin.svg" },
+  { name: "Aviator", tag: "₦1,000,000 free bet", img: "/games/aviator.jpg" },
+  { name: "Gigahot 40", tag: "Slots", img: "/games/gigahot-40.jpg" },
+  { name: "Mines", tag: "Poccabet Originals", img: "/games/mines.jpg" },
+  { name: "Multi Hot 5", tag: "Slots", img: "/games/multi-hot-5.jpg" },
+  { name: "Poccabet Spin", tag: "Exclusive", img: "/games/poccabet-spin.jpg" },
 ];
 
 export function HotGamesStrip() {

@@ -9,6 +9,8 @@ import { MK, SHEET_GROUPS } from "./markets";
 
 export const ACCENT = "#F5C518";
 export const WELCOME_BONUS_AMOUNT = "[AMOUNT]"; // TODO: real welcome-bonus amount
+// One switch for the featured-match card at the top of the Live, Upcoming and Top leagues tabs.
+export const SHOW_TAB_FEATURE = true;
 
 export function useIsDesktop() {
   const query = "(min-width: 900px)";

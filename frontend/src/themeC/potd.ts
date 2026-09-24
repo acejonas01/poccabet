@@ -2,7 +2,7 @@
 // hasn't kicked off. Until anyone has picked, it falls back to the top match's favourite.
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
-import { type TCMatch, kickoff } from "./data";
+import { type TCMatch, kickoff, leagueRank } from "./data";
 import { deriveOdds, marketDef } from "./markets";
 
 export interface PickOfDay {
@@ -61,7 +61,7 @@ const POPULAR_CLUBS = [
   "Borussia Dortmund", "Newcastle", "Napoli",
 ];
 const POPULAR_LEAGUES = ["Premier League", "Champions League", "UEFA Champions League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"];
-const pull = (m: TCMatch) =>
+export const pull = (m: TCMatch) =>
   (POPULAR_LEAGUES.includes(m.league) ? 1 : 0) *
   ((POPULAR_CLUBS.includes(m.home) ? 1 : 0) + (POPULAR_CLUBS.includes(m.away) ? 1 : 0));
 
@@ -126,4 +126,12 @@ export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined
 function crowdTarget(market: string, col: string, m: TCMatch) {
   if (market === "1x2") return col === "1" ? m.home : col === "2" ? m.away : "the draw";
   return selectionLabel(market, col, m.home, m.away);
+}
+
+// Featured match for the Upcoming / Top leagues tab: the biggest crowd-puller in the list,
+// skipping the Pick of the day match so the two cards don't repeat.
+export function featuredUpcoming(list: TCMatch[], skipId?: string) {
+  return [...list]
+    .filter((m) => m.id !== skipId)
+    .sort((a, b) => pull(b) - pull(a) || leagueRank(a.league) - leagueRank(b.league) || a.start - b.start)[0];
 }
