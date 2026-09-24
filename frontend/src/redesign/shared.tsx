@@ -76,7 +76,8 @@ export function OddButton({
   style: CSSProperties; lockSize?: number; flash?: number;
 }) {
   const locked = !value;
-  const idle = variant === "home" ? "#262D36" : "#2E3A42";
+  // One odds-tile colour everywhere (the live tile colour), so every tab looks the same.
+  const idle = "#2E3A42";
   const lockedBg = variant === "desk" ? "#1E282E" : "#1B2429";
   const showArrow = !!dir && !locked && variant !== "home";
   return (

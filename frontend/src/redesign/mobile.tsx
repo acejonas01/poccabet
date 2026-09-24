@@ -231,7 +231,7 @@ function useOdds(m: TCMatch, market: string, variant: "home" | "live", flashBase
 function UpcomingRow({ m, market, onMore }: { m: TCMatch; market: string; onMore: () => void }) {
   const odds = useOdds(m, market, "home", 0);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid #20262E" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid #2E3A41" }}>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
         <span style={{ fontSize: 12, color: "#8B95A1", fontWeight: 600 }}>{kickoff(m.start)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
@@ -277,9 +277,12 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
   );
 }
 
-function LeagueHeader({ country, name, market, live }: { country: string; name: string; market: string; live?: boolean }) {
+// Theme A: darker headers (#171C22) so each league reads as a block.
+// Theme B: lighter, compact headers (#1B2429) — the original Live-tab look.
+function LeagueHeader({ country, name, market }: { country: string; name: string; market: string }) {
+  const light = useTheme().theme === "b";
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: live ? "8px 16px 6px" : "16px 16px 8px", background: live ? "#1B2429" : "#171C22" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: light ? "#1B2429" : "#171C22" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "#8B95A1" }}><Flag country={country} />{country}</span>
         <span style={{ fontSize: 15, fontWeight: 800 }}>{name}</span>
@@ -450,7 +453,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
 
       {leagues.map((lg) => (
         <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
-          <LeagueHeader country={lg.country} name={lg.name} market={market} live={isLive} />
+          <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
             : <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}

@@ -1,4 +1,4 @@
-// Theme C: the "Poccabet Homepage Redesign" design, as its own layout.
+// Themes A (default) and B: the "Poccabet Homepage Redesign" layout. B uses lighter league headers.
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
 import { useState, type ReactNode } from "react";
@@ -10,10 +10,10 @@ import { useTCData } from "./data";
 import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
 import { BottomNav, type HomeTab, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
-import "./themeC.css";
+import "./redesign.css";
 
 
-export function ThemeCApp() {
+export function RedesignApp() {
   const desk = useIsDesktop();
   const data = useTCData();
   const navigate = useNavigate();

@@ -10,7 +10,7 @@ import { OddsBoard } from "./pages/OddsBoard";
 import { Auth } from "./pages/Auth";
 import { MyBets } from "./pages/MyBets";
 import { useTheme } from "./context/ThemeContext";
-import { ThemeCApp } from "./themeC/ThemeCApp";
+import { RedesignApp } from "./redesign/RedesignApp";
 import "./index.css";
 
 function App() {
@@ -21,8 +21,8 @@ function App() {
     <AuthProvider>
       <BetSlipProvider>
         <FilterProvider>
-          {/* Theme C is a full redesign with its own layout */}
-          {theme === "c" ? <ThemeCApp /> : <>
+          {/* Themes A (default) and B use the redesign layout; Theme C is the original layout */}
+          {theme !== "c" ? <RedesignApp /> : <>
           <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
           <main className="app-layout">
             <LeftSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

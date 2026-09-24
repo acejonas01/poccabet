@@ -1,8 +1,12 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
-// Enabled themes, in toggle order. Theme B is disabled for now (its CSS is kept).
-// Theme C = the "Poccabet Homepage Redesign" design — a full layout, not just colours.
-export const THEMES = ["a", "c"];
+// Themes, in toggle order:
+//   A (default) — the redesign layout, darker league headers
+//   B           — the redesign layout, lighter league headers
+//   C           — the original layout
+export const THEMES = ["a", "b", "c"];
+// New key: old saves used "c" for the redesign, which is now the original layout.
+const STORAGE_KEY = "pocca-theme";
 
 interface ThemeContextValue {
   theme: string;
@@ -13,7 +17,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function initialTheme() {
   try {
-    const saved = localStorage.getItem("theme");
+    const saved = localStorage.getItem(STORAGE_KEY);
     if (saved && THEMES.includes(saved)) return saved;
   } catch {
     // storage unavailable — fall through to the default
@@ -27,7 +31,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try {
-      localStorage.setItem("theme", theme);
+      localStorage.setItem(STORAGE_KEY, theme);
     } catch {
       // ignore
     }
