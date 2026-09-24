@@ -79,9 +79,8 @@ export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined
     const m = upcoming.find((x) => x.id === top.matchId);
     if (m) {
       const n: number = top.count;
-      const share = top.matchPicks ? Math.round((n / top.matchPicks) * 100) : 100;
       const p = build(m, top.market, top.selection,
-        `${n.toLocaleString("en-US")} ${n === 1 ? "bettor is" : "bettors are"} backing this today — ${share}% of all picks on this match.`);
+        `${n.toLocaleString("en-US")} ${n === 1 ? "bettor is" : "bettors are"} backing ${crowdTarget(top.market, top.selection, m)}. Can't beat them? Join them.`);
       if (p) return p;
     }
   }
@@ -89,6 +88,12 @@ export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined
   const fallback = [...upcoming].filter((m) => pull(m) > 0).sort((a, b) => pull(b) - pull(a) || a.start - b.start)[0] ?? ranked;
   if (!fallback) return null;
   const homeFav = fallback.o[0] <= fallback.o[2];
-  return build(fallback, "1x2", homeFav ? "1" : "2",
-    "Today's big match. Get your pick in early — the crowd's favourite takes this spot as the bets roll in.");
+  // No crowd count available here, so the line makes no claim about numbers.
+  return build(fallback, "1x2", homeFav ? "1" : "2", "Can't beat them? Join them.");
+}
+
+// What the crowd is on, for the note: a team, "the draw", or the selection's name.
+function crowdTarget(market: string, col: string, m: TCMatch) {
+  if (market === "1x2") return col === "1" ? m.home : col === "2" ? m.away : "the draw";
+  return selectionLabel(market, col, m.home, m.away);
 }
