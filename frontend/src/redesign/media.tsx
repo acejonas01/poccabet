@@ -1,19 +1,21 @@
 // Imagery for Theme C: promo slider, hot-games strip, country flags.
 import { useEffect, useRef, useState } from "react";
 import { teamCode } from "./data";
-import { ChevronRight } from "./icons";
+import { ChevronLeft, ChevronRight } from "./icons";
 import { ACCENT } from "./shared";
 
-// ---------- promo slider (uses the 1080×400 mobile artwork) ----------
+// ---------- promo slider (1080×400 mobile artwork; 2120×400 wide artwork on desktop) ----------
 // Infinite loop: three copies of the slides side by side; you always sit in the middle copy.
 // After any scroll settles outside it, we jump (instantly, invisibly) to the same slide in the
 // middle copy — so autoplay glides from slide 5 to slide 1 and swipes never hit an end.
 const SLIDES = [1, 2, 3, 4, 5].map((i) => `/slides/Slide-${i}-m.jpg`);
+const WIDE = [1, 2, 3, 4, 5].map((i) => `/slides/Slide-${i}.jpg`);
 const N = SLIDES.length;
-const LOOP = [...SLIDES, ...SLIDES, ...SLIDES];
 const GAP = 10;
 
-export function PromoSlider() {
+export function PromoSlider({ desktop = false }: { desktop?: boolean }) {
+  const slides = desktop ? WIDE : SLIDES;
+  const LOOP = [...slides, ...slides, ...slides];
   const track = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
   const pos = useRef(N); // index into LOOP of the slide in view
@@ -68,22 +70,33 @@ export function PromoSlider() {
     return () => clearInterval(id);
   }, []);
 
+  const arrow = (dir: -1 | 1) => (
+    <button aria-label={dir < 0 ? "Previous promotion" : "Next promotion"}
+      onClick={() => { pausedUntil.current = Date.now() + 8000; go(pos.current + dir); }}
+      style={{ position: "absolute", top: "50%", [dir < 0 ? "left" : "right"]: 12, transform: "translateY(-50%)", width: 36, height: 36, borderRadius: 18, border: "none", background: "rgba(12, 21, 26, 0.7)", color: "#F2F4F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {dir < 0 ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+    </button>
+  );
+
   return (
-    <section aria-label="Promotions" style={{ marginTop: 14 }}>
-      <div ref={track} className="tc-hscroll" style={{ display: "flex", gap: GAP, overflowX: "auto", padding: "0 16px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
+    <section aria-label="Promotions" style={{ marginTop: desktop ? 0 : 14 }}>
+      <div style={{ position: "relative" }}>
+      <div ref={track} className="tc-hscroll" style={{ display: "flex", gap: GAP, overflowX: "auto", padding: desktop ? 0 : "0 16px", scrollSnapType: "x mandatory", scrollPaddingLeft: desktop ? 0 : 16 }}>
         {LOOP.map((src, i) => (
           <a key={i} href="#" onClick={(e) => e.preventDefault()} aria-label={`Promotion ${(i % N) + 1}`}
             aria-hidden={i < N || i >= 2 * N ? true : undefined} tabIndex={i < N || i >= 2 * N ? -1 : undefined}
             style={{
-              flex: "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: "1080 / 400", borderRadius: 14,
+              flex: desktop ? "0 0 100%" : "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: desktop ? "2120 / 400" : "1080 / 400", borderRadius: 14,
               overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
             }}>
             <img src={src} alt="" loading={i === N || i === N + 1 ? "eager" : "lazy"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </a>
         ))}
       </div>
+      {desktop && <>{arrow(-1)}{arrow(1)}</>}
+      </div>
       <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
-        {SLIDES.map((_, i) => (
+        {slides.map((_, i) => (
           <button key={i} aria-label={`Go to promotion ${i + 1}`} aria-current={i === active ? "true" : undefined}
             onClick={() => {
               pausedUntil.current = Date.now() + 8000;

@@ -11,6 +11,8 @@
   --tc-soft-2: #D5DBE1;
   --tc-faint: #5E6A74;
   --tc-page: #131E24;
+  --tc-header: #1B2429;
+  --tc-dheader: #1B2429;
   --tc-panel: #1B2429;
   --tc-panel-2: #1E282E;
   --tc-card: #1C2229;
@@ -38,6 +40,7 @@
   --tc-faint: #5E6A74;
   --tc-page: #222C32;
   --tc-header: #222C32;
+  --tc-dheader: #222C32;
   --tc-panel: #1B2429;
   --tc-panel-2: #1E282E;
   --tc-card: #1C2229;
@@ -64,6 +67,8 @@
   --tc-soft-2: #DDE3E8;
   --tc-faint: #6B7782;
   --tc-page: #2B363D;
+  --tc-header: #2B363D;
+  --tc-dheader: #25313A;
   --tc-panel: #25313A;
   --tc-panel-2: #2E3A42;
   --tc-card: #323E47;

@@ -6,7 +6,7 @@ import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
-import { Crest, Flag } from "./media";
+import { Crest, Flag, PromoSlider } from "./media";
 import { ChanceBar, FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { useTheme } from "../context/ThemeContext";
@@ -31,7 +31,7 @@ export function DesktopHeader({ search, setSearch, simulated }: { search: string
   const themeBtn = useThemeButton();
   const navigate = useNavigate();
   return (
-    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-header, var(--tc-panel))", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
+    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-dheader)", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, letterSpacing: -0.5, lineHeight: 1 }}>Pocca<span style={{ color: ACCENT }}>bet</span></span>
         {simulated && <DemoTag />}
@@ -312,6 +312,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
 
   return (
     <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
+      <PromoSlider desktop />
       <div style={{ display: "flex", gap: 16 }}>
         {potd && p && (
           <section aria-label="Pick of the day" style={{ flex: 2, padding: 20, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>

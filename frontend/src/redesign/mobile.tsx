@@ -35,7 +35,7 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
     return () => ro.disconnect();
   }, []);
   return (
-    <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30, background: "var(--tc-header, var(--tc-page))" }}>
+    <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30, background: "var(--tc-header)" }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 32, letterSpacing: -0.5, lineHeight: 1 }}>
           Pocca<span style={{ color: ACCENT }}>bet</span>
