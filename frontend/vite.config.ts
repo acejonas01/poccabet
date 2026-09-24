@@ -8,7 +8,7 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
+        target: 'https://poccabet.onrender.com',
         changeOrigin: true,
       },
     },
