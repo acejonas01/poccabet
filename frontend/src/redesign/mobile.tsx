@@ -341,6 +341,16 @@ export function FeaturedCard({ m, width = 300 }: { m: TCMatch; width?: number | 
   );
 }
 
+// Crest + team name that always stay together; names wider than the card get "…".
+function TeamUnit({ name, logo }: { name: string; logo: string }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%", minWidth: 0, whiteSpace: "nowrap" }}>
+      <Crest name={name} url={logo} size={22} />
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+    </span>
+  );
+}
+
 function PickOfDayCard({ p }: { p: PickOfDay }) {
   const { isOn, pick } = usePicker();
   const m = p.m;
@@ -350,12 +360,12 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {/* Title with small crests: [crest] Home vs [crest] Away */}
-        <div aria-label={p.title} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 6, rowGap: 2, fontSize: 18, fontWeight: 800 }}>
-          <Crest name={m.home} url={m.homeLogo} size={22} />
-          <span>{m.home}</span>
+        {/* Each team is one unbreakable unit (crest + name), so a long title can only wrap
+            between the teams — a crest never gets separated from its name. */}
+        <div aria-label={p.title} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 6, rowGap: 2, fontSize: 18, fontWeight: 800, minWidth: 0 }}>
+          <TeamUnit name={m.home} logo={m.homeLogo} />
           <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tc-faint)" }}>vs</span>
-          <Crest name={m.away} url={m.awayLogo} size={22} />
-          <span>{m.away}</span>
+          <TeamUnit name={m.away} logo={m.awayLogo} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-muted)" }}><Flag country={m.country} size={14} />{p.sub}</div>
       </div>
