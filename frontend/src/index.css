@@ -1954,12 +1954,12 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* ===================================================================
-   Themes A + B — the "Poccabet Homepage Redesign" (claude.ai design canvas).
+   Themes A, B, C — the "Poccabet Homepage Redesign" (claude.ai design canvas).
    These tokens style the shared pages (login, sign-up, my bets) inside the redesign layout
    Charcoal ground, yellow accent (#F5C518), Manrope body,
    Barlow Condensed odds, big rounded odds buttons, underline tabs.
    =================================================================== */
-:root:is([data-theme="a"], [data-theme="b"]) {
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) {
   --primary: #131E24;
   --primary-dark: #1C2229;
   --primary-light: #2E3640;
@@ -1992,9 +1992,15 @@ button { font-family: inherit; cursor: pointer; }
   --more-arrow: #F2F4F6;
   font-family: "Manrope", system-ui, sans-serif;
 }
-:root:is([data-theme="a"], [data-theme="b"]) body { font-family: "Manrope", system-ui, sans-serif; }
-/* Theme B: lighter, softer charcoal for the shared pages (login, sign-up, my bets) */
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) body { font-family: "Manrope", system-ui, sans-serif; }
+/* Theme B: the earlier deep charcoal for the shared pages */
 :root[data-theme="b"] {
+  --primary: #222c32;
+  --bg: #222c32;
+  --surface: #222c32;
+}
+/* Theme C: lighter, softer charcoal for the shared pages (login, sign-up, my bets) */
+:root[data-theme="c"] {
   --primary: #2B363D;
   --primary-dark: #25313A;
   --primary-light: #3E4B55;
@@ -2016,52 +2022,52 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 /* header */
-:root:is([data-theme="a"], [data-theme="b"]) .header-primary { border-bottom: 1px solid #232A33; }
-:root:is([data-theme="a"], [data-theme="b"]) .btn-login {
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .header-primary { border-bottom: 1px solid #232A33; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .btn-login {
   background: #F5C518;
   color: #13171C;
   border-radius: 10px;
   font-weight: 800;
 }
-:root:is([data-theme="a"], [data-theme="b"]) .btn-login:hover { background: #FFD84D; }
-:root:is([data-theme="a"], [data-theme="b"]) .btn-register {
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .btn-login:hover { background: #FFD84D; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .btn-register {
   border: 1px solid #3A434E;
   color: #F2F4F6;
   border-radius: 10px;
   font-weight: 700;
 }
-:root:is([data-theme="a"], [data-theme="b"]) .theme-toggle { border-color: #2E3640; color: #A9B2BD; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .theme-toggle { border-color: #2E3640; color: #A9B2BD; }
 
 /* quick nav */
-:root:is([data-theme="a"], [data-theme="b"]) .quick-nav { background: #222c32; border-color: #232A33; }
-:root:is([data-theme="a"], [data-theme="b"]) .quick-nav-label { color: #A9B2BD; font-weight: 600; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .quick-nav { background: #222c32; border-color: #232A33; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .quick-nav-label { color: #A9B2BD; font-weight: 600; }
 
 /* section heading + date tabs: plain heading, underline tabs */
-:root:is([data-theme="a"], [data-theme="b"]) .section-title-row { background: #222c32; border: none; border-bottom: 1px solid #232A33; }
-:root:is([data-theme="a"], [data-theme="b"]) .section-title {
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .section-title-row { background: #222c32; border: none; border-bottom: 1px solid #232A33; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .section-title {
   background: none;
   clip-path: none;
   color: #F2F4F6;
   font-weight: 800;
   padding-left: 16px;
 }
-:root:is([data-theme="a"], [data-theme="b"]) .date-tab { color: #A9B2BD; font-weight: 600; border-bottom: 2px solid transparent; }
-:root:is([data-theme="a"], [data-theme="b"]) .date-tab.active { background: none; color: #F2F4F6; font-weight: 800; border-bottom-color: #F5C518; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .date-tab { color: #A9B2BD; font-weight: 600; border-bottom: 2px solid transparent; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .date-tab.active { background: none; color: #F2F4F6; font-weight: 800; border-bottom-color: #F5C518; }
 
 /* category tabs: underline style instead of filled block + arrow */
-:root:is([data-theme="a"], [data-theme="b"]) .category-tabs { background: #222c32; border: none; border-bottom: 1px solid #232A33; }
-:root:is([data-theme="a"], [data-theme="b"]) .cat-tab { color: #A9B2BD; font-weight: 700; border-bottom: 2px solid transparent; }
-:root:is([data-theme="a"], [data-theme="b"]) .cat-tab.active { background: none; color: #F2F4F6; font-weight: 800; border-bottom-color: #F5C518; }
-:root:is([data-theme="a"], [data-theme="b"]) .cat-tab.active::after { display: none; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .category-tabs { background: #222c32; border: none; border-bottom: 1px solid #232A33; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .cat-tab { color: #A9B2BD; font-weight: 700; border-bottom: 2px solid transparent; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .cat-tab.active { background: none; color: #F2F4F6; font-weight: 800; border-bottom-color: #F5C518; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .cat-tab.active::after { display: none; }
 
 /* odds table */
-:root:is([data-theme="a"], [data-theme="b"]) .odds-table th { background: #171C22; color: #8B95A1; border-color: #171C22; }
-:root:is([data-theme="a"], [data-theme="b"]) .odds-table .th-event { color: #F2F4F6; }
-:root:is([data-theme="a"], [data-theme="b"]) .odds-table tbody tr { background: #222c32; }
-:root:is([data-theme="a"], [data-theme="b"]) .odds-table tbody tr:hover { background: #1C2229; }
-:root:is([data-theme="a"], [data-theme="b"]) .td-odds,
-:root:is([data-theme="a"], [data-theme="b"]) .td-odds.gold { color: #F2F4F6; }
-:root:is([data-theme="a"], [data-theme="b"]) .td-odds > span {
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .odds-table th { background: #171C22; color: #8B95A1; border-color: #171C22; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .odds-table .th-event { color: #F2F4F6; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .odds-table tbody tr { background: #222c32; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .odds-table tbody tr:hover { background: #1C2229; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .td-odds,
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .td-odds.gold { color: #F2F4F6; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .td-odds > span {
   background: #262D36;
   border-radius: 8px;
   font-family: "Barlow Condensed", sans-serif;
@@ -2069,16 +2075,16 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
   padding: 0.5rem 0.2rem;
 }
-:root:is([data-theme="a"], [data-theme="b"]) .td-odds.selected > span { background: #F5C518; color: #13171C; }
-:root:is([data-theme="a"], [data-theme="b"]) .td-odds.empty { color: #5E6A74; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .td-odds.selected > span { background: #F5C518; color: #13171C; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .td-odds.empty { color: #5E6A74; }
 
 /* match rows: badges, scores, live */
-:root:is([data-theme="a"], [data-theme="b"]) .badge-date { background: #2A3440; color: #C3CBD3; }
-:root:is([data-theme="a"], [data-theme="b"]) .badge-time { background: #171C22; color: #F2F4F6; }
-:root:is([data-theme="a"], [data-theme="b"]) .event-date-badge.is-live .badge-date { background: #E5484D; color: #FFFFFF; }
-:root:is([data-theme="a"], [data-theme="b"]) .event-date-badge.is-live .badge-time { color: #E5484D; }
-:root:is([data-theme="a"], [data-theme="b"]) .event-score { color: #F5C518; }
-:root:is([data-theme="a"], [data-theme="b"]) .odds-locked svg { color: #8B95A1; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .badge-date { background: #2A3440; color: #C3CBD3; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .badge-time { background: #171C22; color: #F2F4F6; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .event-date-badge.is-live .badge-date { background: #E5484D; color: #FFFFFF; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .event-date-badge.is-live .badge-time { color: #E5484D; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .event-score { color: #F5C518; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .odds-locked svg { color: #8B95A1; }
 
 /* pagination + promo dots */
-:root:is([data-theme="a"], [data-theme="b"]) .page-num.active { color: #F5C518; }
+:root:is([data-theme="a"], [data-theme="b"], [data-theme="c"]) .page-num.active { color: #F5C518; }

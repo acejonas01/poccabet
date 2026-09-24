@@ -389,7 +389,7 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
           <span style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>{naira(balance)}</span>
         </div>
         <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Log out</button>
-        <button onClick={() => { setTheme("c"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme C)</button>
+        <button onClick={() => { setTheme("d"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme D)</button>
       </div>
     </Sheet>
   );
@@ -460,14 +460,14 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
   );
 }
 
-// Theme button: tap = switch A <-> B, hold ~0.8s = classic layout (Theme C).
+// Theme button: tap = cycle A -> B -> C, hold ~0.8s = classic layout (Theme D).
 export function useThemeButton() {
   const { cycleTheme, setTheme } = useTheme();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
   const start = () => {
     held.current = false;
-    timer.current = setTimeout(() => { held.current = true; setTheme("c"); }, 800);
+    timer.current = setTimeout(() => { held.current = true; setTheme("d"); }, 800);
   };
   const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
   return {
@@ -476,6 +476,6 @@ export function useThemeButton() {
     onPointerLeave: cancel,
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     onClick: () => { if (!held.current) cycleTheme(); },
-    title: "Tap to switch theme A/B — hold for the classic layout",
+    title: "Tap to switch theme A/B/C — hold for the classic layout",
   };
 }

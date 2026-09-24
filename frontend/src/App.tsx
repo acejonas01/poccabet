@@ -21,8 +21,8 @@ function App() {
     <AuthProvider>
       <BetSlipProvider>
         <FilterProvider>
-          {/* Themes A (default) and B use the redesign layout; Theme C is the original layout */}
-          {theme !== "c" ? <RedesignApp /> : <>
+          {/* Themes A (default), B and C use the redesign layout; Theme D is the original layout */}
+          {theme !== "d" ? <RedesignApp /> : <>
           <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
           <main className="app-layout">
             <LeftSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />

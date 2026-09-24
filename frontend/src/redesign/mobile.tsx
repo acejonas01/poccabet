@@ -283,7 +283,7 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
 // Theme A: darker headers (var(--tc-league)) so each league reads as a block.
 // Theme B: lighter, compact headers (var(--tc-panel)) — the original Live-tab look.
 function LeagueHeader({ country, name, market }: { country: string; name: string; market: string }) {
-  const light = useTheme().theme === "b";
+  const light = useTheme().theme === "c";
   return (
     <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: "var(--tc-league)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

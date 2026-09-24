@@ -1,6 +1,8 @@
 /* Redesign colour tokens. Every redesign colour that differs between themes reads one of these.
-   Theme A: deep charcoal (cards sit darker than the page).
-   Theme B: lighter, softer charcoal (cards sit lighter than the page). */
+   Theme A (default): deepest charcoal #131E24, sunken league headers.
+   Theme B: deep charcoal #222C32 (the earlier Theme A).
+   Theme C: lighter, softer charcoal — cards sit lighter than the page (the earlier Theme B).
+   Theme D is the original layout and doesn't use these. */
 :root, :root[data-theme="a"] {
   --tc-text: #F2F4F6;
   --tc-label: #8B95A1;
@@ -28,6 +30,32 @@
   --tc-bar-low: #4A5663;
 }
 :root[data-theme="b"] {
+  --tc-text: #F2F4F6;
+  --tc-label: #8B95A1;
+  --tc-muted: #A9B2BD;
+  --tc-soft: #C3CBD3;
+  --tc-soft-2: #D5DBE1;
+  --tc-faint: #5E6A74;
+  --tc-page: #222C32;
+  --tc-panel: #1B2429;
+  --tc-panel-2: #1E282E;
+  --tc-card: #1C2229;
+  --tc-card-line: #2A323C;
+  --tc-league: #171C22;
+  --tc-raise: #26323A;
+  --tc-crest-bg: #2A3440;
+  --tc-odd: #2E3A42;
+  --tc-line: #2E3A41;
+  --tc-divider: #232A33;
+  --tc-btn-line: #2E3640;
+  --tc-outline: #3A474F;
+  --tc-outline-2: #3A434E;
+  --tc-outline-strong: #45525A;
+  --tc-track: #33414A;
+  --tc-bar-mid: #6B7883;
+  --tc-bar-low: #4A5663;
+}
+:root[data-theme="c"] {
   --tc-text: #F5F7F9;
   --tc-label: #98A3AE;
   --tc-muted: #B7C0CA;
@@ -54,7 +82,7 @@
   --tc-bar-low: #56636E;
 }
 
-/* Redesign (Themes A + B) — page-level styles from the "Poccabet Homepage Redesign" design (its <helmet> CSS). */
+/* Redesign (Themes A, B, C) — page-level styles from the "Poccabet Homepage Redesign" design (its <helmet> CSS). */
 .tc-root {
   min-height: 100vh;
   background: var(--tc-page);

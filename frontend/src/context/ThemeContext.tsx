@@ -1,15 +1,16 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 
 // Themes:
-//   A (default) — the redesign layout, deep charcoal
-//   B           — the redesign layout, lighter/softer charcoal
-//   C           — the original layout, kept out of the everyday toggle
-// The theme button only cycles A <-> B. Theme C: hold the theme button, the Account
-// sheet, or ?theme=c in the address. From Theme C the button returns to A.
-export const THEMES = ["a", "b", "c"];
-const CYCLE = ["a", "b"];
-// New key: old saves used "c" for the redesign, which is now the original layout.
-const STORAGE_KEY = "pocca-theme";
+//   A (default) — redesign, deepest charcoal (#131E24), sunken league headers
+//   B           — redesign, deep charcoal (#222C32)
+//   C           — redesign, lighter/softer charcoal
+//   D           — the original layout, kept out of the everyday toggle
+// The theme button cycles A -> B -> C. Theme D: hold the theme button, the Account sheet,
+// or ?theme=d in the address. From Theme D the button returns to A.
+export const THEMES = ["a", "b", "c", "d"];
+const CYCLE = ["a", "b", "c"];
+// New key: letters were reshuffled, so older saved choices would now mean a different theme.
+const STORAGE_KEY = "pocca-theme-v3";
 
 interface ThemeContextValue {
   theme: string;
