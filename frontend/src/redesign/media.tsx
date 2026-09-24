@@ -5,45 +5,65 @@ import { ChevronRight } from "./icons";
 import { ACCENT } from "./shared";
 
 // ---------- promo slider (uses the 1080×400 mobile artwork) ----------
+// Infinite loop: three copies of the slides side by side; you always sit in the middle copy.
+// After any scroll settles outside it, we jump (instantly, invisibly) to the same slide in the
+// middle copy — so autoplay glides from slide 5 to slide 1 and swipes never hit an end.
 const SLIDES = [1, 2, 3, 4, 5].map((i) => `/slides/Slide-${i}-m.jpg`);
+const N = SLIDES.length;
+const LOOP = [...SLIDES, ...SLIDES, ...SLIDES];
 const GAP = 10;
 
 export function PromoSlider() {
   const track = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const pos = useRef(N); // index into LOOP of the slide in view
   const pausedUntil = useRef(0);
 
   const step = () => {
     const first = track.current?.firstElementChild as HTMLElement | null;
     return first ? first.offsetWidth + GAP : 1;
   };
-  const go = (i: number) => track.current?.scrollTo({ left: i * step(), behavior: "smooth" });
+  const go = (i: number, smooth = true) => {
+    pos.current = i;
+    track.current?.scrollTo({ left: i * step(), behavior: smooth ? "smooth" : "instant" });
+  };
 
-  // Follow manual swipes.
   useEffect(() => {
     const el = track.current;
     if (!el) return;
-    const onScroll = () => setActive(Math.min(SLIDES.length - 1, Math.round(el.scrollLeft / step())));
+    go(N, false); // start on slide 1 of the middle copy
+
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      const i = Math.round(el.scrollLeft / step());
+      pos.current = i;
+      setActive(((i % N) + N) % N);
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const j = Math.round(el.scrollLeft / step());
+        if (j < N || j >= 2 * N) go((((j % N) + N) % N) + N, false);
+      }, 140);
+    };
     const pause = () => { pausedUntil.current = Date.now() + 8000; };
+    const resize = () => go(pos.current, false);
     el.addEventListener("scroll", onScroll, { passive: true });
     el.addEventListener("pointerdown", pause);
     el.addEventListener("touchstart", pause, { passive: true });
+    window.addEventListener("resize", resize);
     return () => {
+      clearTimeout(settle);
       el.removeEventListener("scroll", onScroll);
       el.removeEventListener("pointerdown", pause);
       el.removeEventListener("touchstart", pause);
+      window.removeEventListener("resize", resize);
     };
   }, []);
 
-  // Autoplay every 5s; skips while the tab is hidden or just after a swipe.
+  // Autoplay every 5s, always forward; skips while the tab is hidden or just after a swipe.
   useEffect(() => {
     const id = setInterval(() => {
       if (document.hidden || Date.now() < pausedUntil.current) return;
-      setActive((a) => {
-        const next = (a + 1) % SLIDES.length;
-        go(next);
-        return next;
-      });
+      go(pos.current + 1);
     }, 5000);
     return () => clearInterval(id);
   }, []);
@@ -51,19 +71,26 @@ export function PromoSlider() {
   return (
     <section aria-label="Promotions" style={{ marginTop: 14 }}>
       <div ref={track} className="tc-hscroll" style={{ display: "flex", gap: GAP, overflowX: "auto", padding: "0 16px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
-        {SLIDES.map((src, i) => (
-          <a key={src} href="#" onClick={(e) => e.preventDefault()} aria-label={`Promotion ${i + 1}`} style={{
-            flex: "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: "1080 / 400", borderRadius: 14,
-            overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
-          }}>
-            <img src={src} alt="" loading={i === 0 ? "eager" : "lazy"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        {LOOP.map((src, i) => (
+          <a key={i} href="#" onClick={(e) => e.preventDefault()} aria-label={`Promotion ${(i % N) + 1}`}
+            aria-hidden={i < N || i >= 2 * N ? true : undefined} tabIndex={i < N || i >= 2 * N ? -1 : undefined}
+            style={{
+              flex: "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: "1080 / 400", borderRadius: 14,
+              overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
+            }}>
+            <img src={src} alt="" loading={i === N || i === N + 1 ? "eager" : "lazy"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </a>
         ))}
       </div>
       <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 10 }}>
         {SLIDES.map((_, i) => (
           <button key={i} aria-label={`Go to promotion ${i + 1}`} aria-current={i === active ? "true" : undefined}
-            onClick={() => { pausedUntil.current = Date.now() + 8000; setActive(i); go(i); }}
+            onClick={() => {
+              pausedUntil.current = Date.now() + 8000;
+              // Move to that slide within the copy currently in view.
+              const base = pos.current - (((pos.current % N) + N) % N);
+              go(base + i);
+            }}
             style={{ width: i === active ? 18 : 6, height: 6, padding: 0, border: "none", borderRadius: 3, background: i === active ? ACCENT : "var(--tc-track)", transition: "width 0.25s" }} />
         ))}
       </div>

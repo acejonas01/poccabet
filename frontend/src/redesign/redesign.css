@@ -107,7 +107,7 @@
 .tc-hscroll::-webkit-scrollbar { display: none; }
 
 /* Mobile pages leave room for the fixed bottom nav. */
-.tc-mobile-page { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+.tc-mobile-page { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 
 /* Desktop below 1200px: drop the left sidebar so the table and bet slip keep their widths. */
 @media (max-width: 1199px) {
