@@ -8,7 +8,7 @@ import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
 import { useTCData } from "./data";
 import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
-import { BottomNav, type HomeTab, MobileHeader, MobileHome, SectionsNav } from "./mobile";
+import { BottomNav, type HomeTab, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, Sheet, useIsDesktop } from "./shared";
 import "./themeC.css";
 
@@ -21,12 +21,28 @@ export function ThemeCApp() {
   const { isAuthenticated } = useAuth();
 
   const [tab, setTab] = useState<HomeTab>("upcoming");
+  const [dateId, setDateId] = useState("all");
   const [market, setMarket] = useState("1x2");
   const [sheet, setSheet] = useState<"markets" | "slip" | "account" | null>(null);
   const [search, setSearch] = useState("");
   const [league, setLeague] = useState<string | null>(null);
 
-  const goHome = () => { setTab("upcoming"); navigate("/"); window.scrollTo(0, 0); };
+  const goHome = () => { setTab("upcoming"); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
+  const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
+  // Quick nav: Sports = back to the default Home (all upcoming) at the top,
+  // Live = Live tab, Today = Upcoming filtered to today.
+  const onSection = (key: SectionKey) => {
+    if (key === "sports") {
+      setTab("upcoming");
+      setDateId("all");
+      return window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    if (key === "live") return goLive();
+    setTab("upcoming");
+    setDateId(key === "today" ? new Date().toDateString() : "all");
+    scrollToList();
+  };
+  const activeSection: SectionKey = tab === "live" ? "live" : dateId === new Date().toDateString() ? "today" : "sports";
   // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
   const goLive = () => {
     setTab("live");
@@ -40,7 +56,7 @@ export function ThemeCApp() {
   const home = desk ? (
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} league={league} />
   ) : (
-    <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab}
+    <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
       openSheet={() => setSheet("markets")} market={market} setMarket={setMarket} />
   );
 
@@ -61,7 +77,7 @@ export function ThemeCApp() {
   return (
     <div className="tc-root">
       {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} /> : <MobileHeader simulated={data.simulated} />}
-      {!desk && onRoot && <SectionsNav />}
+      {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}
 
       <Routes>
         <Route path="/" element={desk ? deskShell(home) : home} />

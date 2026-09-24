@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -6,8 +6,7 @@ import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, matchesDate,
 } from "./data";
 import {
-  AviatorIcon, CasinoIcon, ChevronDown, ChevronRight, GridIcon, HomeIcon, JackpotIcon, LiveIcon, MoonIcon,
-  ReceiptIcon, SportsIcon, StarIcon, TicketShape, TrackerIcon, UserIcon, VirtualsIcon,
+  ChevronDown, ChevronRight, GridIcon, HomeIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -22,8 +21,19 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
   const { isAuthenticated, balance, logout } = useAuth();
   const { cycleTheme } = useTheme();
   const navigate = useNavigate();
+  // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty("--tc-header-h", `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   return (
-    <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #2E3A41", position: "sticky", top: 0, zIndex: 30, background: "#222c32" }}>
+    <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #2E3A41", position: "sticky", top: 0, zIndex: 30, background: "#222c32" }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#F2F4F6" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 32, letterSpacing: -0.5, lineHeight: 1 }}>
           Pocca<span style={{ color: ACCENT }}>bet</span>
@@ -51,25 +61,45 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
 }
 
 // ---------- sections nav (Sports / Aviator / Virtuals / Jackpot / Casino) ----------
-const SECTIONS = [
-  { label: "Sports", Icon: SportsIcon },
-  { label: "Aviator", Icon: AviatorIcon },
-  { label: "Virtuals", Icon: VirtualsIcon },
-  { label: "Jackpot", Icon: JackpotIcon },
-  { label: "Casino", Icon: CasinoIcon },
+// Theme A's quick-nav items and icon artwork. Single-colour glyphs are recoloured to Theme C
+// through a CSS mask (yellow when active, grey otherwise); Casino and Specials keep their
+// original colours, as in Theme A.
+export type SectionKey = "sports" | "live" | "today";
+const SECTIONS: { key: string; label: string; icon: string; original: boolean }[] = [
+  { key: "sports", label: "Sports", icon: "/icons/soccer-ball.png", original: false },
+  { key: "live", label: "Live", icon: "/icons/live-3.png", original: false },
+  { key: "aviator", label: "Aviator", icon: "/icons/aviator.png", original: false },
+  { key: "virtuals", label: "Virtuals", icon: "/icons/visuals.png", original: false },
+  { key: "today", label: "Today", icon: "/icons/today.png", original: false },
+  { key: "jackpot", label: "Jackpot", icon: "/icons/jackpot.png", original: false },
+  { key: "casino", label: "Casino", icon: "/icons/casino.png", original: true },
+  { key: "specials", label: "Specials", icon: "/icons/Specials.png", original: true },
 ];
-export function SectionsNav() {
+
+function NavIcon({ src, original }: { src: string; original: boolean }) {
+  if (original) {
+    return <img src={src} alt="" width={26} height={26} style={{ width: 26, height: 26, objectFit: "contain" }} />;
+  }
   return (
-    <nav aria-label="Sections" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid #232A33" }}>
-      {SECTIONS.map(({ label, Icon }, i) => {
-        const on = i === 0;
+    <span aria-hidden="true" style={{
+      width: 26, height: 26, display: "block", background: "currentColor",
+      WebkitMask: `url(${src}) center / contain no-repeat`, mask: `url(${src}) center / contain no-repeat`,
+    }} />
+  );
+}
+export function SectionsNav({ active, onSelect }: { active: SectionKey; onSelect: (key: SectionKey) => void }) {
+  return (
+    <nav aria-label="Sections" className="tc-hscroll" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid #232A33", overflowX: "auto" }}>
+      {SECTIONS.map(({ key, label, icon, original }) => {
+        const on = key === active;
+        const action = key === "sports" || key === "live" || key === "today" ? (key as SectionKey) : null;
         return (
-          <button key={label} style={{
-            flexGrow: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 0 10px",
+          <button key={key} aria-current={on ? "page" : undefined} onClick={action ? () => onSelect(action) : undefined} style={{
+            flex: "0 0 auto", minWidth: 64, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 6px 10px",
             background: "transparent", border: "none", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`,
             color: on ? ACCENT : "#A9B2BD", fontSize: 12, fontWeight: on ? 700 : 600,
           }}>
-            <Icon />
+            <NavIcon src={icon} original={original} />
             {label}
           </button>
         );
@@ -134,7 +164,7 @@ function TopTabs({ current, liveCount, onLive, onUpcoming, onTop, right, liveTal
     color: on ? "#F2F4F6" : "#A9B2BD", fontSize: 15, fontWeight: on ? 800 : 700, whiteSpace: "nowrap", flexShrink: 0,
   });
   return (
-    <div className="tc-hscroll" style={{ marginTop: liveTall ? 0 : 20, padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, overflowX: "auto", borderBottom: `1px solid ${liveTall ? "#2E3A41" : "#232A33"}` }}>
+    <div className="tc-hscroll" style={{ padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, overflowX: "auto", borderBottom: `1px solid ${liveTall ? "#2E3A41" : "#232A33"}` }}>
       <div role="tablist" style={{ display: "flex", gap: 20, flexShrink: 0 }}>
         <button role="tab" aria-selected={current === "live"} onClick={onLive} style={{ ...tab(current === "live", "#E5484D"), display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: liveTall ? 8 : 7, height: liveTall ? 8 : 7, borderRadius: 4, background: "#E5484D", boxShadow: "0 0 0 3px rgba(229,72,77,0.25)" }} />
@@ -337,14 +367,23 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
 export type HomeTab = "upcoming" | "top" | "live";
 
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the list below.
-export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, openSheet, market, setMarket }: {
+export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, dateId, setDateId, openSheet, market, setMarket }: {
   upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; liveLoaded: boolean; tab: HomeTab; setTab: (t: HomeTab) => void;
-  openSheet: () => void; market: string; setMarket: (id: string) => void;
+  dateId: string; setDateId: (id: string) => void; openSheet: () => void; market: string; setMarket: (id: string) => void;
 }) {
   const navigate = useNavigate();
-  const [dateId, setDateId] = useState("all");
   const [limit, setLimit] = useState(12);
   const listRef = useRef<HTMLDivElement>(null);
+  // Publish the tabs-row height (--tc-tabs-h) so the market tabs can stick right under it.
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty("--tc-tabs-h", `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const dates = dateOptions();
 
   const ranked = useMemo(() => [...upcoming].sort((a, b) => leagueRank(a.league) - leagueRank(b.league) || a.start - b.start), [upcoming]);
@@ -388,7 +427,8 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, op
 
       <HotGamesStrip />
 
-      <div ref={listRef} id="tc-list" style={{ scrollMarginTop: 72 }}>
+      {/* Live / Upcoming / Top leagues row sticks right under the header while scrolling the list. */}
+      <div ref={listRef} id="tc-list" style={{ marginTop: 20, position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "#222c32", scrollMarginTop: "var(--tc-header-h, 69px)" }}>
         <TopTabs current={tab} liveCount={live.length} onLive={() => { setTab("live"); setLimit(12); }} onUpcoming={() => { setTab("upcoming"); setLimit(12); }} onTop={() => { setTab("top"); setLimit(12); }}
           right={!isLive &&
             <label style={{ position: "relative", flexShrink: 0, whiteSpace: "nowrap", height: 32, padding: "0 10px", borderRadius: 8, border: "1px solid #2E3640", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
@@ -402,7 +442,10 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, op
         />
       </div>
       {featuredMatch && <div style={{ paddingTop: 12 }}><FeaturedMatchCard f={featuredMatch} openSheet={openSheet} /></div>}
-      <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
+      {/* Market tabs stick right under the Live / Upcoming / Top leagues row. */}
+      <div style={{ position: "sticky", top: "calc(var(--tc-header-h, 69px) + var(--tc-tabs-h, 45px))", zIndex: 19, background: "#222c32", borderBottom: "1px solid #232A33" }}>
+        <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
+      </div>
 
       {leagues.map((lg) => (
         <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
