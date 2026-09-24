@@ -47,7 +47,7 @@ function WinTile({ w, now }: { w: Winner; now: number }) {
   );
 }
 
-export function WinnersStrip() {
+export function WinnersStrip({ desktop = false }: { desktop?: boolean }) {
   const [winners, setWinners] = useState<Winner[]>([]);
   const [now, setNow] = useState(Date.now());
 
@@ -62,9 +62,9 @@ export function WinnersStrip() {
   if (!winners.length) return null;
 
   return (
-    <section aria-label="Recent winners" style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2 style={{ margin: 0, padding: "0 16px", fontSize: 17, fontWeight: 800 }}>Recent Winners</h2>
-      <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: "0 16px" }}>
+    <section aria-label="Recent winners" style={{ marginTop: desktop ? 8 : 28, display: "flex", flexDirection: "column", gap: 12 }}>
+      <h2 style={{ margin: 0, padding: desktop ? 0 : "0 16px", fontSize: desktop ? 18 : 17, fontWeight: 800 }}>Recent Winners</h2>
+      <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: desktop ? 0 : "0 16px" }}>
         {/* Two copies side by side; the track slides by exactly one copy, then repeats. */}
         <div className="tc-marquee" style={{ ["--tc-marquee-dur" as string]: `${winners.length * 4}s` }}>
           <div style={{ display: "flex" }}>{winners.map((w) => <WinTile key={w.id} w={w} now={now} />)}</div>
@@ -84,31 +84,34 @@ const SOCIALS = [
   { label: "YouTube", d: "M23.5 6.5a3 3 0 0 0-2.12-2.13C19.5 3.86 12 3.86 12 3.86s-7.5 0-9.38.51A3 3 0 0 0 .5 6.5 31.3 31.3 0 0 0 0 12a31.3 31.3 0 0 0 .5 5.5 3 3 0 0 0 2.12 2.13c1.88.51 9.38.51 9.38.51s7.5 0 9.38-.51a3 3 0 0 0 2.12-2.13A31.3 31.3 0 0 0 24 12a31.3 31.3 0 0 0-.5-5.5ZM9.55 15.57V8.43L15.82 12l-6.27 3.57Z" },
 ];
 
-export function SiteFooter() {
+// Mobile: stacked. Desktop: full-width band under the page, links in a row.
+export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
   return (
-    <footer style={{ marginTop: 28, padding: "24px 16px 20px", background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)", display: "flex", flexDirection: "column", gap: 18 }}>
-      <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontStyle: "italic", fontWeight: 700, fontSize: 28, lineHeight: 1 }}>
-        Pocca<span style={{ color: ACCENT }}>bet</span>
-      </span>
-      <nav aria-label="Footer" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 16px" }}>
-        {LINKS.map((l) => (
-          <a key={l} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 14, fontWeight: 600, color: "var(--tc-muted)", textDecoration: "none" }}>{l}</a>
-        ))}
-      </nav>
-      <div style={{ display: "flex", gap: 10 }}>
-        {SOCIALS.map((s) => (
-          <a key={s.label} href="#" aria-label={s.label} onClick={(e) => e.preventDefault()} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--tc-muted)" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={s.d} /></svg>
-          </a>
-        ))}
+    <footer style={{ marginTop: desktop ? 8 : 28, background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)" }}>
+      <div style={{ maxWidth: desktop ? 1440 : undefined, margin: "0 auto", boxSizing: "border-box", padding: desktop ? "32px 24px 24px" : "24px 16px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontStyle: "italic", fontWeight: 700, fontSize: 28, lineHeight: 1 }}>
+          Pocca<span style={{ color: ACCENT }}>bet</span>
+        </span>
+        <nav aria-label="Footer" style={desktop ? { display: "flex", flexWrap: "wrap", gap: "10px 28px" } : { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 16px" }}>
+          {LINKS.map((l) => (
+            <a key={l} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 14, fontWeight: 600, color: "var(--tc-muted)", textDecoration: "none" }}>{l}</a>
+          ))}
+        </nav>
+        <div style={{ display: "flex", gap: 10 }}>
+          {SOCIALS.map((s) => (
+            <a key={s.label} href="#" aria-label={s.label} onClick={(e) => e.preventDefault()} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--tc-muted)" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={s.d} /></svg>
+            </a>
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700 }}>
+          <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
+          Play responsibly
+        </div>
+        <p style={{ margin: 0, paddingTop: 14, borderTop: "1px solid var(--tc-line)", fontSize: 12, lineHeight: 1.5, color: "var(--tc-label)" }}>
+          © {new Date().getFullYear()} Poccabet Technologies Ltd. is regulated by the National Lottery Regulatory Commission.
+        </p>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
-        Play responsibly
-      </div>
-      <p style={{ margin: 0, paddingTop: 14, borderTop: "1px solid var(--tc-line)", fontSize: 12, lineHeight: 1.5, color: "var(--tc-label)" }}>
-        © {new Date().getFullYear()} Poccabet Technologies Ltd. is regulated by the National Lottery Regulatory Commission.
-      </p>
     </footer>
   );
 }

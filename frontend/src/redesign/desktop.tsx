@@ -1,13 +1,15 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, matchesDate } from "./data";
+import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchesDate } from "./data";
 import {
-  AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
+  AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
-import { Crest, Flag, PromoSlider } from "./media";
-import { ChanceBar, FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
+import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
+import { WinnersStrip } from "./footer";
+import { SPORTS } from "./sports";
+import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { useTheme } from "../context/ThemeContext";
 import { ACCENT, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -25,7 +27,7 @@ const NAV = [
   { label: "Casino", Icon: CasinoIcon },
 ];
 
-export function DesktopHeader({ search, setSearch, simulated }: { search: string; setSearch: (v: string) => void; simulated: boolean }) {
+export function DesktopHeader({ search, setSearch, simulated, onSupport }: { search: string; setSearch: (v: string) => void; simulated: boolean; onSupport: () => void }) {
   const { isAuthenticated, balance, logout } = useAuth();
   const { theme } = useTheme();
   const themeBtn = useThemeButton();
@@ -52,6 +54,9 @@ export function DesktopHeader({ search, setSearch, simulated }: { search: string
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teams or leagues" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
       </label>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <button aria-label="Customer service" title="Customer service" onClick={onSupport} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <HeadsetIcon size={18} />
+        </button>
         <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MoonIcon />
           {/* Current theme letter */}
@@ -74,29 +79,39 @@ export function DesktopHeader({ search, setSearch, simulated }: { search: string
 }
 
 // ---------- sidebar ----------
-const SPORTS = ["Football", "Basketball", "Tennis", "Table tennis", "Ice hockey", "Volleyball"];
-export function Sidebar({ footballCount, league, setLeague }: { footballCount: number; league: string | null; setLeague: (l: string | null) => void }) {
+// Sports open their page (/sports/<sport>); leagues open their league page. The current
+// page is highlighted.
+export function Sidebar({ matches }: { matches: TCMatch[] }) {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const leagues = TOP_LEAGUES.map((name) => {
+    const inLeague = matches.filter((m) => m.league === name);
+    const country = inLeague[0]?.country ?? QUICK_LINKS.find((q) => q.name === name)?.country ?? "";
+    return { name, country, count: inLeague.length, href: `/league/${leagueSlug(country, name)}` };
+  }).filter((l) => l.count > 0);
+  const link = (href: string, on: boolean, children: ReactNode) => (
+    <a key={href} href={href} className="tc-side-link" aria-current={on ? "page" : undefined}
+      onClick={(e) => { e.preventDefault(); navigate(href); }}
+      style={on ? { background: "var(--tc-raise)", color: "var(--tc-text)" } : undefined}>{children}</a>
+  );
   return (
     <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 2, padding: 12 }}>
         <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>SPORTS</span>
-        {SPORTS.map((s, i) => (
-          <a key={s} href="/" className="tc-side-link" onClick={(e) => e.preventDefault()} style={i === 0 ? { background: "var(--tc-raise)", color: "var(--tc-text)" } : undefined}>
-            <span>{s}</span>
-            {i === 0 && <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{footballCount}</span>}
-          </a>
-        ))}
+        {SPORTS.map(({ slug, name, Icon, ready }) => link(`/sports/${slug}`, pathname.startsWith(`/sports/${slug}`), <>
+          <span style={{ display: "flex", alignItems: "center", gap: 10 }}><Icon size={18} />{name}</span>
+          {ready && <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{matches.length}</span>}
+        </>))}
       </div>
-      <div style={{ ...card, display: "flex", flexDirection: "column", gap: 2, padding: 12 }}>
-        <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>TOP LEAGUES</span>
-        {TOP_LEAGUES.map((l) => (
-          <a key={l} href="/" className="tc-side-link" aria-current={league === l ? "true" : undefined}
-            onClick={(e) => { e.preventDefault(); setLeague(league === l ? null : l); }}
-            style={league === l ? { background: "var(--tc-raise)", color: "var(--tc-text)" } : undefined}>
-            <span>{l}</span><ChevronRight size={14} color="#5E6A74" />
-          </a>
-        ))}
-      </div>
+      {leagues.length > 0 && (
+        <div style={{ ...card, display: "flex", flexDirection: "column", gap: 2, padding: 12 }}>
+          <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>TOP LEAGUES</span>
+          {leagues.map((l) => link(l.href, pathname === l.href, <>
+            <span style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}><Flag country={l.country} size={16} /><span style={ellipsis}>{l.name}</span></span>
+            <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{l.count}</span>
+          </>))}
+        </div>
+      )}
     </aside>
   );
 }
@@ -275,9 +290,8 @@ const matchSearch = (m: TCMatch, q: string) => !q || `${m.home} ${m.away} ${m.le
 // ---------- home ----------
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the table below.
 // The Live tab leads with the featured live match (score, stats, 1X2).
-export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
-  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void;
-  search: string; league: string | null;
+export function DesktopHome({ upcoming, live, tab, setTab, search }: {
+  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; search: string;
 }) {
   const navigate = useNavigate();
   const { isOn, pick } = usePicker();
@@ -297,7 +311,6 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
   const tabList = (isLive ? live : upcoming)
     .filter((m) => isLive || matchesDate(m, dateId))
     .filter((m) => isLive || tab === "upcoming" || TOP_LEAGUES.includes(m.league))
-    .filter((m) => !league || m.league === league)
     .filter((m) => matchSearch(m, search))
     .sort((a, b) => a.start - b.start);
   // Every tab leads with a featured match (one switch turns them all off).
@@ -351,6 +364,8 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
         </div>
       </section>
 
+      <HotGamesStrip desktop />
+
       <Tabs current={tab} liveCount={live.length}
         onLive={() => { setTab("live"); setLimit(15); }} onUpcoming={() => { setTab("upcoming"); setLimit(15); }} onTop={() => { setTab("top"); setLimit(15); }}
         right={isLive ? <Chip on>Football · {live.length}</Chip> : dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
@@ -358,6 +373,47 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
       {featuredMatch && <FeaturedMatchWide f={featuredMatch} onMoreMarkets={() => setPill("dc")} />}
 
       <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} />
+
+      <WinnersStrip desktop />
+    </main>
+  );
+}
+
+// ---------- list pages (league, sports cards, filters) ----------
+// Desktop layout for a page of matches: title row, then the live table and the upcoming table.
+export function DesktopListPage({ title, sub, country, liveList, upList, loaded, resetKey }: ListViewProps) {
+  const back = useBack();
+  const [pill, setPill] = useState("main");
+  const [limit, setLimit] = useState(20);
+  useEffect(() => { window.scrollTo(0, 0); setLimit(20); }, [resetKey]);
+  const ups = [...upList].sort((a, b) => a.start - b.start);
+  const total = liveList.length + ups.length;
+  return (
+    <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button aria-label="Back" onClick={back} style={{ width: 40, height: 40, flexShrink: 0, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <ChevronLeft size={18} />
+        </button>
+        {country && <Flag country={country} size={28} />}
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, ...ellipsis }}>{title}</h1>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--tc-label)" }}>{[sub, loaded ? `${total} match${total === 1 ? "" : "es"}` : ""].filter(Boolean).join(" · ")}</span>
+        </div>
+      </div>
+      {liveList.length > 0 && (
+        <>
+          <h2 style={{ margin: "4px 0 0", display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 800, color: "#E5484D" }}>
+            <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E5484D" }} />Live now
+          </h2>
+          <LeagueTable matches={liveList} pill={pill} setPill={setPill} live />
+        </>
+      )}
+      {(ups.length > 0 || liveList.length === 0) && (
+        <>
+          {liveList.length > 0 && <h2 style={{ margin: "4px 0 0", fontSize: 16, fontWeight: 800 }}>Upcoming</h2>}
+          <LeagueTable matches={ups} pill={pill} setPill={setPill} live={false} limit={limit} onMore={() => setLimit((l) => l + 20)} />
+        </>
+      )}
     </main>
   );
 }

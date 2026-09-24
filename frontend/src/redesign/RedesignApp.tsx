@@ -2,25 +2,19 @@
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
 import { useState, type ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
-import { type TCMatch, leagueSlug, useTCData } from "./data";
-import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
-import { BottomNav, type HomeTab, LeaguePage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
+import { type TCMatch, useTCData } from "./data";
+import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
+import { SiteFooter } from "./footer";
+import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
-import { SportListPage, SportPage } from "./sports";
+import { LeaguePage, SportListPage, SportPage } from "./sports";
 import "./redesign.css";
 
-
-// Desktop has no separate league page: /league/<slug> shows the home screen filtered to that league.
-function DeskLeague({ all, render }: { all: TCMatch[]; render: (league: string | null) => ReactNode }) {
-  const { slug = "" } = useParams();
-  const m = all.find((x) => leagueSlug(x.country, x.league) === slug);
-  return <>{render(m?.league ?? null)}</>;
-}
 
 export function RedesignApp() {
   const desk = useIsDesktop();
@@ -37,7 +31,6 @@ export function RedesignApp() {
   const [matchId, setMatchId] = useState<string | null>(null);
   const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
   const [search, setSearch] = useState("");
-  const [league, setLeague] = useState<string | null>(null);
 
   const goHome = () => { setTab("upcoming"); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
@@ -69,7 +62,7 @@ export function RedesignApp() {
   const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
   const home = desk ? (
-    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} league={league} />
+    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
       openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }}
@@ -80,38 +73,43 @@ export function RedesignApp() {
   const deskShell = (main: ReactNode) => (
     <div style={{ display: "flex", gap: 24, padding: 24, alignItems: "flex-start", maxWidth: 1440, margin: "0 auto", boxSizing: "border-box" }}>
       <div className="tc-sidebar-col" style={{ width: 220, flexShrink: 0 }}>
-        <Sidebar footballCount={data.upcoming.length + data.live.length} league={league} setLeague={setLeague} />
+        <Sidebar matches={[...data.live, ...data.upcoming]} />
       </div>
       {main}
       <Rail />
     </div>
   );
+  const listProps = {
+    upcoming: data.upcoming, live: data.live, loaded: data.upcomingLoaded, market, setMarket,
+    openSheet: () => setSheet("markets"), onOpenMatch: (m: TCMatch) => { setMatchId(m.id); setSheet("match"); },
+  };
   const page = (el: ReactNode) => (
     <div className={desk ? undefined : "tc-mobile-page"} style={{ maxWidth: 720, margin: "0 auto", padding: desk ? 24 : 16 }}>{el}</div>
   );
 
   return (
     <div className="tc-root">
-      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} /> : <MobileHeader simulated={data.simulated} />}
+      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} /> : <MobileHeader simulated={data.simulated} />}
       {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}
 
       <Routes>
         <Route path="/" element={desk ? deskShell(home) : home} />
+        {/* League and sports pages: the same data, in the mobile or the desktop layout. */}
         <Route path="/league/:slug" element={desk
-          ? <DeskLeague render={(name) => deskShell(<DesktopHome upcoming={data.upcoming} live={data.live} tab="upcoming" setTab={setTab} search={search} league={name} />)} all={[...data.live, ...data.upcoming]} />
-          : <LeaguePage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} market={market} setMarket={setMarket}
-              openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }} />} />
-        {/* Sports pages are mobile-only for now; desktop keeps its sidebar and goes home. */}
+          ? deskShell(<LeaguePage {...listProps} View={DesktopListPage} />)
+          : <LeaguePage {...listProps} View={MatchListPage} />} />
         <Route path="/sports" element={<Navigate to="/sports/football" replace />} />
-        <Route path="/sports/:sport" element={desk ? <Navigate to="/" replace /> : <SportPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} />} />
-        <Route path="/sports/:sport/:view" element={desk ? <Navigate to="/" replace /> : (
-          <SportListPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} market={market} setMarket={setMarket}
-            openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }} />
-        )} />
+        <Route path="/sports/:sport" element={desk
+          ? deskShell(<SportPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} desktop />)
+          : <SportPage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} />} />
+        <Route path="/sports/:sport/:view" element={desk
+          ? deskShell(<SportListPage {...listProps} View={DesktopListPage} />)
+          : <SportListPage {...listProps} View={MatchListPage} />} />
         <Route path="/login" element={page(<Auth mode="login" />)} />
         <Route path="/signup" element={page(<Auth mode="signup" />)} />
         <Route path="/my-bets" element={page(<MyBets />)} />
       </Routes>
+      {desk && <SiteFooter desktop />}
 
       {!desk && (
         <BottomNav

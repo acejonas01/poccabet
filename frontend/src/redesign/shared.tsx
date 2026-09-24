@@ -169,7 +169,7 @@ export function Sheet({ label, onClose, children }: { label: string; onClose: ()
       <div ref={panel} role="dialog" aria-label={label}
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}
         style={{
-          position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "80vh", zIndex: 61, display: "flex", flexDirection: "column",
+          position: "fixed", left: 0, right: 0, bottom: 0, width: "min(100%, 520px)", margin: "0 auto", maxHeight: "80vh", zIndex: 61, display: "flex", flexDirection: "column",
           background: "var(--tc-panel)", borderRadius: "18px 18px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.4)", overflowY: "auto",
           overscrollBehavior: "contain", paddingBottom: "env(safe-area-inset-bottom)",
           transform: `translateY(${offset})`, transition: dragging ? "none" : "transform 0.18s ease-out",

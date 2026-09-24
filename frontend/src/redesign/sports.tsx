@@ -1,6 +1,6 @@
 // Sports page (/sports/<sport>): sport tabs, shortcut cards, dates and leagues — plus the
 // match lists they open (/sports/football/today | live | all | soon | 2026-09-25).
-import { useEffect, useMemo, useState, type ReactElement } from "react";
+import { useEffect, useMemo, useState, type ComponentType, type ReactElement } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { type TCMatch, dayHeading, leagueRank, leagueSlug } from "./data";
 import {
@@ -8,7 +8,7 @@ import {
   IceHockeyIcon, SportsIcon, TableTennisIcon, TennisIcon, VirtualsIcon, VolleyballIcon,
 } from "./icons";
 import { Flag } from "./media";
-import { MatchListPage, PageHeader } from "./mobile";
+import { type ListViewProps, MatchListPage, PageHeader, QUICK_LINKS } from "./mobile";
 import { ACCENT } from "./shared";
 
 type Icon = (p: { size?: number }) => ReactElement;
@@ -82,7 +82,9 @@ function fromQuery(q: URLSearchParams): { when: When; leagues: string[] } {
   return { when, leagues };
 }
 
-export function SportPage({ upcoming, live, loaded }: Props) {
+// Desktop renders the same page in the middle column: sticky under the 72px header,
+// and the "Show matches" bar sticks to the bottom of the column (no bottom nav there).
+export function SportPage({ upcoming, live, loaded, desktop = false }: Props & { desktop?: boolean }) {
   const { sport = "football" } = useParams();
   const navigate = useNavigate();
   useEffect(() => { window.scrollTo(0, 0); }, [sport]);
@@ -100,8 +102,8 @@ export function SportPage({ upcoming, live, loaded }: Props) {
   const go = (path: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(path); };
 
   return (
-    <div className="tc-mobile-page">
-      <div style={{ position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "var(--tc-page)" }}>
+    <div className={desktop ? undefined : "tc-mobile-page"} style={desktop ? { flex: 1, minWidth: 0 } : undefined}>
+      <div style={{ position: "sticky", top: desktop ? 72 : "var(--tc-header-h, 69px)", zIndex: 20, background: "var(--tc-page)" }}>
         <PageHeader title="Sports" />
         {/* Sport tabs */}
         <nav aria-label="Sports" className="tc-hscroll" style={{ display: "flex", gap: 4, padding: "0 8px", overflowX: "auto", borderBottom: "1px solid var(--tc-divider)" }}>
@@ -131,7 +133,7 @@ export function SportPage({ upcoming, live, loaded }: Props) {
       ) : (
         <>
           {/* Shortcut cards */}
-          <div style={{ padding: "16px 16px 0", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+          <div style={{ padding: "16px 16px 0", display: "grid", gridTemplateColumns: `repeat(${desktop ? 4 : 2}, minmax(0, 1fr))`, gap: 8 }}>
             {cards.map((c) => (
               <a key={c.view} href={`/sports/football/${c.view}`} onClick={go(`/sports/football/${c.view}`)} style={card}>
                 {c.live && <span style={{ width: 7, height: 7, flexShrink: 0, borderRadius: 4, background: "#E5484D" }} />}
@@ -141,7 +143,7 @@ export function SportPage({ upcoming, live, loaded }: Props) {
             ))}
           </div>
 
-          <FootballFilter upcoming={upcoming} loaded={loaded} />
+          <FootballFilter upcoming={upcoming} loaded={loaded} desktop={desktop} />
         </>
       )}
     </div>
@@ -150,7 +152,7 @@ export function SportPage({ upcoming, live, loaded }: Props) {
 
 // Daily | Range time filter, then leagues (Top leagues / Top countries / A–Z) with checkboxes,
 // and a "Show N matches" bar that opens the filtered list. Counts follow the time filter.
-function FootballFilter({ upcoming, loaded }: { upcoming: TCMatch[]; loaded: boolean }) {
+function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; loaded: boolean; desktop: boolean }) {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"daily" | "range">("daily");
   const [rangeKind, setRangeKind] = useState<"time" | "date">("time");
@@ -320,9 +322,12 @@ function FootballFilter({ upcoming, loaded }: { upcoming: TCMatch[]; loaded: boo
         </div>
       </section>
 
-      {/* Room for the action bar, then the bar itself (sits just above the bottom nav). */}
-      <div style={{ height: 88 }} />
-      <div style={{
+      {/* Room for the action bar, then the bar itself (mobile: just above the bottom nav). */}
+      {!desktop && <div style={{ height: 88 }} />}
+      <div style={desktop ? {
+        position: "sticky", bottom: 16, zIndex: 25, margin: "16px 16px 0", padding: 10, borderRadius: 12,
+        background: "var(--tc-panel)", border: "1px solid var(--tc-line)", boxShadow: "0 8px 24px rgba(0,0,0,0.35)", display: "flex", gap: 10,
+      } : {
         position: "fixed", left: 0, right: 0, bottom: "calc(64px + env(safe-area-inset-bottom))", zIndex: 25,
         padding: "10px 16px 18px", background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)", display: "flex", gap: 10,
       }}>
@@ -336,10 +341,28 @@ function FootballFilter({ upcoming, loaded }: { upcoming: TCMatch[]; loaded: boo
   );
 }
 
-// /sports/football/<view>: the match list a card, date or filter opens.
-export function SportListPage({ upcoming, live, loaded, ...rest }: Props & {
+// Route pages below compute their matches, then hand them to a layout: the mobile
+// MatchListPage by default, or the desktop DesktopListPage.
+type RouteProps = Props & {
   market: string; setMarket: (id: string) => void; openSheet: () => void; onOpenMatch: (m: TCMatch) => void;
-}) {
+  View?: ComponentType<ListViewProps>;
+};
+
+// /league/<country-name>
+export function LeaguePage({ upcoming, live, loaded, View = MatchListPage, ...rest }: RouteProps) {
+  const { slug = "" } = useParams();
+  const inLeague = (m: TCMatch) => leagueSlug(m.country, m.league) === slug;
+  const liveList = live.filter(inLeague);
+  const upList = upcoming.filter(inLeague);
+  const sample = liveList[0] ?? upList[0];
+  const known = QUICK_LINKS.find((q) => leagueSlug(q.country, q.name) === slug);
+  const name = sample?.league ?? known?.name ?? "League";
+  const country = sample?.country ?? known?.country ?? "";
+  return <View title={name} sub={country} country={country} liveList={liveList} upList={upList} loaded={loaded} group="day" resetKey={slug} {...rest} />;
+}
+
+// /sports/football/<view>: the match list a card, date or filter opens.
+export function SportListPage({ upcoming, live, loaded, View = MatchListPage, ...rest }: RouteProps) {
   const { sport = "", view = "" } = useParams();
   const [query] = useSearchParams();
   if (sport !== "football") return <Navigate to={`/sports/${sport}`} replace />;
@@ -355,7 +378,7 @@ export function SportListPage({ upcoming, live, loaded, ...rest }: Props & {
     const { when, leagues } = fromQuery(query);
     upList = upcoming.filter((m) => passes(when, m) && (!leagues.length || leagues.includes(leagueSlug(m.country, m.league))));
     title = describe(when);
-    return <MatchListPage title={title} sub={leagues.length ? `Football · ${leagues.length} league${leagues.length === 1 ? "" : "s"}` : "Football"} liveList={[]} upList={upList} loaded={loaded}
+    return <View title={title} sub={leagues.length ? `Football · ${leagues.length} league${leagues.length === 1 ? "" : "s"}` : "Football"} liveList={[]} upList={upList} loaded={loaded}
       group="league" resetKey={query.toString()} {...rest} />;
   }
   else if (/^\d{4}-\d{2}-\d{2}$/.test(view)) {
@@ -364,5 +387,5 @@ export function SportListPage({ upcoming, live, loaded, ...rest }: Props & {
     upList = upcoming.filter((m) => ymd(m.start) === view);
   } else return <Navigate to="/sports/football" replace />;
 
-  return <MatchListPage title={title} sub="Football" liveList={liveList} upList={upList} loaded={loaded} group="league" resetKey={view} {...rest} />;
+  return <View title={title} sub="Football" liveList={liveList} upList={upList} loaded={loaded} group="league" resetKey={view} {...rest} />;
 }

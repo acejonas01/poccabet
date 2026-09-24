@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import {
@@ -500,7 +500,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
 // ---------- quick links + league pages ----------
 // Quick links open a league's own page (/league/<country-name>), so it can be shared and
 // the phone's back button returns home.
-const QUICK_LINKS = [
+export const QUICK_LINKS = [
   { country: "England", name: "Premier League" },
   { country: "Spain", name: "La Liga" },
   { country: "Italy", name: "Serie A" },
@@ -649,19 +649,8 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
   );
 }
 
-type ListPageProps = { upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; market: string; setMarket: (id: string) => void; openSheet: () => void; onOpenMatch: (m: TCMatch) => void };
-
-export function LeaguePage({ upcoming, live, loaded, ...rest }: ListPageProps) {
-  const { slug = "" } = useParams();
-  const inLeague = (m: TCMatch) => leagueSlug(m.country, m.league) === slug;
-  const liveList = live.filter(inLeague);
-  const upList = upcoming.filter(inLeague);
-  const sample = liveList[0] ?? upList[0];
-  const known = QUICK_LINKS.find((q) => leagueSlug(q.country, q.name) === slug);
-  const name = sample?.league ?? known?.name ?? "League";
-  const country = sample?.country ?? known?.country ?? "";
-  return <MatchListPage title={name} sub={country} country={country} liveList={liveList} upList={upList} loaded={loaded} group="day" resetKey={slug} {...rest} />;
-}
+// Props every match-list layout takes (mobile MatchListPage, desktop DesktopListPage).
+export type ListViewProps = Parameters<typeof MatchListPage>[0];
 
 export function StatBar({ label, h, a, big }: { label: string; h: number; a: number; big?: boolean }) {
   const pct = h + a ? Math.round((h / (h + a)) * 100) : 50;

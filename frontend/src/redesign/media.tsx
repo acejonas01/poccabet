@@ -120,18 +120,20 @@ export const GAMES = [
   { name: "Poccabet Spin", tag: "Exclusive", img: "/games/poccabet-spin.jpg" },
 ];
 
-export function HotGamesStrip() {
+export function HotGamesStrip({ desktop = false }: { desktop?: boolean }) {
   return (
-    <section aria-label="Hot games" style={{ marginTop: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 16px 10px" }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Hot games</h2>
+    <section aria-label="Hot games" style={{ marginTop: desktop ? 0 : 20 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: desktop ? "0 0 12px" : "0 16px 10px" }}>
+        <h2 style={{ margin: 0, fontSize: desktop ? 18 : 17, fontWeight: 800 }}>Hot games</h2>
         <a href="#" onClick={(e) => e.preventDefault()} style={{ display: "flex", alignItems: "center", gap: 2, fontSize: 13, fontWeight: 800, textDecoration: "none" }}>
           View all<ChevronRight />
         </a>
       </div>
-      <div className="tc-hscroll" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
+      <div className="tc-hscroll" style={desktop
+        ? { display: "grid", gridTemplateColumns: `repeat(${GAMES.length}, minmax(0, 1fr))`, gap: 12 }
+        : { display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
         {GAMES.map((g) => (
-          <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: "0 0 148px", scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
+          <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: desktop ? undefined : "0 0 148px", minWidth: 0, scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
             <span style={{ display: "block", aspectRatio: "300 / 190", borderRadius: 12, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
               <img src={g.img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             </span>
