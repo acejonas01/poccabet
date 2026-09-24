@@ -48,7 +48,7 @@ export const api = {
   getResults: () =>
     request<{ results: any[]; count: number; fetchedAt: string; stale: boolean; simulated?: boolean }>("/api/live/results"),
   getWinners: () =>
-    request<{ simulated: boolean; winners: { id: string; player: string; amount: number; product: string; at: string }[] }>("/api/live/winners"),
+    request<{ simulated: boolean; winners: { id: string; player: string; amount: number; stake?: number; product: string; detail?: string; at: string }[] }>("/api/live/winners"),
   recordPick: (pick: Record<string, unknown>) =>
     request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
   getTopPick: () => request<{ top: any | null; totalToday: number }>("/api/picks/top"),

@@ -351,6 +351,15 @@ export function simTopPick(now = Date.now()) {
 // ---------- simulated big winners (demo mode only; live mode shows real winning bets) ----------
 // A fresh winner lands every ~90 seconds; the list shows the latest 12. Same for everyone.
 const WIN_PRODUCTS = ["Sports", "Sports", "Sports", "Sports", "Aviator", "Virtuals", "Casino"];
+const WIN_STAKES = [100, 200, 500, 1000, 2000, 5000, 10000];
+const WIN_GAMES = ["Gigahot 40", "Mines", "Multi Hot 5", "Poccabet Spin"];
+function winDetail(product: string, mult: number, r: () => number) {
+  if (product === "Aviator") return `Cashed out at ${mult.toFixed(2)}x`;
+  if (product === "Casino") return WIN_GAMES[Math.floor(r() * WIN_GAMES.length)];
+  // Roughly 1.6 average odds per selection.
+  const legs = Math.min(25, Math.max(2, Math.round(Math.log(mult) / Math.log(1.6))));
+  return product === "Virtuals" ? `Virtual League · ${legs} selections` : `${legs}-fold accumulator`;
+}
 export function simWinners(now = Date.now()) {
   const SLOT = 90000;
   const latest = Math.floor(now / SLOT);
@@ -361,11 +370,17 @@ export function simWinners(now = Date.now()) {
     // Mostly five-figure wins, now and then a big one.
     const big = r() < 0.18;
     const amount = Math.round((big ? 150000 + r() * 850000 : 8000 + r() * 140000) * 100) / 100;
+    const product = WIN_PRODUCTS[Math.floor(r() * WIN_PRODUCTS.length)];
+    // Stake: a common amount that gives a believable multiplier (4x–1500x).
+    const stakes = WIN_STAKES.filter((st) => amount / st >= 4 && amount / st <= 1500);
+    const stake = stakes[Math.floor(r() * stakes.length)] ?? 1000;
     out.push({
       id: `w-${slot}`,
       player: `*********${Math.floor(r() * 10)}`,
       amount,
-      product: WIN_PRODUCTS[Math.floor(r() * WIN_PRODUCTS.length)],
+      stake,
+      product,
+      detail: winDetail(product, amount / stake, r),
       at: new Date(slot * SLOT + Math.floor(r() * (SLOT - 5000))),
     });
   }
