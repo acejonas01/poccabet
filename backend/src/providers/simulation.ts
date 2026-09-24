@@ -27,6 +27,23 @@ const LEAGUES: { id: number; name: string; country: string; teams: string[] }[] 
   { id: 399, name: "NPFL", country: "Nigeria", teams: ["Enyimba", "Rivers United", "Remo Stars", "Enugu Rangers", "Shooting Stars", "Kano Pillars", "Plateau United", "Kwara United", "Bendel Insurance", "Lobi Stars", "Abia Warriors", "Sunshine Stars"] },
 ];
 
+// API-Football team ids → crest images on its public media server (no API key or quota needed).
+// NPFL clubs aren't mapped, so they fall back to the 3-letter badge.
+const TEAM_IDS: Record<string, number> = {
+  "Manchester United": 33, Newcastle: 34, Bournemouth: 35, Fulham: 36, Wolves: 39, Liverpool: 40, Arsenal: 42,
+  Burnley: 44, Everton: 45, Tottenham: 47, "West Ham": 48, Chelsea: 49, "Manchester City": 50, Brighton: 51,
+  "Crystal Palace": 52, Brentford: 55, "Leeds United": 63, "Nottingham Forest": 65, "Aston Villa": 66, Sunderland: 746,
+  Barcelona: 529, "Atletico Madrid": 530, "Athletic Club": 531, Valencia: 532, Villarreal: 533, Sevilla: 536,
+  "Celta Vigo": 538, "Real Madrid": 541, Alaves: 542, "Real Betis": 543, Getafe: 546, Girona: 547,
+  "Real Sociedad": 548, Osasuna: 727, "Rayo Vallecano": 728, Mallorca: 798,
+  Lazio: 487, "AC Milan": 489, Napoli: 492, Udinese: 494, Genoa: 495, Juventus: 496, Roma: 497, Atalanta: 499,
+  Bologna: 500, Fiorentina: 502, Torino: 503, Inter: 505,
+  "Bayern Munich": 157, Freiburg: 160, Wolfsburg: 161, "Werder Bremen": 162, Mainz: 164, "Borussia Dortmund": 165,
+  Hoffenheim: 167, "Bayer Leverkusen": 168, "Eintracht Frankfurt": 169, Stuttgart: 172, "RB Leipzig": 173, "Union Berlin": 182,
+  Lille: 79, Lyon: 80, Marseille: 81, Nice: 84, "Paris Saint-Germain": 85, Monaco: 91, Rennes: 94, Lens: 116,
+};
+const crest = (team: string) => (TEAM_IDS[team] ? `https://media.api-sports.io/football/teams/${TEAM_IDS[team]}.png` : "");
+
 interface SimMatch {
   id: number;
   league: (typeof LEAGUES)[number];
@@ -36,6 +53,10 @@ interface SimMatch {
   lambdaHome: number;
   lambdaAway: number;
   goals: { minute: number; side: "home" | "away" }[];
+  redCard: { minute: number; side: "home" | "away" } | null;
+  possessionHome: number; // % over the match
+  shotRate: [number, number]; // shots per 90'
+  cornerRate: [number, number];
 }
 
 // ---------- seeded randomness ----------
@@ -107,7 +128,17 @@ function scheduleFor(day: string): SimMatch[] {
     for (let i = poissonSample(lambdaAway, rand); i > 0; i--) goals.push({ minute: 1 + Math.floor(rand() * 90), side: "away" });
     goals.sort((a, b) => a.minute - b.minute);
 
-    matches.push({ id: hash(`${day}-${slot}`) % 90000000 + 10000000, league, home, away, kickoff, lambdaHome, lambdaAway, goals });
+    // ~1 in 6 matches has a red card.
+    const redCard = rand() < 0.17 ? { minute: 10 + Math.floor(rand() * 78), side: (rand() < 0.5 ? "home" : "away") as "home" | "away" } : null;
+    const possessionHome = Math.round(Math.min(68, Math.max(32, 50 + (sh - sa) * 22 + (rand() - 0.5) * 10)));
+    const shotRate: [number, number] = [Math.round(6 + lambdaHome * 5 + rand() * 4), Math.round(5 + lambdaAway * 5 + rand() * 4)];
+    const cornerRate: [number, number] = [Math.round(3 + lambdaHome * 2 + rand() * 3), Math.round(2 + lambdaAway * 2 + rand() * 3)];
+
+    matches.push({
+      id: hash(`${day}-${slot}`) % 90000000 + 10000000,
+      league, home, away, kickoff, lambdaHome, lambdaAway, goals,
+      redCard, possessionHome, shotRate, cornerRate,
+    });
   }
 
   dayCache.set(day, matches);
@@ -209,8 +240,8 @@ export function simLive(now = Date.now()): LiveFixture[] {
         leagueLogo: "",
         homeTeam: m.home,
         awayTeam: m.away,
-        homeLogo: "",
-        awayLogo: "",
+        homeLogo: crest(m.home),
+        awayLogo: crest(m.away),
         homeGoals: score.home,
         awayGoals: score.away,
         status: c.status,
@@ -218,6 +249,12 @@ export function simLive(now = Date.now()): LiveFixture[] {
         startTime: new Date(m.kickoff),
         // Markets lock after a goal and in the last minutes.
         markets: justScored || minute >= 88 ? [] : markets(m, minute, score.home, score.away),
+        stats: {
+          possession: [m.possessionHome, 100 - m.possessionHome] as [number, number],
+          shots: [Math.round((m.shotRate[0] * minute) / 90), Math.round((m.shotRate[1] * minute) / 90)] as [number, number],
+          corners: [Math.round((m.cornerRate[0] * minute) / 90), Math.round((m.cornerRate[1] * minute) / 90)] as [number, number],
+        },
+        redCard: m.redCard && m.redCard.minute <= minute ? m.redCard.side : null,
       };
     })
     .sort((a, b) => (b.minute ?? 0) - (a.minute ?? 0));
@@ -232,8 +269,11 @@ export function simUpcoming(now = Date.now()): OddsEvent[] {
       externalId: `af-${m.id}`,
       sport: "football",
       league: m.league.name,
+      country: m.league.country,
       homeTeam: m.home,
       awayTeam: m.away,
+      homeLogo: crest(m.home),
+      awayLogo: crest(m.away),
       startTime: new Date(m.kickoff),
       markets: markets(m, 0, 0, 0),
     }));

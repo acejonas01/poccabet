@@ -48,6 +48,9 @@ export interface LiveFixture {
   minute: number | null;
   startTime: Date;
   markets: OddsMarket[];
+  // Only the simulation fills these for now (real stats need extra API calls).
+  stats?: { possession: [number, number]; shots: [number, number]; corners: [number, number] };
+  redCard?: "home" | "away" | null;
 }
 
 let usage = { day: "", calls: 0, remaining: Infinity };
@@ -213,8 +216,11 @@ async function fetchUpcoming(): Promise<{ upcoming: OddsEvent[]; finished: Finis
       externalId: `af-${f.fixture.id}`,
       sport: "football",
       league: f.league.name,
+      country: f.league.country,
       homeTeam: f.teams.home.name,
       awayTeam: f.teams.away.name,
+      homeLogo: f.teams.home.logo,
+      awayLogo: f.teams.away.logo,
       startTime: new Date(f.fixture.date),
       markets: picked.get(f.fixture.id) ?? [],
     }))

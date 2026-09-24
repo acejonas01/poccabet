@@ -1,16 +1,11 @@
-import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { THEMES, useTheme } from "../context/ThemeContext";
 
 export function Header({ onToggleSidebar: _onToggleSidebar }: { onToggleSidebar: () => void }) {
   const { isAuthenticated, user, balance, logout } = useAuth();
   const location = useLocation();
-  const [theme, setTheme] = useState(() => localStorage.getItem("theme") ?? "a");
-
-  useEffect(() => {
-    document.documentElement.setAttribute("data-theme", theme);
-    localStorage.setItem("theme", theme);
-  }, [theme]);
+  const { theme, cycleTheme } = useTheme();
 
   return (
     <>
@@ -39,17 +34,19 @@ export function Header({ onToggleSidebar: _onToggleSidebar }: { onToggleSidebar:
           </Link>
         </nav>
         <div className="header-auth">
-          <button
-            className="theme-toggle"
-            onClick={() => setTheme((t) => (t === "a" ? "b" : "a"))}
-            title="Switch colour theme"
-          >
-            <span className="theme-toggle-icon" aria-hidden="true">
-              {"◐"}
-            </span>
-            <span className="theme-toggle-word">Theme </span>
-            {theme.toUpperCase()}
-          </button>
+          {THEMES.length > 1 && (
+            <button
+              className="theme-toggle"
+              onClick={cycleTheme}
+              title="Switch colour theme"
+            >
+              <span className="theme-toggle-icon" aria-hidden="true">
+                {"◐"}
+              </span>
+              <span className="theme-toggle-word">Theme </span>
+              {theme.toUpperCase()}
+            </button>
+          )}
           {isAuthenticated ? (
             <>
               <span className="balance-pill">{"₦"}{balance.toFixed(2)}</span>

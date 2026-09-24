@@ -9,15 +9,20 @@ import { BetSlipPanel } from "./components/BetSlipPanel";
 import { OddsBoard } from "./pages/OddsBoard";
 import { Auth } from "./pages/Auth";
 import { MyBets } from "./pages/MyBets";
+import { useTheme } from "./context/ThemeContext";
+import { ThemeCApp } from "./themeC/ThemeCApp";
 import "./index.css";
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { theme } = useTheme();
 
   return (
     <AuthProvider>
       <BetSlipProvider>
         <FilterProvider>
+          {/* Theme C is a full redesign with its own layout */}
+          {theme === "c" ? <ThemeCApp /> : <>
           <Header onToggleSidebar={() => setSidebarOpen((v) => !v)} />
           <main className="app-layout">
             <LeftSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -85,6 +90,7 @@ function App() {
               </p>
             </div>
           </footer>
+          </>}
         </FilterProvider>
       </BetSlipProvider>
     </AuthProvider>

@@ -1,0 +1,64 @@
+/* Theme C — page-level styles from the "Poccabet Homepage Redesign" design (its <helmet> CSS). */
+.tc-root {
+  min-height: 100vh;
+  background: #222c32;
+  color: #F2F4F6;
+  font-family: 'Manrope', system-ui, sans-serif;
+}
+.tc-root a { color: #F5C518; }
+.tc-root a:hover { color: #FFD84D; }
+.tc-root button { font-family: inherit; cursor: pointer; }
+.tc-root button:disabled { cursor: not-allowed; }
+.tc-root input::placeholder { color: #8B95A1; }
+
+.tc-side-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 8px;
+  color: #D5DBE1 !important;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+}
+.tc-side-link:hover { background: #26323A; color: #F2F4F6 !important; }
+.tc-odd-btn:hover:not(:disabled) { filter: brightness(1.15); }
+
+/* Odds-movement arrow: flashes green (up) / red (down) in the corner of an odds button. */
+.tc-odds-trend {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  -webkit-mask: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAAhklEQVR4nNXTwQnCQBAF0BdNE+nFm50IQbClnAMpxU6sQuMhCCrZZHaJBz8s7OnNLsPnRxkwFp4Kdlu+pn67X4P4Ac0Ww0+4S3yzFHrgVop9QxefCwtjc5ASLAVlY0tQFrYGhbEIFMKi0CqWAy1iudAs9urm0dTLEWd0ASzZ5T16tAHkD/MErRdZVdGU7wEAAAAASUVORK5CYII=) center/contain no-repeat;
+  mask: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABMAAAATCAYAAAByUDbMAAAAhklEQVR4nNXTwQnCQBAF0BdNE+nFm50IQbClnAMpxU6sQuMhCCrZZHaJBz8s7OnNLsPnRxkwFp4Kdlu+pn67X4P4Ac0Ww0+4S3yzFHrgVop9QxefCwtjc5ASLAVlY0tQFrYGhbEIFMKi0CqWAy1iudAs9urm0dTLEWd0ASzZ5T16tAHkD/MErRdZVdGU7wEAAAAASUVORK5CYII=) center/contain no-repeat;
+}
+@keyframes odds-flash {
+  0%, 28%, 100% { opacity: 0; }
+  2%, 6% { opacity: 1; }
+  9% { opacity: 0; }
+  12%, 16% { opacity: 1; }
+  19% { opacity: 0; }
+  22%, 26% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-odds-trend { animation: none !important; }
+}
+
+.tc-hscroll { scrollbar-width: none; }
+.tc-hscroll::-webkit-scrollbar { display: none; }
+
+/* Mobile pages leave room for the fixed bottom nav. */
+.tc-mobile-page { padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+
+/* Desktop below 1200px: drop the left sidebar so the table and bet slip keep their widths. */
+@media (max-width: 1199px) {
+  .tc-sidebar-col { display: none; }
+}
+@media (max-width: 1199px) {
+  .tc-dheader { gap: 16px !important; }
+  .tc-dnav-label { display: none; }
+  .tc-dsearch { width: 180px !important; }
+}

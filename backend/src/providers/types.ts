@@ -2,8 +2,11 @@ export interface OddsEvent {
   externalId: string;
   sport: string;
   league: string;
+  country?: string;
   homeTeam: string;
   awayTeam: string;
+  homeLogo?: string;
+  awayLogo?: string;
   startTime: Date;
   markets: OddsMarket[];
 }
