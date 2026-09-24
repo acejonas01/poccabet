@@ -65,22 +65,52 @@ const pull = (m: TCMatch) =>
   (POPULAR_LEAGUES.includes(m.league) ? 1 : 0) *
   ((POPULAR_CLUBS.includes(m.home) ? 1 : 0) + (POPULAR_CLUBS.includes(m.away) ? 1 : 0));
 
+// Last top pick saved on the device (same UTC day) so the card shows the real line instantly.
+const TOP_KEY = "pocca-c-top-pick";
+function readTop() {
+  try {
+    const { day, top } = JSON.parse(localStorage.getItem(TOP_KEY) ?? "null") ?? {};
+    return day === new Date().toISOString().slice(0, 10) ? top ?? null : null;
+  } catch {
+    return null;
+  }
+}
+function saveTop(top: any) {
+  try {
+    localStorage.setItem(TOP_KEY, JSON.stringify({ day: new Date().toISOString().slice(0, 10), top }));
+  } catch {
+    // ignore
+  }
+}
+
 export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined): PickOfDay | null {
-  const [top, setTop] = useState<any | null>(null);
+  const [top, setTop] = useState<any | null>(readTop);
+  // Until the server answers (and nothing is cached) show a placeholder, not the backup line.
+  const [settled, setSettled] = useState(() => readTop() !== null);
 
   useEffect(() => {
-    const load = () => api.getTopPick().then((r) => setTop(r.top)).catch(() => {});
+    const load = () =>
+      api
+        .getTopPick()
+        .then((r) => {
+          setTop(r.top);
+          saveTop(r.top);
+        })
+        .catch(() => {})
+        .finally(() => setSettled(true));
     load();
     const id = setInterval(load, 2 * 60000);
     return () => clearInterval(id);
   }, []);
+
+  if (!settled) return null;
 
   if (top) {
     const m = upcoming.find((x) => x.id === top.matchId);
     if (m) {
       const n: number = top.count;
       const p = build(m, top.market, top.selection,
-        `${n.toLocaleString("en-US")} ${n === 1 ? "bettor is" : "bettors are"} on ${crowdTarget(top.market, top.selection, m)}. Do you think they're right or wrong?`);
+        `${n.toLocaleString("en-US")} ${n === 1 ? "player is" : "players are"} on ${crowdTarget(top.market, top.selection, m)}. Do you think they're right or wrong?`);
       if (p) return p;
     }
   }

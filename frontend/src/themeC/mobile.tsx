@@ -367,7 +367,9 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
         </a>
       </div>
       <div className="tc-hscroll" style={{ display: "flex", alignItems: "stretch", gap: 12, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
-        {potd && <PickOfDayCard p={potd} />}
+        {potd ? <PickOfDayCard p={potd} /> : upcoming.length > 0 && (
+          <div aria-hidden="true" style={{ width: 300, flexShrink: 0, borderRadius: 14, background: "#1C2229", border: `1px solid ${ACCENT}`, opacity: 0.5 }} />
+        )}
         {featured.map((m) => <FeaturedCard key={m.id} m={m} />)}
         {!potd && !loaded && [0, 1].map((i) => <div key={i} style={{ width: 300, height: 250, flexShrink: 0, borderRadius: 14, background: "#1C2229", border: "1px solid #2A323C" }} />)}
       </div>

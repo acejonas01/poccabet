@@ -318,8 +318,9 @@ export function simTopPick(now = Date.now()) {
   // Counts build through the day.
   const dayStart = Date.parse(`${isoDay(now)}T00:00:00Z`);
   const elapsed = Math.min(1, (now - dayStart) / 86400000);
-  const base = 60 * pull + Math.floor(rand() * 900);
-  const count = Math.max(12, Math.round(base * (0.25 + 0.75 * elapsed)));
+  // Thousands of picks: ~1,000+ first thing in the morning, building to ~6,000–13,000 by night.
+  const base = 450 * pull + Math.floor(rand() * 3000);
+  const count = Math.max(1000 + Math.floor(rand() * 500), Math.round(base * (0.25 + 0.75 * elapsed)));
   const share = 0.48 + rand() * 0.24;
 
   return {
