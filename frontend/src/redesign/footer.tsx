@@ -1,10 +1,10 @@
-// Grand Prize Winners + site footer for the redesign (Themes A, B and C).
+// Recent Winners + site footer for the redesign (Themes A, B and C).
 import { useEffect, useState, type ReactElement } from "react";
 import { api } from "../api/client";
 import { ACCENT } from "./shared";
 import { AviatorIcon, CasinoIcon, ChevronRight, JackpotIcon, SportsIcon, VirtualsIcon } from "./icons";
 
-// ---------- Grand Prize Winners ----------
+// ---------- Recent Winners ----------
 // Demo mode shows simulated wins; live mode shows real winning bets only, and the whole
 // section hides itself when there are none (never padded with made-up winners).
 // Layout: the biggest recent win as a hero card (stake → multiplier → payout), then the
@@ -97,8 +97,8 @@ export function WinnersStrip() {
   const rest = winners.filter((w) => w !== top);
 
   return (
-    <section aria-label="Grand prize winners" style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
-      <h2 style={{ margin: 0, padding: "0 16px", fontSize: 17, fontWeight: 800 }}>Grand Prize Winners</h2>
+    <section aria-label="Recent winners" style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
+      <h2 style={{ margin: 0, padding: "0 16px", fontSize: 17, fontWeight: 800 }}>Recent Winners</h2>
       <BiggestWin w={top} now={now} />
       {rest.length > 0 && (
         <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: "0 16px" }}>
