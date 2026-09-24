@@ -13,7 +13,6 @@ interface Winner { id: string; player: string; amount: number; stake?: number; p
 
 const WIN_GREEN = "#5BD679";
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-const nairaShort = (v: number) => v >= 1e6 ? `₦${(v / 1e6).toFixed(2)}M` : `₦${Math.round(v / 1000)}K`;
 const multLabel = (m: number) => `${m >= 100 ? Math.round(m) : m.toFixed(1)}x`;
 const maskPlayer = (p: string) => p.replace(/^\*+/, "•••• ");
 const PRODUCT_ICON: Record<string, (p: { size?: number }) => ReactElement> = { Sports: SportsIcon, Aviator: AviatorIcon, Virtuals: VirtualsIcon, Casino: CasinoIcon };
@@ -96,18 +95,10 @@ export function WinnersStrip() {
   if (!winners.length) return null;
   const top = winners.reduce((a, b) => (b.amount > a.amount ? b : a));
   const rest = winners.filter((w) => w !== top);
-  const total = winners.reduce((sum, w) => sum + w.amount, 0);
-  const span = Math.max(1, Math.ceil((now - Math.min(...winners.map((w) => new Date(w.at).getTime()))) / 60000));
 
   return (
     <section aria-label="Grand prize winners" style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 4 }}>
-        <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Grand Prize Winners</h2>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "var(--tc-muted)" }}>
-          <span aria-hidden="true" className="tc-win-dot" />
-          <span><b style={{ color: WIN_GREEN, fontWeight: 800 }}>{nairaShort(total)}</b> paid out in the last {span} min</span>
-        </span>
-      </div>
+      <h2 style={{ margin: 0, padding: "0 16px", fontSize: 17, fontWeight: 800 }}>Grand Prize Winners</h2>
       <BiggestWin w={top} now={now} />
       {rest.length > 0 && (
         <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: "0 16px" }}>

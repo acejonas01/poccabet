@@ -153,15 +153,12 @@
   .tc-dsearch { width: 180px !important; }
 }
 
-/* Grand Prize Winners: slow ticker of recent wins (pauses on hover/touch) and a pulsing dot. */
+/* Grand Prize Winners: slow ticker of recent wins (pauses on hover/touch). */
 @keyframes tc-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .tc-marquee { display: flex; width: max-content; animation: tc-marquee var(--tc-marquee-dur, 40s) linear infinite; }
 .tc-marquee-wrap:hover .tc-marquee, .tc-marquee-wrap:active .tc-marquee { animation-play-state: paused; }
-@keyframes tc-win-pulse { 0% { box-shadow: 0 0 0 0 rgba(91, 214, 121, 0.55); } 70%, 100% { box-shadow: 0 0 0 7px rgba(91, 214, 121, 0); } }
-.tc-win-dot { width: 8px; height: 8px; border-radius: 4px; background: #5BD679; flex-shrink: 0; animation: tc-win-pulse 1.8s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .tc-marquee { animation: none; }
   .tc-marquee-dup { display: none !important; }
   .tc-marquee-wrap { overflow-x: auto !important; scrollbar-width: none; }
-  .tc-win-dot { animation: none; }
 }
