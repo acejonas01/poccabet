@@ -123,6 +123,8 @@ export function OddsBoard() {
   const [upcomingLoaded, setUpcomingLoaded] = useState(false);
   const [resultEvents, setResultEvents] = useState<any[]>(() => readFeed("results"));
   const [resultsLoaded, setResultsLoaded] = useState(false);
+  // Backend is serving generated games (FEED_MODE=simulation) — flag it in the UI.
+  const [simulated, setSimulated] = useState(false);
   const showLiveBoard = catTab === "live" || catTab === "upcoming";
   // HIGHLIGHTS reuses the board for today's finished games (scores only, no odds).
   const showBoard = showLiveBoard || catTab === "highlights";
@@ -272,7 +274,10 @@ export function OddsBoard() {
     const load = () =>
       api
         .getLiveFixtures()
-        .then((res) => setLiveEvents(saveFeed("live", res.fixtures.map(normalizeLiveFixture))))
+        .then((res) => {
+          setSimulated(!!res.simulated);
+          setLiveEvents(saveFeed("live", res.fixtures.map(normalizeLiveFixture)));
+        })
         .catch(() => {})
         .finally(() => setLiveLoaded(true));
     load();
@@ -596,6 +601,7 @@ export function OddsBoard() {
                     <tr>
                       <th className="th-event">
                         <img src="/icons/stream.png" alt="" className="live-icon" /> {{ live: "Live Football", upcoming: "Upcoming Football", highlights: "Today's Results" }[catTab]}
+                        {simulated && <span className="demo-pill">DEMO</span>}
                       </th>
                       {showOdds && ALL_COLUMNS.map((col) => (
                         <th key={col.key}>{col.label}</th>
@@ -631,7 +637,7 @@ export function OddsBoard() {
                                     return (
                                       <tr key={event.id}>
                                         <td className="td-event">
-                                          <div className="event-info">
+                                          <div className={`event-info ${event.status === "LIVE" || event.status === "FINISHED" ? "has-score" : ""}`}>
                                             <img src="/icons/stats.png" alt="" className="event-chart-icon" />
                                             <strong className="event-code">{code}</strong>
                                             {event.status === "LIVE" ? (
@@ -673,7 +679,16 @@ export function OddsBoard() {
                                               className={`td-odds ${col.gold ? "gold" : ""} ${sel ? "selected" : ""} ${!outcome ? "empty" : ""} ${move ? `move-${move}` : ""}`}
                                               onClick={() => outcome && handleOddsClick(outcome, col.type === "ou" ? "ou" : "mw", event)}
                                             >
-                                              <span>{outcome ? outcome.odds.toFixed(2) : "-"}</span>
+                                              {outcome ? (
+                                                <span>{outcome.odds.toFixed(2)}</span>
+                                              ) : event.status === "LIVE" ? (
+                                                // Live market closed/suspended — show a lock instead of a dash
+                                                <span className="odds-locked" aria-label="Market locked">
+                                                  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a5 5 0 0 0-5 5v3H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1V7a5 5 0 0 0-5-5Zm-3 8V7a3 3 0 1 1 6 0v3H9Z" /></svg>
+                                                </span>
+                                              ) : (
+                                                <span>-</span>
+                                              )}
                                             </td>
                                           );
                                         })}

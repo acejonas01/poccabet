@@ -893,7 +893,19 @@ button { font-family: inherit; cursor: pointer; }
   100% { background-position: -100% 0; }
 }
 
-.event-date-badge.is-live .badge-date { background: var(--live); }
+.event-date-badge.is-live .badge-date { background: #e31d2c; }
+.demo-pill {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: var(--badge-date-bg);
+  color: #111b21;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+.odds-locked svg { width: 13px; height: 13px; color: var(--text-faint); vertical-align: middle; }
 .event-date-badge.is-ft .badge-date { background: var(--text-faint); }
 .event-score {
   display: flex;
@@ -1908,6 +1920,9 @@ button { font-family: inherit; cursor: pointer; }
   .event-chart-icon { width: 14px; height: 14px; }
   .event-date-badge { width: 48px; font-size: 9px; }
   .team-row { font-size: 0.76rem; }
+  /* rows with a score (LIVE / results): smaller names so long names fit beside the score */
+  .event-info.has-score .team-row { font-size: 0.7rem; }
+  .event-info.has-score .event-score { padding-right: 0.15rem; font-size: 0.78rem; }
 
   .pagination { padding: 0.75rem 0; }
 

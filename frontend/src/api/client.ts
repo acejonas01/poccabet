@@ -42,11 +42,11 @@ export const api = {
       `/api/odds/live${sport ? `?sport=${sport}` : ""}`
     ),
   getLiveFixtures: () =>
-    request<{ fixtures: any[]; count: number; fetchedAt: string; stale: boolean }>("/api/live"),
+    request<{ fixtures: any[]; count: number; fetchedAt: string; stale: boolean; simulated?: boolean }>("/api/live"),
   getUpcomingFixtures: () =>
-    request<{ events: any[]; count: number; fetchedAt: string; stale: boolean }>("/api/live/upcoming"),
+    request<{ events: any[]; count: number; simulated?: boolean }>("/api/live/upcoming"),
   getResults: () =>
-    request<{ results: any[]; count: number; fetchedAt: string; stale: boolean }>("/api/live/results"),
+    request<{ results: any[]; count: number; fetchedAt: string; stale: boolean; simulated?: boolean }>("/api/live/results"),
   syncOdds: (sport?: string) =>
     request<{ synced: number; total: number }>(
       `/api/odds/sync${sport ? `?sport=${sport}` : ""}`,
