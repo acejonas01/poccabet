@@ -1960,15 +1960,15 @@ button { font-family: inherit; cursor: pointer; }
    Barlow Condensed odds, big rounded odds buttons, underline tabs.
    =================================================================== */
 :root:is([data-theme="a"], [data-theme="b"]) {
-  --primary: #222c32;
+  --primary: #111B21;
   --primary-dark: #1C2229;
   --primary-light: #2E3640;
   --accent: #F5C518;
   --accent-dark: #FFD84D;
   --accent-light: #F5C518;
   --accent-underline: #F5C518;
-  --bg: #222c32;
-  --surface: #222c32;
+  --bg: #111B21;
+  --surface: #111B21;
   --surface-2: #1C2229;
   --border: #232A33;
   --border-light: #2A323C;
@@ -1985,7 +1985,7 @@ button { font-family: inherit; cursor: pointer; }
   --odds-cell-bg: #262D36;
   --odds-cell-hover: #2F3844;
   --odds-gold: #F2F4F6;
-  --table-row-bg: #222c32;
+  --table-row-bg: #111B21;
   --table-head-bg: #171C22;
   --table-line: #20262E;
   --market-group-line: #232A33;
