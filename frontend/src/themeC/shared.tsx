@@ -22,15 +22,42 @@ export function useIsDesktop() {
   return desk;
 }
 
+// Anonymous device id for counting picks (one vote per device per match per day).
+function deviceId() {
+  try {
+    let id = localStorage.getItem("pocca-device-id");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("pocca-device-id", id);
+    }
+    return id;
+  } catch {
+    return "";
+  }
+}
+
+function recordPick(m: TCMatch, market: string, selection: string | null) {
+  const id = deviceId();
+  if (!id || m.live) return; // only pre-match picks feed Pick of the day
+  api.recordPick({
+    deviceId: id, matchId: m.id, market, selection, home: m.home, away: m.away, league: m.league,
+    country: m.country, homeLogo: m.homeLogo, awayLogo: m.awayLogo, kickoff: new Date(m.start).toISOString(),
+  }).catch(() => {});
+}
+
 // ---------- picks (one selection per match, as in the design) ----------
 export function usePicker() {
   const { selections, addSelection, removeSelection } = useBetSlip();
   const isOn = (id: string) => selections.some((s) => s.outcomeId === id);
   const pick = (m: TCMatch, marketId: string, marketLabel: string, col: string, odds: number) => {
     const id = `${m.id}|${marketId}|${col}`;
-    if (isOn(id)) return removeSelection(id);
+    if (isOn(id)) {
+      recordPick(m, marketId, null);
+      return removeSelection(id);
+    }
     selections.filter((s) => s.outcomeId.startsWith(`${m.id}|`)).forEach((s) => removeSelection(s.outcomeId));
     addSelection({ outcomeId: id, label: col, odds, marketName: marketLabel, eventLabel: `${m.home} vs ${m.away}` });
+    recordPick(m, marketId, col);
   };
   const total = selections.reduce((acc, s) => acc * s.odds, 1);
   return { isOn, pick, count: selections.length, total };

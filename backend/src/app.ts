@@ -6,6 +6,7 @@ import eventsRoutes from "./routes/events";
 import betsRoutes from "./routes/bets";
 import oddsRoutes from "./routes/odds";
 import liveRoutes from "./routes/live";
+import picksRoutes from "./routes/picks";
 
 const app = express();
 
@@ -24,5 +25,6 @@ app.use("/api/events", eventsRoutes);
 app.use("/api/bets", betsRoutes);
 app.use("/api/odds", oddsRoutes);
 app.use("/api/live", liveRoutes);
+app.use("/api/picks", picksRoutes);
 
 export default app;

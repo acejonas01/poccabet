@@ -12,6 +12,7 @@ import {
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, DemoTag, OddButton, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
+import { type PickOfDay, usePickOfTheDay } from "./potd";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -308,38 +309,27 @@ export function FeaturedCard({ m, width = 300 }: { m: TCMatch; width?: number | 
   );
 }
 
-// Pick of the day: the favourite in the top-ranked upcoming match, to win & over 1.5 goals.
-export function pickOfTheDay(m: TCMatch) {
-  const homeFav = m.o[0] <= m.o[2];
-  const team = homeFav ? m.home : m.away;
-  const winOdds = homeFav ? m.o[0] : m.o[2];
-  const over15 = deriveOdds(m.o, m.ou).ou15[0];
-  const odds = over15 ? Math.round(winOdds * over15 * 0.92 * 100) / 100 : winOdds;
-  const pct = impliedPct(m.o)[homeFav ? 0 : 2];
-  return {
-    title: `${m.home} vs ${m.away}`,
-    sub: `${m.country ? `${m.country} · ` : ""}${m.league} · ${kickoff(m.start)}`,
-    label: over15 ? `${team} to win & over 1.5 goals` : `${team} to win`,
-    market: over15 ? "Win & over 1.5" : "Win",
-    note: `Bookmaker odds give ${team} a ${pct}% chance to win this one.`,
-    odds,
-  };
-}
-
-function PickOfDayCard({ m }: { m: TCMatch }) {
+function PickOfDayCard({ p }: { p: PickOfDay }) {
   const { isOn, pick } = usePicker();
-  const p = pickOfTheDay(m);
-  const id = `${m.id}|potd|${p.label}`;
+  const m = p.m;
+  const id = `${m.id}|${p.marketId}|${p.col}`;
   return (
     <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "#1C2229", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <div style={{ fontSize: 18, fontWeight: 800 }}>{p.title}</div>
+        {/* Title with small crests: [crest] Home vs [crest] Away */}
+        <div aria-label={p.title} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 6, rowGap: 2, fontSize: 18, fontWeight: 800 }}>
+          <Crest name={m.home} url={m.homeLogo} size={22} />
+          <span>{m.home}</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#5E6A74" }}>vs</span>
+          <Crest name={m.away} url={m.awayLogo} size={22} />
+          <span>{m.away}</span>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#A9B2BD" }}><Flag country={m.country} size={14} />{p.sub}</div>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "#222c32", borderRadius: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</div>
-        <OddButton variant="home" value={p.odds} on={isOn(id)} aria={p.label} onPick={() => pick(m, "potd", p.market, p.label, p.odds)} style={{ minWidth: 64, height: 44, fontSize: 20 }} />
+        <OddButton variant="home" value={p.odds} on={isOn(id)} aria={p.label} onPick={() => pick(m, p.marketId, p.marketLabel, p.col, p.odds)} style={{ minWidth: 64, height: 44, fontSize: 20 }} />
       </div>
       <div style={{ fontSize: 13, lineHeight: 1.5, color: "#A9B2BD" }}>{p.note}</div>
     </section>
@@ -358,8 +348,8 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
   const dates = dateOptions();
 
   const ranked = useMemo(() => [...upcoming].sort((a, b) => leagueRank(a.league) - leagueRank(b.league) || a.start - b.start), [upcoming]);
-  const potd = ranked[0];
-  const featured = ranked.slice(1, 5);
+  const potd = usePickOfTheDay(upcoming, ranked[0]);
+  const featured = ranked.filter((m) => m.id !== potd?.m.id).slice(0, 4);
 
   const list = upcoming
     .filter((m) => matchesDate(m, dateId))
@@ -377,7 +367,7 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
         </a>
       </div>
       <div className="tc-hscroll" style={{ display: "flex", alignItems: "stretch", gap: 12, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
-        {potd && <PickOfDayCard m={potd} />}
+        {potd && <PickOfDayCard p={potd} />}
         {featured.map((m) => <FeaturedCard key={m.id} m={m} />)}
         {!potd && !loaded && [0, 1].map((i) => <div key={i} style={{ width: 300, height: 250, flexShrink: 0, borderRadius: 14, background: "#1C2229", border: "1px solid #2A323C" }} />)}
       </div>

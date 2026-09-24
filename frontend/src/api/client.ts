@@ -47,6 +47,9 @@ export const api = {
     request<{ events: any[]; count: number; simulated?: boolean }>("/api/live/upcoming"),
   getResults: () =>
     request<{ results: any[]; count: number; fetchedAt: string; stale: boolean; simulated?: boolean }>("/api/live/results"),
+  recordPick: (pick: Record<string, unknown>) =>
+    request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
+  getTopPick: () => request<{ top: any | null; totalToday: number }>("/api/picks/top"),
   syncOdds: (sport?: string) =>
     request<{ synced: number; total: number }>(
       `/api/odds/sync${sport ? `?sport=${sport}` : ""}`,

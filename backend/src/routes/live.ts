@@ -2,11 +2,10 @@ import { Router } from "express";
 import { getUpcomingMerged } from "../providers/aggregate";
 import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
 import { simLive, simResults, simUpcoming } from "../providers/simulation";
+import { SIMULATE } from "../lib/feedMode";
 
 const router = Router();
 
-// FEED_MODE=simulation (default) serves generated games; FEED_MODE=live uses the real providers.
-const SIMULATE = (process.env.FEED_MODE || "simulation") !== "live";
 
 // GET /api/live — in-play football fixtures (cached server-side)
 router.get("/", async (_req, res) => {

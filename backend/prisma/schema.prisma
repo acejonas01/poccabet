@@ -100,3 +100,26 @@ model BetSelection {
   oddsAtPlacement Float
   result          String // PENDING | WON | LOST | VOID
 }
+
+// A bettor adding a selection to their bet slip — drives "Pick of the day" (most picked today).
+// One row per device + match + UTC day; changing the selection updates the row.
+model Pick {
+  id        String   @id @default(cuid())
+  day       String // UTC yyyy-mm-dd
+  deviceId  String
+  matchId   String
+  market    String // 1x2, ou, gg, dc, …
+  selection String // column label: "1", "X", "Over", "GG", …
+  home      String
+  away      String
+  league    String
+  country   String   @default("")
+  homeLogo  String   @default("")
+  awayLogo  String   @default("")
+  kickoff   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([day, deviceId, matchId])
+  @@index([day])
+}

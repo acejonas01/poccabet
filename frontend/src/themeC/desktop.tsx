@@ -7,7 +7,8 @@ import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
-import { FeaturedCard, StatBar, featuredLive, pickOfTheDay } from "./mobile";
+import { FeaturedCard, StatBar, featuredLive } from "./mobile";
+import { usePickOfTheDay } from "./potd";
 import { ACCENT, BetSlipBody, CheckBet, DemoTag, OddButton, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
@@ -278,8 +279,9 @@ export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, leagu
   const [limit, setLimit] = useState(15);
 
   const ranked = useMemo(() => [...upcoming].sort((a, b) => leagueRank(a.league) - leagueRank(b.league) || a.start - b.start), [upcoming]);
-  const potd = ranked[0];
-  const featured = ranked.slice(1, 10);
+  const p = usePickOfTheDay(upcoming, ranked[0]);
+  const potd = p?.m;
+  const featured = ranked.filter((m) => m.id !== potd?.id).slice(0, 9);
   const pages = Math.max(1, Math.ceil(featured.length / 3));
   const shown = featured.slice(page * 3, page * 3 + 3);
 
@@ -290,8 +292,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, leagu
     .filter((m) => matchSearch(m, search))
     .sort((a, b) => a.start - b.start);
 
-  const p = potd ? pickOfTheDay(potd) : null;
-  const potdId = potd && p ? `${potd.id}|potd|${p.label}` : "";
+  const potdId = potd && p ? `${potd.id}|${p.marketId}|${p.col}` : "";
   const navBtn = (disabled: boolean): CSSProperties => ({
     width: 32, height: 32, borderRadius: 16, border: "1px solid #3A474F", background: "transparent",
     color: disabled ? "#5E6A74" : "#F2F4F6", display: "flex", alignItems: "center", justifyContent: "center",
@@ -312,7 +313,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, leagu
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{p.label}</span>
                 <span style={{ fontSize: 13, color: "#A9B2BD" }}>{p.note}</span>
               </div>
-              <OddButton variant="desk" value={p.odds} on={isOn(potdId)} aria={p.label} onPick={() => pick(potd, "potd", p.market, p.label, p.odds)} style={{ flexShrink: 0, width: 72, height: 48, fontSize: 19 }} />
+              <OddButton variant="desk" value={p.odds} on={isOn(potdId)} aria={p.label} onPick={() => pick(potd, p.marketId, p.marketLabel, p.col, p.odds)} style={{ flexShrink: 0, width: 72, height: 48, fontSize: 19 }} />
             </div>
           </section>
         )}

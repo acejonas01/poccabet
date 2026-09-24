@@ -279,6 +279,65 @@ export function simUpcoming(now = Date.now()): OddsEvent[] {
     }));
 }
 
+// ---------- simulated "pick of the day" (stands in for real bettor picks) ----------
+// Big clubs draw the crowd; the busiest upcoming match among them gets today's top pick.
+const POPULAR_CLUBS: Record<string, number> = {
+  "Manchester City": 10, Arsenal: 10, Liverpool: 10, "Manchester United": 10, Chelsea: 9, "Real Madrid": 10,
+  Barcelona: 10, "Bayern Munich": 8, "Paris Saint-Germain": 8, Juventus: 7, Inter: 7, "AC Milan": 7, Tottenham: 6,
+  "Atletico Madrid": 6, "Borussia Dortmund": 6, Newcastle: 5, "Aston Villa": 4, Napoli: 5, "Bayer Leverkusen": 4,
+};
+const POPULAR_LEAGUES = ["Premier League", "La Liga", "Serie A", "Bundesliga", "Ligue 1"];
+
+export function simTopPick(now = Date.now()) {
+  const soon = now + 5 * 60000;
+  // Same window as simUpcoming, so the app always has this match's odds.
+  const pool = [...scheduleFor(isoDay(now)), ...scheduleFor(isoDay(now + 86400000))]
+    .filter((m) => m.kickoff > soon)
+    .slice(0, UPCOMING_SIZE)
+    .filter((m) => POPULAR_LEAGUES.includes(m.league.name))
+    .map((m) => ({ m, pull: (POPULAR_CLUBS[m.home] ?? 0) + (POPULAR_CLUBS[m.away] ?? 0) }))
+    .filter((x) => x.pull > 0)
+    .sort((a, b) => b.pull - a.pull || a.m.kickoff - b.m.kickoff);
+  if (!pool.length) return null;
+
+  const { m, pull } = pool[0];
+  const rand = rng(hash(`pocca-pick-${isoDay(now)}-${m.id}`));
+  const odds = markets(m, 0, 0, 0);
+  const [h, , a] = odds[0].outcomes.map((o) => o.odds);
+  const homeStar = (POPULAR_CLUBS[m.home] ?? 0) >= (POPULAR_CLUBS[m.away] ?? 0);
+  const starOdds = homeStar ? h : a;
+
+  // The crowd backs the big club to win unless it's a clear underdog; then it goes for goals.
+  let market = "1x2";
+  let selection = homeStar ? "1" : "2";
+  if (starOdds > 3.2) {
+    market = rand() < 0.5 ? "ou" : "gg";
+    selection = market === "ou" ? "Over" : "GG";
+  }
+
+  // Counts build through the day.
+  const dayStart = Date.parse(`${isoDay(now)}T00:00:00Z`);
+  const elapsed = Math.min(1, (now - dayStart) / 86400000);
+  const base = 60 * pull + Math.floor(rand() * 900);
+  const count = Math.max(12, Math.round(base * (0.25 + 0.75 * elapsed)));
+  const share = 0.48 + rand() * 0.24;
+
+  return {
+    matchId: `af-${m.id}`,
+    market,
+    selection,
+    count,
+    matchPicks: Math.round(count / share),
+    home: m.home,
+    away: m.away,
+    league: m.league.name,
+    country: m.league.country,
+    homeLogo: crest(m.home),
+    awayLogo: crest(m.away),
+    kickoff: new Date(m.kickoff),
+  };
+}
+
 export function simResults(now = Date.now()): FinishedFixture[] {
   const popular = LEAGUES.map((l) => l.id);
   return scheduleFor(isoDay(now))
