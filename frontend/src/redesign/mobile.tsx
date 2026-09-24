@@ -21,6 +21,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 export function MobileHeader({ simulated }: { simulated: boolean }) {
   const { isAuthenticated, balance, logout } = useAuth();
   const themeBtn = useThemeButton();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -42,8 +43,10 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
         {simulated && <DemoTag />}
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button aria-label="Switch theme" {...themeBtn} style={{ width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MoonIcon />
+          {/* Current theme letter */}
+          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
         </button>
         {isAuthenticated ? (
           <>
