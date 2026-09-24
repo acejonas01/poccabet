@@ -2,16 +2,23 @@
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
 import { useState, type ReactNode } from "react";
-import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
+import { Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
-import { useTCData } from "./data";
+import { type TCMatch, leagueSlug, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, Rail, Sidebar } from "./desktop";
-import { BottomNav, type HomeTab, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
+import { BottomNav, type HomeTab, LeaguePage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
 import "./redesign.css";
 
+
+// Desktop has no separate league page: /league/<slug> shows the home screen filtered to that league.
+function DeskLeague({ all, render }: { all: TCMatch[]; render: (league: string | null) => ReactNode }) {
+  const { slug = "" } = useParams();
+  const m = all.find((x) => leagueSlug(x.country, x.league) === slug);
+  return <>{render(m?.league ?? null)}</>;
+}
 
 export function RedesignApp() {
   const desk = useIsDesktop();
@@ -54,7 +61,8 @@ export function RedesignApp() {
   };
 
   const onRoot = location.pathname === "/";
-  const navActive = !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
+  const onLeague = location.pathname.startsWith("/league/");
+  const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
   const home = desk ? (
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} league={league} />
@@ -85,6 +93,10 @@ export function RedesignApp() {
 
       <Routes>
         <Route path="/" element={desk ? deskShell(home) : home} />
+        <Route path="/league/:slug" element={desk
+          ? <DeskLeague render={(name) => deskShell(<DesktopHome upcoming={data.upcoming} live={data.live} tab="upcoming" setTab={setTab} search={search} league={name} />)} all={[...data.live, ...data.upcoming]} />
+          : <LeaguePage upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} market={market} setMarket={setMarket}
+              openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }} />} />
         <Route path="/login" element={page(<Auth mode="login" />)} />
         <Route path="/signup" element={page(<Auth mode="signup" />)} />
         <Route path="/my-bets" element={page(<MyBets />)} />

@@ -2,19 +2,17 @@
 import { useEffect, useState, type ReactElement } from "react";
 import { api } from "../api/client";
 import { ACCENT } from "./shared";
-import { AviatorIcon, CasinoIcon, ChevronRight, JackpotIcon, SportsIcon, VirtualsIcon } from "./icons";
+import { AviatorIcon, CasinoIcon, JackpotIcon, SportsIcon, VirtualsIcon } from "./icons";
 
 // ---------- Recent Winners ----------
 // Demo mode shows simulated wins; live mode shows real winning bets only, and the whole
 // section hides itself when there are none (never padded with made-up winners).
-// Layout: the biggest recent win as a hero card (stake → multiplier → payout), then the
-// rest drifting past in a slow ticker that pauses under your finger.
+// Recent wins drift right to left in a slow ticker that pauses under your finger.
 interface Winner { id: string; player: string; amount: number; stake?: number; product: string; detail?: string; at: string }
 
 const WIN_GREEN = "#5BD679";
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const multLabel = (m: number) => `${m >= 100 ? Math.round(m) : m.toFixed(1)}x`;
-const maskPlayer = (p: string) => p.replace(/^\*+/, "•••• ");
 const PRODUCT_ICON: Record<string, (p: { size?: number }) => ReactElement> = { Sports: SportsIcon, Aviator: AviatorIcon, Virtuals: VirtualsIcon, Casino: CasinoIcon };
 const display = { fontFamily: "'Barlow Condensed', sans-serif", fontStyle: "italic", fontWeight: 700 } as const;
 
@@ -31,37 +29,6 @@ function ProductBadge({ product, size }: { product: string; size: number }) {
     <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: size / 2, background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Icon size={Math.round(size * 0.52)} />
     </span>
-  );
-}
-
-function BiggestWin({ w, now }: { w: Winner; now: number }) {
-  return (
-    <div style={{
-      margin: "0 16px", padding: 16, borderRadius: 14, border: "1px solid rgba(245, 197, 24, 0.3)",
-      background: "radial-gradient(120% 100% at 100% 0%, rgba(245, 197, 24, 0.14), transparent 60%), var(--tc-card)",
-      display: "flex", flexDirection: "column", gap: 10,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><JackpotIcon size={14} />BIGGEST WIN</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>{ago(w.at, now)}</span>
-      </div>
-      <span style={{ ...display, fontSize: 40, lineHeight: 1, color: WIN_GREEN, whiteSpace: "nowrap" }}>{naira(w.amount)}</span>
-      {w.stake ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "var(--tc-muted)" }}>
-          <span>{naira(w.stake).replace(".00", "")} stake</span>
-          <ChevronRight size={12} />
-          <span style={{ ...display, fontSize: 16, padding: "1px 8px", borderRadius: 6, background: ACCENT, color: "#13171C" }}>{multLabel(w.amount / w.stake)}</span>
-        </div>
-      ) : null}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, paddingTop: 10, borderTop: "1px solid var(--tc-card-line)" }}>
-        <ProductBadge product={w.product} size={32} />
-        <div style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
-          <span style={{ fontSize: 14, fontWeight: 700 }}>{w.product}</span>
-          {w.detail && <span style={{ fontSize: 12, color: "var(--tc-label)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{w.detail}</span>}
-        </div>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-soft)" }}>{maskPlayer(w.player)}</span>
-      </div>
-    </div>
   );
 }
 
@@ -93,22 +60,17 @@ export function WinnersStrip() {
   }, []);
 
   if (!winners.length) return null;
-  const top = winners.reduce((a, b) => (b.amount > a.amount ? b : a));
-  const rest = winners.filter((w) => w !== top);
 
   return (
     <section aria-label="Recent winners" style={{ marginTop: 28, display: "flex", flexDirection: "column", gap: 12 }}>
       <h2 style={{ margin: 0, padding: "0 16px", fontSize: 17, fontWeight: 800 }}>Recent Winners</h2>
-      <BiggestWin w={top} now={now} />
-      {rest.length > 0 && (
-        <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: "0 16px" }}>
-          {/* Two copies side by side; the track slides by exactly one copy, then repeats. */}
-          <div className="tc-marquee" style={{ ["--tc-marquee-dur" as string]: `${rest.length * 4}s` }}>
-            <div style={{ display: "flex" }}>{rest.map((w) => <WinTile key={w.id} w={w} now={now} />)}</div>
-            <div className="tc-marquee-dup" aria-hidden="true" style={{ display: "flex" }}>{rest.map((w) => <WinTile key={w.id} w={w} now={now} />)}</div>
-          </div>
+      <div className="tc-marquee-wrap" style={{ overflow: "hidden", padding: "0 16px" }}>
+        {/* Two copies side by side; the track slides by exactly one copy, then repeats. */}
+        <div className="tc-marquee" style={{ ["--tc-marquee-dur" as string]: `${winners.length * 4}s` }}>
+          <div style={{ display: "flex" }}>{winners.map((w) => <WinTile key={w.id} w={w} now={now} />)}</div>
+          <div className="tc-marquee-dup" aria-hidden="true" style={{ display: "flex" }}>{winners.map((w) => <WinTile key={w.id} w={w} now={now} />)}</div>
         </div>
-      )}
+      </div>
     </section>
   );
 }

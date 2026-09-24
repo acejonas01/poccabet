@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import {
-  type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, matchesDate,
+  type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
 } from "./data";
 import {
-  ChevronDown, ChevronRight, GridIcon, HomeIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
+  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HomeIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -234,12 +234,12 @@ function useOdds(m: TCMatch, market: string, variant: "home" | "live", flashBase
 }
 
 // ---------- rows ----------
-function UpcomingRow({ m, market, onMore }: { m: TCMatch; market: string; onMore: () => void }) {
+function UpcomingRow({ m, market, onMore, timeOnly }: { m: TCMatch; market: string; onMore: () => void; timeOnly?: boolean }) {
   const odds = useOdds(m, market, "home", 0);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{kickoff(m.start)}</span>
+        <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{timeOnly ? hhmm(m.start) : kickoff(m.start)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.away} url={m.awayLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.away}</span></span>
         <a href="#" onClick={(e) => { e.preventDefault(); onMore(); }} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>+{marketCount(m.o, m.ou)} markets</a>
@@ -445,6 +445,8 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
         <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT, whiteSpace: "nowrap" }}>Claim →</span>
       </a>
 
+      <QuickLinks upcoming={upcoming} live={live} />
+
       <HotGamesStrip />
 
       {/* Live / Upcoming / Top leagues row sticks right under the header while scrolling the list. */}
@@ -488,6 +490,138 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       )}
 
       <WinnersStrip />
+      <SiteFooter />
+    </div>
+  );
+}
+
+// ---------- quick links + league pages ----------
+// Quick links open a league's own page (/league/<country-name>), so it can be shared and
+// the phone's back button returns home.
+const QUICK_LINKS = [
+  { country: "England", name: "Premier League" },
+  { country: "Spain", name: "La Liga" },
+  { country: "Italy", name: "Serie A" },
+  { country: "Nigeria", name: "NPFL" },
+];
+
+function QuickLinks({ upcoming, live }: { upcoming: TCMatch[]; live: TCMatch[] }) {
+  const navigate = useNavigate();
+  const count = (list: TCMatch[], q: { country: string; name: string }) =>
+    list.filter((m) => m.country === q.country && m.league === q.name).length;
+  return (
+    <section aria-label="Quick links" style={{ padding: "22px 16px 0" }}>
+      <h2 style={{ margin: "0 0 10px", fontSize: 17, fontWeight: 800 }}>Quick links</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+        {QUICK_LINKS.map((q) => {
+          const href = `/league/${leagueSlug(q.country, q.name)}`;
+          const nLive = count(live, q);
+          const total = count(upcoming, q) + nLive;
+          return (
+            <a key={href} href={href} onClick={(e) => { e.preventDefault(); navigate(href); }} style={{
+              minHeight: 56, padding: "10px 12px", borderRadius: 12, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)",
+              display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: "var(--tc-text)",
+            }}>
+              <Flag country={q.country} size={20} />
+              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.25 }}>{q.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: nLive ? "#E5484D" : "var(--tc-label)" }}>
+                  {nLive ? `${nLive} live` : `${total} match${total === 1 ? "" : "es"}`}
+                </span>
+              </span>
+            </a>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// A section heading inside the league page: "LIVE NOW" / "Today" / "Saturday 26 Sep", with the market's column labels.
+function GroupHeader({ title, live, market }: { title: string; live?: boolean; market: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px", background: "var(--tc-league)" }}>
+      <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: live ? "#E5484D" : "var(--tc-text)" }}>
+        {live && <span style={{ width: 7, height: 7, borderRadius: 4, background: "#E5484D" }} />}{title}
+      </span>
+      <div style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{colLabels(market)}</div>
+    </div>
+  );
+}
+
+export function LeaguePage({ upcoming, live, loaded, market, setMarket, openSheet, onOpenMatch }: {
+  upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; market: string; setMarket: (id: string) => void;
+  openSheet: () => void; onOpenMatch: (m: TCMatch) => void;
+}) {
+  const { slug = "" } = useParams();
+  const navigate = useNavigate();
+  const [limit, setLimit] = useState(20);
+  useEffect(() => { window.scrollTo(0, 0); setLimit(20); }, [slug]);
+
+  const inLeague = (m: TCMatch) => leagueSlug(m.country, m.league) === slug;
+  const liveList = live.filter(inLeague);
+  const upList = upcoming.filter(inLeague).sort((a, b) => a.start - b.start);
+  const sample = liveList[0] ?? upList[0];
+  const known = QUICK_LINKS.find((q) => leagueSlug(q.country, q.name) === slug);
+  const name = sample?.league ?? known?.name ?? "League";
+  const country = sample?.country ?? known?.country ?? "";
+  const total = liveList.length + upList.length;
+
+  const days: { key: string; title: string; matches: TCMatch[] }[] = [];
+  for (const m of upList.slice(0, limit)) {
+    const key = new Date(m.start).toDateString();
+    const last = days[days.length - 1];
+    if (last?.key === key) last.matches.push(m);
+    else days.push({ key, title: dayHeading(m.start), matches: [m] });
+  }
+  // Back returns to where you came from; opened from a shared link, it goes home.
+  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+
+  return (
+    <div className="tc-mobile-page">
+      <div style={{ position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "var(--tc-page)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px 8px 4px", borderBottom: "1px solid var(--tc-divider)" }}>
+          <button aria-label="Back" onClick={back} style={{ width: 44, height: 44, flexShrink: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ChevronLeft size={20} />
+          </button>
+          <Flag country={country} size={24} />
+          <div style={{ minWidth: 0, display: "flex", flexDirection: "column" }}>
+            <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, ...ellipsis }}>{name}</h1>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>
+              {country}{loaded ? ` · ${total} match${total === 1 ? "" : "es"}` : ""}
+            </span>
+          </div>
+        </div>
+        <div style={{ borderBottom: "1px solid var(--tc-divider)" }}>
+          <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
+        </div>
+      </div>
+
+      {liveList.length > 0 && (
+        <section>
+          <GroupHeader title="Live now" live market={market} />
+          {liveList.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
+        </section>
+      )}
+      {days.map((d) => (
+        <section key={d.key}>
+          <GroupHeader title={d.title} market={market} />
+          {d.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} timeOnly />)}
+        </section>
+      ))}
+
+      {loaded && total === 0 && (
+        <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)", textAlign: "center" }}>No {name} matches right now. Check back soon.</p>
+          <button onClick={() => navigate("/")} style={{ height: 44, padding: "0 20px", borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Back to home</button>
+        </div>
+      )}
+      {upList.length > limit && (
+        <div style={{ padding: 16 }}>
+          <button onClick={() => setLimit((l) => l + 20)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
+        </div>
+      )}
+
       <SiteFooter />
     </div>
   );

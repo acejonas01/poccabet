@@ -235,3 +235,17 @@ export function dateOptions() {
   return opts;
 }
 export const matchesDate = (m: TCMatch, dateId: string) => dateId === "all" || new Date(m.start).toDateString() === dateId;
+
+// URL slug for a league page, e.g. "England", "Premier League" → "england-premier-league".
+// Country is included because different countries reuse names like "Premier League".
+export const leagueSlug = (country: string, name: string) =>
+  `${country} ${name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+// Day heading for grouped lists: "Today", "Tomorrow", "Saturday 26 Sep".
+export function dayHeading(t: number) {
+  const d = new Date(t);
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) return "Today";
+  if (d.toDateString() === new Date(today.getTime() + 86400000).toDateString()) return "Tomorrow";
+  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+}
