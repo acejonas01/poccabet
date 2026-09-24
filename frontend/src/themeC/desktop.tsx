@@ -7,7 +7,7 @@ import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
-import { FeaturedCard, StatBar, featuredLive } from "./mobile";
+import { FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
 import { usePickOfTheDay } from "./potd";
 import { ACCENT, BetSlipBody, CheckBet, DemoTag, OddButton, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
@@ -267,8 +267,10 @@ export function Rail() {
 const matchSearch = (m: TCMatch, q: string) => !q || `${m.home} ${m.away} ${m.league} ${m.country}`.toLowerCase().includes(q.toLowerCase());
 
 // ---------- home ----------
-export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, league }: {
-  upcoming: TCMatch[]; live: TCMatch[]; tab: "upcoming" | "top"; setTab: (t: "upcoming" | "top") => void; onLive: () => void;
+// Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the table below.
+// The full live screen opens from the "Live centre" link on the Live tab.
+export function DesktopHome({ upcoming, live, tab, setTab, onOpenLive, search, league }: {
+  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; onOpenLive: () => void;
   search: string; league: string | null;
 }) {
   const navigate = useNavigate();
@@ -285,9 +287,10 @@ export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, leagu
   const pages = Math.max(1, Math.ceil(featured.length / 3));
   const shown = featured.slice(page * 3, page * 3 + 3);
 
-  const list = upcoming
-    .filter((m) => matchesDate(m, dateId))
-    .filter((m) => tab === "upcoming" || TOP_LEAGUES.includes(m.league))
+  const isLive = tab === "live";
+  const list = (isLive ? live : upcoming)
+    .filter((m) => isLive || matchesDate(m, dateId))
+    .filter((m) => isLive || tab === "upcoming" || TOP_LEAGUES.includes(m.league))
     .filter((m) => !league || m.league === league)
     .filter((m) => matchSearch(m, search))
     .sort((a, b) => a.start - b.start);
@@ -338,10 +341,18 @@ export function DesktopHome({ upcoming, live, tab, setTab, onLive, search, leagu
         </div>
       </section>
 
-      <Tabs current={tab} liveCount={live.length} onLive={onLive} onUpcoming={() => setTab("upcoming")} onTop={() => setTab("top")}
-        right={dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
+      <Tabs current={tab} liveCount={live.length}
+        onLive={() => { setTab("live"); setLimit(15); }} onUpcoming={() => { setTab("upcoming"); setLimit(15); }} onTop={() => { setTab("top"); setLimit(15); }}
+        right={isLive ? (
+          <>
+            <Chip on>Football · {live.length}</Chip>
+            <button onClick={onOpenLive} style={{ height: 34, padding: "0 14px", borderRadius: 17, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 4 }}>
+              Live centre<ChevronRight />
+            </button>
+          </>
+        ) : dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
 
-      <LeagueTable matches={list} pill={pill} setPill={setPill} live={false} limit={limit} onMore={() => setLimit((l) => l + 15)} />
+      <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} />
     </main>
   );
 }

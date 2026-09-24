@@ -337,9 +337,12 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
 }
 
 // ---------- screens ----------
-export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSheet, market, setMarket }: {
-  upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; tab: "upcoming" | "top"; setTab: (t: "upcoming" | "top") => void;
-  onLive: () => void; openSheet: () => void; market: string; setMarket: (id: string) => void;
+export type HomeTab = "upcoming" | "top" | "live";
+
+// Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the list below.
+export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, openSheet, market, setMarket }: {
+  upcoming: TCMatch[]; live: TCMatch[]; loaded: boolean; liveLoaded: boolean; tab: HomeTab; setTab: (t: HomeTab) => void;
+  openSheet: () => void; market: string; setMarket: (id: string) => void;
 }) {
   const navigate = useNavigate();
   const [dateId, setDateId] = useState("all");
@@ -351,11 +354,15 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
   const potd = usePickOfTheDay(upcoming, ranked[0]);
   const featured = ranked.filter((m) => m.id !== potd?.m.id).slice(0, 4);
 
-  const list = upcoming
-    .filter((m) => matchesDate(m, dateId))
-    .filter((m) => tab === "upcoming" || TOP_LEAGUES.includes(m.league))
-    .sort((a, b) => a.start - b.start);
+  const isLive = tab === "live";
+  const list = isLive
+    ? live
+    : upcoming
+        .filter((m) => matchesDate(m, dateId))
+        .filter((m) => tab === "upcoming" || TOP_LEAGUES.includes(m.league))
+        .sort((a, b) => a.start - b.start);
   const leagues = groupByLeague(list.slice(0, limit));
+  let liveIndex = 0;
 
   return (
     <div className="tc-mobile-page">
@@ -382,8 +389,8 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
       <HotGamesStrip />
 
       <div ref={listRef} style={{ scrollMarginTop: 72 }}>
-        <TopTabs current={tab} liveCount={live.length} onLive={onLive} onUpcoming={() => setTab("upcoming")} onTop={() => setTab("top")}
-          right={
+        <TopTabs current={tab} liveCount={live.length} onLive={() => { setTab("live"); setLimit(12); }} onUpcoming={() => { setTab("upcoming"); setLimit(12); }} onTop={() => { setTab("top"); setLimit(12); }}
+          right={!isLive &&
             <label style={{ position: "relative", flexShrink: 0, whiteSpace: "nowrap", height: 32, padding: "0 10px", borderRadius: 8, border: "1px solid #2E3640", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
               {dates.find((d) => d.id === dateId)?.label}
               <ChevronDown />
@@ -398,12 +405,16 @@ export function MobileHome({ upcoming, live, loaded, tab, setTab, onLive, openSh
 
       {leagues.map((lg) => (
         <section key={lg.name} style={{ display: "flex", flexDirection: "column" }}>
-          <LeagueHeader country={lg.country} name={lg.name} market={market} />
-          {lg.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={openSheet} />)}
+          <LeagueHeader country={lg.country} name={lg.name} market={market} live={isLive} />
+          {lg.matches.map((m) => isLive
+            ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
+            : <UpcomingRow key={m.id} m={m} market={market} onMore={openSheet} />)}
         </section>
       ))}
-      {loaded && list.length === 0 && (
-        <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "#8B95A1", margin: 0 }}>No matches for this filter.</p>
+      {(isLive ? liveLoaded : loaded) && list.length === 0 && (
+        <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "#8B95A1", margin: 0 }}>
+          {isLive ? "No live games right now." : "No matches for this filter."}
+        </p>
       )}
 
       {list.length > limit && (

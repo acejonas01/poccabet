@@ -8,7 +8,7 @@ import { Auth } from "../pages/Auth";
 import { MyBets } from "../pages/MyBets";
 import { useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopLive, Rail, Sidebar } from "./desktop";
-import { BottomNav, MobileHeader, MobileHome, MobileLive, SectionsNav } from "./mobile";
+import { BottomNav, type HomeTab, MobileHeader, MobileHome, MobileLive, SectionsNav } from "./mobile";
 import { AccountSheet, BetSlipBody, MarketsSheet, Sheet, useIsDesktop } from "./shared";
 import "./themeC.css";
 
@@ -22,7 +22,7 @@ export function ThemeCApp() {
   const { isAuthenticated } = useAuth();
 
   const [view, setView] = useState<View>("home");
-  const [tab, setTab] = useState<"upcoming" | "top">("upcoming");
+  const [tab, setTab] = useState<HomeTab>("upcoming");
   const [market, setMarket] = useState("1x2");
   const [sheet, setSheet] = useState<"markets" | "slip" | "account" | null>(null);
   const [search, setSearch] = useState("");
@@ -35,9 +35,9 @@ export function ThemeCApp() {
   const navActive = !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : view;
 
   const home = desk ? (
-    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} onLive={goLive} search={search} league={league} />
+    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} onOpenLive={goLive} search={search} league={league} />
   ) : (
-    <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} tab={tab} setTab={setTab} onLive={goLive}
+    <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab}
       openSheet={() => setSheet("markets")} market={market} setMarket={setMarket} />
   );
   const live = desk ? (
