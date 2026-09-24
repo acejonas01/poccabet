@@ -9,6 +9,7 @@ import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "
 import { Crest, Flag } from "./media";
 import { ChanceBar, FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
+import { useTheme } from "../context/ThemeContext";
 import { ACCENT, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
@@ -26,10 +27,11 @@ const NAV = [
 
 export function DesktopHeader({ search, setSearch, simulated }: { search: string; setSearch: (v: string) => void; simulated: boolean }) {
   const { isAuthenticated, balance, logout } = useAuth();
+  const { theme } = useTheme();
   const themeBtn = useThemeButton();
   const navigate = useNavigate();
   return (
-    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-panel)", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
+    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-header, var(--tc-panel))", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, letterSpacing: -0.5, lineHeight: 1 }}>Pocca<span style={{ color: ACCENT }}>bet</span></span>
         {simulated && <DemoTag />}
@@ -50,7 +52,11 @@ export function DesktopHeader({ search, setSearch, simulated }: { search: string
         <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teams or leagues" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
       </label>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <button aria-label="Switch theme" {...themeBtn} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}><MoonIcon /></button>
+        <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <MoonIcon />
+          {/* Current theme letter */}
+          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
+        </button>
         {isAuthenticated ? (
           <>
             <span style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
