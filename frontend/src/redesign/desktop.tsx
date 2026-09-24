@@ -1,7 +1,6 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
 import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, matchesDate } from "./data";
 import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
@@ -10,11 +9,11 @@ import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "
 import { Crest, Flag } from "./media";
 import { ChanceBar, FeaturedCard, type HomeTab, StatBar, featuredLive } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
-import { ACCENT, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
-const card: CSSProperties = { background: "#1B2429", border: "1px solid #2E3A41", borderRadius: 14 };
+const card: CSSProperties = { background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14 };
 
 // ---------- header ----------
 const NAV = [
@@ -27,11 +26,11 @@ const NAV = [
 
 export function DesktopHeader({ search, setSearch, simulated }: { search: string; setSearch: (v: string) => void; simulated: boolean }) {
   const { isAuthenticated, balance, logout } = useAuth();
-  const { cycleTheme } = useTheme();
+  const themeBtn = useThemeButton();
   const navigate = useNavigate();
   return (
-    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "#1B2429", borderBottom: "1px solid #2E3A41", position: "sticky", top: 0, zIndex: 30 }}>
-      <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, textDecoration: "none", color: "#F2F4F6" }}>
+    <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-panel)", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
+      <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, letterSpacing: -0.5, lineHeight: 1 }}>Pocca<span style={{ color: ACCENT }}>bet</span></span>
         {simulated && <DemoTag />}
       </a>
@@ -41,25 +40,25 @@ export function DesktopHeader({ search, setSearch, simulated }: { search: string
           return (
             <a key={label} href="/" onClick={(e) => { e.preventDefault(); if (on) navigate("/"); }} style={{
               height: 72, display: "flex", alignItems: "center", gap: 8, padding: "0 14px", textDecoration: "none", fontSize: 14,
-              fontWeight: on ? 800 : 600, color: on ? ACCENT : "#C3CBD3", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`, boxSizing: "border-box",
+              fontWeight: on ? 800 : 600, color: on ? ACCENT : "var(--tc-soft)", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`, boxSizing: "border-box",
             }} aria-label={label}><Icon size={20} /><span className="tc-dnav-label">{label}</span></a>
           );
         })}
       </nav>
-      <label className="tc-dsearch" style={{ width: 240, height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 12px", borderRadius: 10, background: "#26323A", color: "#8B95A1", boxSizing: "border-box" }}>
+      <label className="tc-dsearch" style={{ width: 240, height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 12px", borderRadius: 10, background: "var(--tc-raise)", color: "var(--tc-label)", boxSizing: "border-box" }}>
         <SearchIcon />
-        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teams or leagues" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#F2F4F6", fontFamily: "inherit", fontSize: 14 }} />
+        <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teams or leagues" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
       </label>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        <button aria-label="Switch theme" onClick={cycleTheme} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid #3A474F", background: "transparent", color: "#A9B2BD", display: "flex", alignItems: "center", justifyContent: "center" }}><MoonIcon /></button>
+        <button aria-label="Switch theme" {...themeBtn} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}><MoonIcon /></button>
         {isAuthenticated ? (
           <>
-            <span style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid #45525A", color: "#F2F4F6", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
+            <span style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
             <button onClick={logout} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
           </>
         ) : (
           <>
-            <button onClick={() => navigate("/signup")} style={{ height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid #45525A", background: "transparent", color: "#F2F4F6", fontWeight: 700, fontSize: 14 }}>Join</button>
+            <button onClick={() => navigate("/signup")} style={{ height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14 }}>Join</button>
             <button onClick={() => navigate("/login")} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Login</button>
           </>
         )}
@@ -74,20 +73,20 @@ export function Sidebar({ footballCount, league, setLeague }: { footballCount: n
   return (
     <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 2, padding: 12 }}>
-        <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>SPORTS</span>
+        <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>SPORTS</span>
         {SPORTS.map((s, i) => (
-          <a key={s} href="/" className="tc-side-link" onClick={(e) => e.preventDefault()} style={i === 0 ? { background: "#26323A", color: "#F2F4F6" } : undefined}>
+          <a key={s} href="/" className="tc-side-link" onClick={(e) => e.preventDefault()} style={i === 0 ? { background: "var(--tc-raise)", color: "var(--tc-text)" } : undefined}>
             <span>{s}</span>
-            {i === 0 && <span style={{ fontSize: 12, color: "#8B95A1" }}>{footballCount}</span>}
+            {i === 0 && <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{footballCount}</span>}
           </a>
         ))}
       </div>
       <div style={{ ...card, display: "flex", flexDirection: "column", gap: 2, padding: 12 }}>
-        <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>TOP LEAGUES</span>
+        <span style={{ padding: "4px 12px 8px", fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>TOP LEAGUES</span>
         {TOP_LEAGUES.map((l) => (
           <a key={l} href="/" className="tc-side-link" aria-current={league === l ? "true" : undefined}
             onClick={(e) => { e.preventDefault(); setLeague(league === l ? null : l); }}
-            style={league === l ? { background: "#26323A", color: "#F2F4F6" } : undefined}>
+            style={league === l ? { background: "var(--tc-raise)", color: "var(--tc-text)" } : undefined}>
             <span>{l}</span><ChevronRight size={14} color="#5E6A74" />
           </a>
         ))}
@@ -102,10 +101,10 @@ function Tabs({ current, liveCount, onLive, onUpcoming, onTop, right }: {
 }) {
   const tab = (on: boolean, color = ACCENT): CSSProperties => ({
     height: 48, padding: 0, background: "transparent", border: "none", borderBottom: `2px solid ${on ? color : "transparent"}`,
-    color: on ? "#F2F4F6" : "#A9B2BD", fontWeight: on ? 800 : 700, fontSize: 16, whiteSpace: "nowrap",
+    color: on ? "var(--tc-text)" : "var(--tc-muted)", fontWeight: on ? 800 : 700, fontSize: 16, whiteSpace: "nowrap",
   });
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", columnGap: 16, borderBottom: "1px solid #2E3A41" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", columnGap: 16, borderBottom: "1px solid var(--tc-line)" }}>
       <div role="tablist" style={{ display: "flex", gap: 28 }}>
         <button role="tab" aria-selected={current === "live"} onClick={onLive} style={{ ...tab(current === "live", "#E5484D"), display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E5484D", boxShadow: "0 0 0 3px rgba(229,72,77,0.25)" }} />
@@ -122,8 +121,8 @@ function Tabs({ current, liveCount, onLive, onUpcoming, onTop, right }: {
 function Chip({ on, children, onClick }: { on: boolean; children: ReactNode; onClick?: () => void }) {
   return (
     <button onClick={onClick} style={{
-      height: 34, padding: "0 14px", borderRadius: 17, border: on ? "none" : "1px solid #3A474F",
-      background: on ? "#F2F4F6" : "transparent", color: on ? "#13171C" : "#F2F4F6", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+      height: 34, padding: "0 14px", borderRadius: 17, border: on ? "none" : "1px solid var(--tc-outline)",
+      background: on ? "var(--tc-text)" : "transparent", color: on ? "#13171C" : "var(--tc-text)", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
     }}>{children}</button>
   );
 }
@@ -131,14 +130,14 @@ function Chip({ on, children, onClick }: { on: boolean; children: ReactNode; onC
 // ---------- markets card (league table) ----------
 function Pills({ pill, setPill }: { pill: string; setPill: (id: string) => void }) {
   return (
-    <div role="tablist" aria-label="Markets" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 20px", borderBottom: "1px solid #2E3A41" }}>
-      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "#8B95A1", marginRight: 4 }}>MARKETS</span>
+    <div role="tablist" aria-label="Markets" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 20px", borderBottom: "1px solid var(--tc-line)" }}>
+      <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1, color: "var(--tc-label)", marginRight: 4 }}>MARKETS</span>
       {DESKTOP_PILLS.map((p) => {
         const on = p.id === pill;
         return (
           <button key={p.id} role="tab" aria-selected={on} onClick={() => setPill(p.id)} style={{
-            height: 32, padding: "0 12px", borderRadius: 8, border: `1px solid ${on ? ACCENT : "#3A474F"}`, background: "transparent",
-            color: on ? ACCENT : "#D5DBE1", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+            height: 32, padding: "0 12px", borderRadius: 8, border: `1px solid ${on ? ACCENT : "var(--tc-outline)"}`, background: "transparent",
+            color: on ? ACCENT : "var(--tc-soft-2)", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
           }}>{p.label}</button>
         );
       })}
@@ -181,7 +180,7 @@ function ColHeads({ pill }: { pill: string }) {
   return (
     <div style={{ display: "flex", gap: 16 }}>
       <span style={{ width: 44 }} />
-      <div style={{ display: "flex", gap: 20, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+      <div style={{ display: "flex", gap: 20, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
         {markets.map((mid) => (
           <div key={mid} style={{ display: "flex", gap: 6 }}>
             {desktopCols(mid).map((c) => <span key={c} style={{ width: 60, textAlign: "center" }}>{c}</span>)}
@@ -202,20 +201,20 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
       <Pills pill={pill} setPill={setPill} />
       {leagues.map((lg) => (
         <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "12px 20px 8px", background: "#1E282E" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "12px 20px 8px", background: "var(--tc-panel-2)" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "#8B95A1" }}>{lg.country}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--tc-label)" }}>{lg.country}</span>
               <span style={{ fontSize: 15, fontWeight: 800 }}>{lg.name}</span>
             </div>
             <ColHeads pill={pill} />
           </div>
           {lg.matches.map((m) => (
-            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 16, height: 64, padding: "0 20px", borderTop: "1px solid #2E3A41" }}>
+            <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 16, height: 64, padding: "0 20px", borderTop: "1px solid var(--tc-line)" }}>
               {live ? (
-                <div style={{ width: 40, flexShrink: 0, fontSize: 14, fontWeight: 800, color: m.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>{m.clock}</div>
+                <div style={{ width: 40, flexShrink: 0, fontSize: 14, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>{m.clock}</div>
               ) : (
                 <div style={{ width: 52, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "#8B95A1" }}>{dayLabel(m.start)}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>{dayLabel(m.start)}</span>
                   <span style={{ fontSize: 14, fontWeight: 800 }}>{hhmm(m.start)}</span>
                 </div>
               )}
@@ -244,10 +243,10 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
         </section>
       ))}
       {matches.length === 0 && (
-        <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "#8B95A1" }}>{live ? "No live games right now." : "No matches for this filter."}</p>
+        <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{live ? "No live games right now." : "No matches for this filter."}</p>
       )}
       {onMore && limit !== undefined && matches.length > limit && (
-        <button onClick={onMore} style={{ height: 52, border: "none", borderTop: "1px solid #2E3A41", background: "transparent", color: "#F2F4F6", fontSize: 14, fontWeight: 700 }}>Load more matches</button>
+        <button onClick={onMore} style={{ height: 52, border: "none", borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Load more matches</button>
       )}
     </div>
   );
@@ -301,31 +300,31 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
 
   const potdId = potd && p ? `${potd.id}|${p.marketId}|${p.col}` : "";
   const navBtn = (disabled: boolean): CSSProperties => ({
-    width: 32, height: 32, borderRadius: 16, border: "1px solid #3A474F", background: "transparent",
-    color: disabled ? "#5E6A74" : "#F2F4F6", display: "flex", alignItems: "center", justifyContent: "center",
+    width: 32, height: 32, borderRadius: 16, border: "1px solid var(--tc-outline)", background: "transparent",
+    color: disabled ? "var(--tc-faint)" : "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center",
   });
 
   return (
     <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", gap: 16 }}>
         {potd && p && (
-          <section aria-label="Pick of the day" style={{ flex: 2, padding: 20, background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+          <section aria-label="Pick of the day" style={{ flex: 2, padding: 20, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 22, fontWeight: 800 }}>{p.title}</span>
-              <span style={{ fontSize: 13, color: "#A9B2BD" }}>{p.sub}</span>
+              <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{p.sub}</span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 14px", background: "#222c32", borderRadius: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 14px", background: "var(--tc-page)", borderRadius: 10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{p.label}</span>
-                <span style={{ fontSize: 13, color: "#A9B2BD" }}>{p.note}</span>
+                <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{p.note}</span>
               </div>
               <OddButton variant="desk" value={p.odds} on={isOn(potdId)} aria={p.label} onPick={() => pick(potd, p.marketId, p.marketLabel, p.col, p.odds)} style={{ flexShrink: 0, width: 72, height: 48, fontSize: 19 }} />
             </div>
           </section>
         )}
-        <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ flex: 1, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12, background: "#1C2229", border: "1px dashed #45525A", borderRadius: 14, textDecoration: "none", color: "#F2F4F6" }}>
-          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>NEW CUSTOMERS</span>
+        <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ flex: 1, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12, background: "var(--tc-card)", border: "1px dashed var(--tc-outline-strong)", borderRadius: 14, textDecoration: "none", color: "var(--tc-text)" }}>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>NEW CUSTOMERS</span>
           <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>Welcome bonus up to <span style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</span> on your first deposit</span>
           <span style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: ACCENT, color: "#13171C", fontSize: 15, fontWeight: 800 }}>Join and claim</span>
         </a>
@@ -362,16 +361,16 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, league }: {
 function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: () => void }) {
   const { isOn, pick } = usePicker();
   return (
-    <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ display: "flex", gap: 28, padding: "20px 24px", background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14 }}>
+    <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ display: "flex", gap: 28, padding: "20px 24px", background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#8B95A1" }}><Flag country={f.country} size={16} />{f.country ? `${f.country} · ` : ""}{f.league}</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "var(--tc-label)" }}><Flag country={f.country} size={16} />{f.country ? `${f.country} · ` : ""}{f.league}</span>
           {f.live ? (
-            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: f.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: f.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>
               <span style={{ width: 8, height: 8, borderRadius: 4, background: "#E5484D" }} />{f.clock}
             </span>
           ) : (
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#C3CBD3" }}>{dayLabel(f.start)}</span>
+            <span style={{ fontSize: 14, fontWeight: 800, color: "var(--tc-soft)" }}>{dayLabel(f.start)}</span>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -385,7 +384,7 @@ function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: ()
           ))}
         </div>
       </div>
-      <div style={{ width: 1, background: "#2E3A41" }} />
+      <div style={{ width: 1, background: "var(--tc-line)" }} />
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, justifyContent: "center" }}>
         {f.live ? f.stats && <>
           <StatBar big label="Possession" h={f.stats.possession[0]} a={f.stats.possession[1]} />
@@ -393,7 +392,7 @@ function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: ()
           <StatBar big label="Corners" h={f.stats.corners[0]} a={f.stats.corners[1]} />
         </> : <ChanceBar m={f} big />}
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 4 }}>
-          <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+          <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
             {["1", "X", "2"].map((c) => <span key={c} style={{ flex: 1, textAlign: "center" }}>{c}</span>)}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -407,8 +406,8 @@ function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: ()
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
-          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
+          <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
+          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
         </div>
       </div>
     </section>

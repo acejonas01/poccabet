@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
 import type { Dir, TCMatch } from "./data";
 import { CheckIcon, CloseIcon, LockIcon, ReceiptIcon } from "./icons";
@@ -77,8 +78,8 @@ export function OddButton({
 }) {
   const locked = !value;
   // One odds-tile colour everywhere (the live tile colour), so every tab looks the same.
-  const idle = "#2E3A42";
-  const lockedBg = variant === "desk" ? "#1E282E" : "#1B2429";
+  const idle = "var(--tc-odd)";
+  const lockedBg = variant === "desk" ? "var(--tc-panel-2)" : "var(--tc-panel)";
   const showArrow = !!dir && !locked && variant !== "home";
   return (
     <button
@@ -89,7 +90,7 @@ export function OddButton({
       style={{
         position: "relative", padding: 0, borderRadius: 8, border: "none",
         background: locked ? lockedBg : on ? ACCENT : idle,
-        color: locked ? "#5E6A74" : on ? "#13171C" : "#F2F4F6",
+        color: locked ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
         ...style,
@@ -166,13 +167,13 @@ export function Sheet({ label, onClose, children }: { label: string; onClose: ()
         onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0, maxHeight: "80vh", zIndex: 61, display: "flex", flexDirection: "column",
-          background: "#1B2429", borderRadius: "18px 18px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.4)", overflowY: "auto",
+          background: "var(--tc-panel)", borderRadius: "18px 18px 0 0", boxShadow: "0 -12px 32px rgba(0,0,0,0.4)", overflowY: "auto",
           overscrollBehavior: "contain", paddingBottom: "env(safe-area-inset-bottom)",
           transform: `translateY(${offset})`, transition: dragging ? "none" : "transform 0.18s ease-out",
         }}>
         {/* Grab handle — a taller touch area than the bar itself */}
         <div aria-hidden="true" style={{ display: "flex", justifyContent: "center", padding: "8px 0 6px", touchAction: "none" }}>
-          <span style={{ width: 40, height: 4, borderRadius: 2, background: "#45525A" }} />
+          <span style={{ width: 40, height: 4, borderRadius: 2, background: "var(--tc-outline-strong)" }} />
         </div>
         {children}
       </div>
@@ -184,7 +185,7 @@ export function SheetTitle({ title, onClose }: { title: string; onClose: () => v
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 8px 6px 20px" }}>
       <span style={{ fontSize: 17, fontWeight: 800 }}>{title}</span>
-      <button aria-label="Close" onClick={onClose} style={{ width: 44, height: 44, border: "none", background: "transparent", color: "#A9B2BD", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <button aria-label="Close" onClick={onClose} style={{ width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <CloseIcon />
       </button>
     </div>
@@ -206,15 +207,15 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
       <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "0 20px 20px" }}>
         {MARKET_SHEET_GROUPS.map((g) => (
           <div key={g.title} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "#8B95A1" }}>{g.title}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>{g.title}</span>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {MK.filter((m) => g.groups.includes(m.group)).map((m) => {
                 const on = m.id === active;
                 return (
                   <button key={m.id} aria-pressed={on} onClick={() => onPick(m.id)} style={{
                     height: 40, padding: "0 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6,
-                    border: `1px solid ${on ? ACCENT : "#3A474F"}`, background: on ? ACCENT : "transparent",
-                    color: on ? "#13171C" : "#F2F4F6", fontSize: 14, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+                    border: `1px solid ${on ? ACCENT : "var(--tc-outline)"}`, background: on ? ACCENT : "transparent",
+                    color: on ? "#13171C" : "var(--tc-text)", fontSize: 14, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
                   }}>
                     {on && <CheckIcon size={14} />}
                     {m.label}
@@ -266,8 +267,8 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
   }
 
   const segBtn = (on: boolean): CSSProperties => ({
-    height: 30, padding: "0 12px", borderRadius: 6, border: "none", background: on ? "#33414A" : "transparent",
-    color: on ? "#F2F4F6" : "#A9B2BD", fontSize: 13, fontWeight: 700,
+    height: 30, padding: "0 12px", borderRadius: 6, border: "none", background: on ? "var(--tc-track)" : "transparent",
+    color: on ? "var(--tc-text)" : "var(--tc-muted)", fontSize: 13, fontWeight: 700,
   });
 
   return (
@@ -277,62 +278,62 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
           Bet slip{" "}
           <span style={{ minWidth: 24, height: 24, padding: "0 6px", boxSizing: "border-box", borderRadius: 12, background: ACCENT, color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{count}</span>
         </span>
-        <div style={{ display: "flex", padding: 3, background: "#222c32", borderRadius: 8 }}>
+        <div style={{ display: "flex", padding: 3, background: "var(--tc-page)", borderRadius: 8 }}>
           <button onClick={() => setMode("multiple")} style={segBtn(mode === "multiple")}>Multiple</button>
           <button onClick={() => setMode("single")} style={segBtn(mode === "single")}>Single</button>
         </div>
       </div>
       <div style={{ display: "flex", gap: 8, padding: "0 16px 14px" }}>
-        <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid #3A474F", background: "#222c32", boxSizing: "border-box" }}>
+        <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Booking code</span>
-          <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter booking code" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#F2F4F6", fontFamily: "inherit", fontSize: 14, letterSpacing: 0.5 }} />
+          <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter booking code" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14, letterSpacing: 0.5 }} />
         </label>
         <button onClick={() => setMsg("Booking codes are coming soon")} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
-      <div style={{ display: count ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "#8B95A1", borderTop: "1px solid #2E3A41" }}>Tap any odds to add a selection</div>
+      <div style={{ display: count ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
       {selections.map((s) => (
-        <div key={s.outcomeId} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderTop: "1px solid #2E3A41" }}>
-          <button aria-label={`Remove ${s.eventLabel} ${s.marketName} · ${s.label}`} onClick={() => removeSelection(s.outcomeId)} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, border: "1px solid #3A474F", background: "transparent", color: "#A9B2BD", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div key={s.outcomeId} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
+          <button aria-label={`Remove ${s.eventLabel} ${s.marketName} · ${s.label}`} onClick={() => removeSelection(s.outcomeId)} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CloseIcon size={12} width={2.6} />
           </button>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 14, fontWeight: 800 }}>{s.marketName} · {s.label}</span>
-            <span style={{ fontSize: 12, color: "#8B95A1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.eventLabel}</span>
+            <span style={{ fontSize: 12, color: "var(--tc-label)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.eventLabel}</span>
           </div>
           <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
         </div>
       ))}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid #2E3A41", background: "#1E282E" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>Stake</span>
-          <label style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderRadius: 10, border: "1px solid #3A474F", background: "#222c32" }}>
-            <span style={{ color: "#8B95A1", fontWeight: 700 }}>₦</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>Stake</span>
+          <label style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)" }}>
+            <span style={{ color: "var(--tc-label)", fontWeight: 700 }}>₦</span>
             <span style={hidden}>Stake</span>
-            <input inputMode="numeric" value={stake.toLocaleString("en-US")} onChange={(e) => setStake(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: "60%", textAlign: "right", background: "transparent", border: "none", outline: "none", color: "#F2F4F6", fontFamily: "inherit", fontSize: 16, fontWeight: 800 }} />
+            <input inputMode="numeric" value={stake.toLocaleString("en-US")} onChange={(e) => setStake(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: "60%", textAlign: "right", background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, fontWeight: 800 }} />
           </label>
           <div style={{ display: "flex", gap: 6 }}>
             {[100, 500, 1000, 5000].map((v) => (
-              <button key={v} onClick={() => setStake(v)} style={{ flex: 1, height: 32, borderRadius: 8, border: "1px solid #3A474F", background: v === stake ? "#F2F4F6" : "transparent", color: v === stake ? "#13171C" : "#F2F4F6", fontSize: 12, fontWeight: 700 }}>
+              <button key={v} onClick={() => setStake(v)} style={{ flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--tc-outline)", background: v === stake ? "var(--tc-text)" : "transparent", color: v === stake ? "#13171C" : "var(--tc-text)", fontSize: 12, fontWeight: 700 }}>
                 ₦{v.toLocaleString("en-US")}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#C3CBD3" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
           <span>Total odds</span>
-          <span style={{ fontWeight: 800, color: "#F2F4F6" }}>{count && mode === "multiple" ? total.toFixed(2) : "—"}</span>
+          <span style={{ fontWeight: 800, color: "var(--tc-text)" }}>{count && mode === "multiple" ? total.toFixed(2) : "—"}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-          <span style={{ fontSize: 14, color: "#C3CBD3" }}>Potential win</span>
+          <span style={{ fontSize: 14, color: "var(--tc-soft)" }}>Potential win</span>
           <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{count ? naira(win) : "—"}</span>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setMsg("Booking codes are coming soon")} style={{ flex: 1, height: 52, borderRadius: 12, border: "1px solid #45525A", background: "transparent", color: "#F2F4F6", fontSize: 15, fontWeight: 800 }}>Book bet</button>
+          <button onClick={() => setMsg("Booking codes are coming soon")} style={{ flex: 1, height: 52, borderRadius: 12, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>Book bet</button>
           <button onClick={place} disabled={busy} style={{ flex: 2, height: 52, borderRadius: 12, border: "none", background: ACCENT, color: "#13171C", fontSize: 16, fontWeight: 800 }}>
             {!isAuthenticated ? "Login to place bet" : busy ? "Placing…" : "Place bet"}
           </button>
         </div>
-        <span role="status" style={{ fontSize: 12, lineHeight: 1.4, color: msg ? "#F2F4F6" : "#8B95A1", textAlign: "center" }}>
+        <span role="status" style={{ fontSize: 12, lineHeight: 1.4, color: msg ? "var(--tc-text)" : "var(--tc-label)", textAlign: "center" }}>
           {msg ?? "Book bet gives you a code to share or load later"}
         </span>
       </div>
@@ -359,15 +360,15 @@ export function CheckBet() {
   }
 
   return (
-    <section aria-label="Check a bet" style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, padding: 16, background: "#1B2429", border: "1px solid #2E3A41", borderRadius: 14 }}>
+    <section aria-label="Check a bet" style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, padding: 16, background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 800 }}><ReceiptIcon size={18} />Check a bet</div>
-      <span style={{ fontSize: 12, color: msg ? "#F2F4F6" : "#8B95A1" }}>{msg ?? "See the status of any ticket, even without logging in"}</span>
+      <span style={{ fontSize: 12, color: msg ? "var(--tc-text)" : "var(--tc-label)" }}>{msg ?? "See the status of any ticket, even without logging in"}</span>
       <div style={{ display: "flex", gap: 8 }}>
-        <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid #3A474F", background: "#222c32", boxSizing: "border-box" }}>
+        <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Bet ID</span>
-          <input type="text" value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Enter bet ID" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "#F2F4F6", fontFamily: "inherit", fontSize: 14 }} />
+          <input type="text" value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Enter bet ID" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
         </label>
-        <button onClick={check} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "#33414A", color: "#F2F4F6", fontSize: 14, fontWeight: 800 }}>Check</button>
+        <button onClick={check} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--tc-track)", color: "var(--tc-text)", fontSize: 14, fontWeight: 800 }}>Check</button>
       </div>
     </section>
   );
@@ -375,15 +376,17 @@ export function CheckBet() {
 
 export function AccountSheet({ onClose }: { onClose: () => void }) {
   const { user, balance, logout } = useAuth();
+  const { setTheme } = useTheme();
   return (
     <Sheet label="Account" onClose={onClose}>
       <SheetTitle title={user?.displayName ?? "Account"} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 20px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "#C3CBD3" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
           <span>Balance</span>
           <span style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>{naira(balance)}</span>
         </div>
-        <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid #2E3640", background: "transparent", color: "#F2F4F6", fontSize: 15, fontWeight: 700 }}>Log out</button>
+        <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Log out</button>
+        <button onClick={() => { setTheme("c"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme C)</button>
       </div>
     </Sheet>
   );
@@ -412,21 +415,21 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
     <Sheet label={`${m.home} vs ${m.away} markets`} onClose={onClose}>
       <SheetTitle title="All markets" onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px 12px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Flag country={m.country} size={14} />{m.country ? `${m.country} · ` : ""}{m.league}</span>
           {m.live
-            ? <span style={{ color: m.clock === "HT" ? "#A9B2BD" : "#E5484D", fontWeight: 800 }}>{m.clock}</span>
-            : <span style={{ color: "#C3CBD3", fontWeight: 800 }}>{dayLabel(m.start)} {hhmm(m.start)}</span>}
+            ? <span style={{ color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D", fontWeight: 800 }}>{m.clock}</span>
+            : <span style={{ color: "var(--tc-soft)", fontWeight: 800 }}>{dayLabel(m.start)} {hhmm(m.start)}</span>}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {team(m.home, m.homeLogo)}
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "#F2F4F6" : "#5E6A74" }}>
+          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "var(--tc-text)" : "var(--tc-faint)" }}>
             {m.live ? `${m.hs} – ${m.as}` : "VS"}
           </span>
           {team(m.away, m.awayLogo)}
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 20px 24px", borderTop: "1px solid #2E3A41" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 20px 24px", borderTop: "1px solid var(--tc-line)" }}>
         {markets.map((mk) => (
           <div key={mk.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}>
             <span style={{ fontSize: 13, fontWeight: 800 }}>{mk.label}</span>
@@ -439,9 +442,9 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
                   <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
                     onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
                       height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0 12px", gap: 8, background: !v ? "#1B2429" : on ? ACCENT : "#2E3A42", color: !v ? "#5E6A74" : on ? "#13171C" : "#F2F4F6",
+                      padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
                     }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "#5E6A74" : on ? "#13171C" : "#A9B2BD", whiteSpace: "nowrap" }}>{c}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
                     {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
                   </button>
                 );
@@ -452,4 +455,24 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
       </div>
     </Sheet>
   );
+}
+
+// Theme button: tap = switch A <-> B, hold ~0.8s = classic layout (Theme C).
+export function useThemeButton() {
+  const { cycleTheme, setTheme } = useTheme();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const held = useRef(false);
+  const start = () => {
+    held.current = false;
+    timer.current = setTimeout(() => { held.current = true; setTheme("c"); }, 800);
+  };
+  const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };
+  return {
+    onPointerDown: start,
+    onPointerUp: cancel,
+    onPointerLeave: cancel,
+    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
+    onClick: () => { if (!held.current) cycleTheme(); },
+    title: "Tap to switch theme A/B — hold for the classic layout",
+  };
 }

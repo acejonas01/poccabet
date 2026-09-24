@@ -1993,6 +1993,27 @@ button { font-family: inherit; cursor: pointer; }
   font-family: "Manrope", system-ui, sans-serif;
 }
 :root:is([data-theme="a"], [data-theme="b"]) body { font-family: "Manrope", system-ui, sans-serif; }
+/* Theme B: lighter, softer charcoal for the shared pages (login, sign-up, my bets) */
+:root[data-theme="b"] {
+  --primary: #2B363D;
+  --primary-dark: #25313A;
+  --primary-light: #3E4B55;
+  --bg: #2B363D;
+  --surface: #2B363D;
+  --surface-2: #323E47;
+  --border: #34414A;
+  --border-light: #3B4851;
+  --separator: #3A4750;
+  --text: #F5F7F9;
+  --text-dim: #B7C0CA;
+  --text-faint: #98A3AE;
+  --text-light: #F5F7F9;
+  --odds-cell-bg: #3C4953;
+  --odds-cell-hover: #45535D;
+  --table-row-bg: #2B363D;
+  --table-head-bg: #26313A;
+  --table-line: #3A4750;
+}
 
 /* header */
 :root:is([data-theme="a"], [data-theme="b"]) .header-primary { border-bottom: 1px solid #232A33; }

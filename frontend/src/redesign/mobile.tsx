@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronRight, GridIcon, HomeIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
 
@@ -19,7 +19,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 // ---------- header ----------
 export function MobileHeader({ simulated }: { simulated: boolean }) {
   const { isAuthenticated, balance, logout } = useAuth();
-  const { cycleTheme } = useTheme();
+  const themeBtn = useThemeButton();
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -33,25 +33,25 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
     return () => ro.disconnect();
   }, []);
   return (
-    <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #2E3A41", position: "sticky", top: 0, zIndex: 30, background: "#222c32" }}>
-      <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "#F2F4F6" }}>
+    <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30, background: "var(--tc-page)" }}>
+      <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 32, letterSpacing: -0.5, lineHeight: 1 }}>
           Pocca<span style={{ color: ACCENT }}>bet</span>
         </span>
         {simulated && <DemoTag />}
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button aria-label="Switch theme" onClick={cycleTheme} style={{ width: 44, height: 44, borderRadius: 22, border: "1px solid #2E3640", background: "transparent", color: "#A9B2BD", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button aria-label="Switch theme" {...themeBtn} style={{ width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MoonIcon />
         </button>
         {isAuthenticated ? (
           <>
-            <span style={{ height: 44, padding: "0 12px", borderRadius: 10, border: "1px solid #3A434E", color: "#F2F4F6", fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
+            <span style={{ height: 44, padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
             <button onClick={logout} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Log out</button>
           </>
         ) : (
           <>
-            <button onClick={() => navigate("/signup")} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontWeight: 700, fontSize: 15 }}>Join</button>
+            <button onClick={() => navigate("/signup")} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 15 }}>Join</button>
             <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Login</button>
           </>
         )}
@@ -89,7 +89,7 @@ function NavIcon({ src, original }: { src: string; original: boolean }) {
 }
 export function SectionsNav({ active, onSelect }: { active: SectionKey; onSelect: (key: SectionKey) => void }) {
   return (
-    <nav aria-label="Sections" className="tc-hscroll" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid #232A33", overflowX: "auto" }}>
+    <nav aria-label="Sections" className="tc-hscroll" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid var(--tc-divider)", overflowX: "auto" }}>
       {SECTIONS.map(({ key, label, icon, original }) => {
         const on = key === active;
         const action = key === "sports" || key === "live" || key === "today" ? (key as SectionKey) : null;
@@ -97,7 +97,7 @@ export function SectionsNav({ active, onSelect }: { active: SectionKey; onSelect
           <button key={key} aria-current={on ? "page" : undefined} onClick={action ? () => onSelect(action) : undefined} style={{
             flex: "0 0 auto", minWidth: 64, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 6px 10px",
             background: "transparent", border: "none", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`,
-            color: on ? ACCENT : "#A9B2BD", fontSize: 12, fontWeight: on ? 700 : 600,
+            color: on ? ACCENT : "var(--tc-muted)", fontSize: 12, fontWeight: on ? 700 : 600,
           }}>
             <NavIcon src={icon} original={original} />
             {label}
@@ -119,7 +119,7 @@ export function BottomNav({ active, liveCount, onHome, onLive, onSlip, onMyBets,
     return (
       <a href="#" aria-current={on ? "page" : undefined} onClick={(e) => { e.preventDefault(); onClick(); }} style={{
         position: "relative", flex: 1, height: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: 4, textDecoration: "none", color: on ? ACCENT : "#A9B2BD", fontSize: 11, fontWeight: on ? 800 : 600,
+        gap: 4, textDecoration: "none", color: on ? ACCENT : "var(--tc-muted)", fontSize: 11, fontWeight: on ? 800 : 600,
       }}>
         {on && <span style={{ position: "absolute", top: 0, left: "50%", width: 28, height: 3, marginLeft: -14, borderRadius: "0 0 3px 3px", background: ACCENT }} />}
         <span style={{ position: "relative", display: "flex" }}>{icon}</span>
@@ -130,7 +130,7 @@ export function BottomNav({ active, liveCount, onHome, onLive, onSlip, onMyBets,
   return (
     <nav aria-label="Main" style={{
       position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, display: "flex", alignItems: "stretch",
-      padding: "0 4px calc(20px + env(safe-area-inset-bottom))", background: "#1B2429", borderTop: "1px solid #2E3A41", boxShadow: "0 -8px 24px rgba(0,0,0,0.35)",
+      padding: "0 4px calc(20px + env(safe-area-inset-bottom))", background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)", boxShadow: "0 -8px 24px rgba(0,0,0,0.35)",
     }}>
       {item("home", "Home", <HomeIcon />, onHome)}
       {item("live", "Live", <>
@@ -139,7 +139,7 @@ export function BottomNav({ active, liveCount, onHome, onLive, onSlip, onMyBets,
       </>, onLive)}
       <a href="#" aria-label={`Betslip, ${count} selections`} onClick={(e) => { e.preventDefault(); onSlip(); }} style={{
         flex: 1, height: 64, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 4,
-        paddingBottom: 8, boxSizing: "border-box", textDecoration: "none", color: "#F2F4F6", fontSize: 11, fontWeight: 800,
+        paddingBottom: 8, boxSizing: "border-box", textDecoration: "none", color: "var(--tc-text)", fontSize: 11, fontWeight: 800,
       }}>
         <span style={{ position: "relative", width: 68, height: 46, marginTop: -26, filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))" }}>
           <TicketShape accent={ACCENT} />
@@ -161,10 +161,10 @@ function TopTabs({ current, liveCount, onLive, onUpcoming, onTop, right, liveTal
   const h = liveTall ? 48 : 44;
   const tab = (on: boolean, color = ACCENT): CSSProperties => ({
     height: h, padding: 0, background: "transparent", border: "none", borderBottom: `2px solid ${on ? color : "transparent"}`,
-    color: on ? "#F2F4F6" : "#A9B2BD", fontSize: 15, fontWeight: on ? 800 : 700, whiteSpace: "nowrap", flexShrink: 0,
+    color: on ? "var(--tc-text)" : "var(--tc-muted)", fontSize: 15, fontWeight: on ? 800 : 700, whiteSpace: "nowrap", flexShrink: 0,
   });
   return (
-    <div className="tc-hscroll" style={{ padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, overflowX: "auto", borderBottom: `1px solid ${liveTall ? "#2E3A41" : "#232A33"}` }}>
+    <div className="tc-hscroll" style={{ padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, overflowX: "auto", borderBottom: `1px solid ${liveTall ? "var(--tc-line)" : "var(--tc-divider)"}` }}>
       <div role="tablist" style={{ display: "flex", gap: 20, flexShrink: 0 }}>
         <button role="tab" aria-selected={current === "live"} onClick={onLive} style={{ ...tab(current === "live", "#E5484D"), display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: liveTall ? 8 : 7, height: liveTall ? 8 : 7, borderRadius: 4, background: "#E5484D", boxShadow: "0 0 0 3px rgba(229,72,77,0.25)" }} />
@@ -187,7 +187,7 @@ function MarketTabs({ market, setMarket, openSheet }: { market: string; setMarke
         return (
           <button key={id} role="tab" aria-selected={on} onClick={() => setMarket(id)} style={{
             flexShrink: 0, padding: 0, background: "transparent", border: "none", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`,
-            color: on ? "#F2F4F6" : "#8B95A1", fontSize: 13, fontWeight: on ? 800 : 600,
+            color: on ? "var(--tc-text)" : "var(--tc-label)", fontSize: 13, fontWeight: on ? 800 : 600,
           }}>{marketDef(id).label}</button>
         );
       })}
@@ -231,9 +231,9 @@ function useOdds(m: TCMatch, market: string, variant: "home" | "live", flashBase
 function UpcomingRow({ m, market, onMore }: { m: TCMatch; market: string; onMore: () => void }) {
   const odds = useOdds(m, market, "home", 0);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid #2E3A41" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-        <span style={{ fontSize: 12, color: "#8B95A1", fontWeight: 600 }}>{kickoff(m.start)}</span>
+        <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{kickoff(m.start)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.away} url={m.awayLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.away}</span></span>
         <a href="#" onClick={(e) => { e.preventDefault(); onMore(); }} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>+{marketCount(m.o, m.ou)} markets</a>
@@ -261,11 +261,11 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
     </div>
   );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 16px", borderTop: "1px solid #2E3A41" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 16px", borderTop: "1px solid var(--tc-line)" }}>
       {/* League/country is already in the section header above — not repeated per match. */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, height: 48 }}>
         <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-start", height: 48 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, color: m.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>{m.clock}</span>
+          <span style={{ fontSize: 12, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>{m.clock}</span>
         </div>
         <div style={{ flexGrow: 1, minWidth: 0, height: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0 }}>
           {team(m.home, m.homeLogo, m.hs, m.red === "home")}
@@ -277,17 +277,17 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
   );
 }
 
-// Theme A: darker headers (#171C22) so each league reads as a block.
-// Theme B: lighter, compact headers (#1B2429) — the original Live-tab look.
+// Theme A: darker headers (var(--tc-league)) so each league reads as a block.
+// Theme B: lighter, compact headers (var(--tc-panel)) — the original Live-tab look.
 function LeagueHeader({ country, name, market }: { country: string; name: string; market: string }) {
   const light = useTheme().theme === "b";
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: light ? "#1B2429" : "#171C22" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: "var(--tc-league)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "#8B95A1" }}><Flag country={country} />{country}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--tc-label)" }}><Flag country={country} />{country}</span>
         <span style={{ fontSize: 15, fontWeight: 800 }}>{name}</span>
       </div>
-      <div style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>{colLabels(market)}</div>
+      <div style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{colLabels(market)}</div>
     </div>
   );
 }
@@ -298,10 +298,10 @@ function OddsCol({ m, col, i, pct, top }: { m: TCMatch; col: string; i: number; 
   return (
     <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 5 }}>
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700 }}>
-        <span style={{ color: "#8B95A1" }}>{col}</span><span style={{ color: top ? ACCENT : "#C3CBD3" }}>{pct}%</span>
+        <span style={{ color: "var(--tc-label)" }}>{col}</span><span style={{ color: top ? ACCENT : "var(--tc-soft)" }}>{pct}%</span>
       </div>
-      <div style={{ height: 4, borderRadius: 2, background: "#33414A", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: top ? ACCENT : "#6B7883" }} />
+      <div style={{ height: 4, borderRadius: 2, background: "var(--tc-track)", overflow: "hidden" }}>
+        <div style={{ width: `${pct}%`, height: "100%", borderRadius: 2, background: top ? ACCENT : "var(--tc-bar-mid)" }} />
       </div>
       <OddButton variant="home" value={m.o[i]} on={isOn(id)} aria={`${m.home} vs ${m.away} 1X2 ${col}`}
         onPick={() => pick(m, "1x2", "1X2", col, m.o[i])} style={{ height: 44, fontSize: 19, width: "100%" }} />
@@ -319,18 +319,18 @@ export function FeaturedCard({ m, width = 300 }: { m: TCMatch; width?: number | 
     </div>
   );
   return (
-    <article style={{ width, flexShrink: 0, scrollSnapAlign: "start", padding: 16, background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14, boxSizing: "border-box", minWidth: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 600, color: "#8B95A1" }}>
+    <article style={{ width, flexShrink: 0, scrollSnapAlign: "start", padding: 16, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14, boxSizing: "border-box", minWidth: 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}><Flag country={m.country} size={14} /><span style={ellipsis}>{m.country ? `${m.country} · ` : ""}{m.league}</span></span>
-        <span style={{ flexShrink: 0, fontWeight: 800, color: "#C3CBD3" }}>{kickoff(m.start)}</span>
+        <span style={{ flexShrink: 0, fontWeight: 800, color: "var(--tc-soft)" }}>{kickoff(m.start)}</span>
       </div>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
         {side(m.home, m.homeLogo)}
-        <span style={{ paddingTop: 14, fontSize: 12, fontWeight: 700, color: "#5E6A74" }}>VS</span>
+        <span style={{ paddingTop: 14, fontSize: 12, fontWeight: 700, color: "var(--tc-faint)" }}>VS</span>
         {side(m.away, m.awayLogo)}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "#8B95A1" }}>CHANCE IMPLIED BY ODDS</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "var(--tc-label)" }}>CHANCE IMPLIED BY ODDS</span>
         <div style={{ display: "flex", gap: 6 }}>
           {["1", "X", "2"].map((c, i) => <OddsCol key={c} m={m} col={c} i={i} pct={pct[i]} top={i === top} />)}
         </div>
@@ -344,24 +344,24 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
   const m = p.m;
   const id = `${m.id}|${p.marketId}|${p.col}`;
   return (
-    <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "#1C2229", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+    <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {/* Title with small crests: [crest] Home vs [crest] Away */}
         <div aria-label={p.title} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 6, rowGap: 2, fontSize: 18, fontWeight: 800 }}>
           <Crest name={m.home} url={m.homeLogo} size={22} />
           <span>{m.home}</span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#5E6A74" }}>vs</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tc-faint)" }}>vs</span>
           <Crest name={m.away} url={m.awayLogo} size={22} />
           <span>{m.away}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#A9B2BD" }}><Flag country={m.country} size={14} />{p.sub}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-muted)" }}><Flag country={m.country} size={14} />{p.sub}</div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "#222c32", borderRadius: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "var(--tc-page)", borderRadius: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</div>
         <OddButton variant="home" value={p.odds} on={isOn(id)} aria={p.label} onPick={() => pick(m, p.marketId, p.marketLabel, p.col, p.odds)} style={{ minWidth: 64, height: 44, fontSize: 20 }} />
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.5, color: "#A9B2BD" }}>{p.note}</div>
+      <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>{p.note}</div>
     </section>
   );
 }
@@ -418,13 +418,13 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
       <div className="tc-hscroll" style={{ display: "flex", alignItems: "stretch", gap: 12, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
         {potd ? <PickOfDayCard p={potd} /> : upcoming.length > 0 && (
-          <div aria-hidden="true" style={{ width: 300, flexShrink: 0, borderRadius: 14, background: "#1C2229", border: `1px solid ${ACCENT}`, opacity: 0.5 }} />
+          <div aria-hidden="true" style={{ width: 300, flexShrink: 0, borderRadius: 14, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, opacity: 0.5 }} />
         )}
         {featured.map((m) => <FeaturedCard key={m.id} m={m} />)}
-        {!potd && !loaded && [0, 1].map((i) => <div key={i} style={{ width: 300, height: 250, flexShrink: 0, borderRadius: 14, background: "#1C2229", border: "1px solid #2A323C" }} />)}
+        {!potd && !loaded && [0, 1].map((i) => <div key={i} style={{ width: 300, height: 250, flexShrink: 0, borderRadius: 14, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)" }} />)}
       </div>
 
-      <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ margin: "12px 16px 0", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "#1C2229", border: "1px dashed #3A434E", borderRadius: 12, textDecoration: "none", color: "#F2F4F6" }}>
+      <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ margin: "12px 16px 0", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--tc-card)", border: "1px dashed var(--tc-outline-2)", borderRadius: 12, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontSize: 14, fontWeight: 600 }}>Welcome bonus up to <strong style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</strong> on your first deposit</span>
         <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT, whiteSpace: "nowrap" }}>Claim →</span>
       </a>
@@ -432,10 +432,10 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       <HotGamesStrip />
 
       {/* Live / Upcoming / Top leagues row sticks right under the header while scrolling the list. */}
-      <div ref={listRef} id="tc-list" style={{ marginTop: 20, position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "#222c32", scrollMarginTop: "var(--tc-header-h, 69px)" }}>
+      <div ref={listRef} id="tc-list" style={{ marginTop: 20, position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 20, background: "var(--tc-page)", scrollMarginTop: "var(--tc-header-h, 69px)" }}>
         <TopTabs current={tab} liveCount={live.length} onLive={() => { setTab("live"); setLimit(12); }} onUpcoming={() => { setTab("upcoming"); setLimit(12); }} onTop={() => { setTab("top"); setLimit(12); }}
           right={!isLive &&
-            <label style={{ position: "relative", flexShrink: 0, whiteSpace: "nowrap", height: 32, padding: "0 10px", borderRadius: 8, border: "1px solid #2E3640", background: "transparent", color: "#F2F4F6", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
+            <label style={{ position: "relative", flexShrink: 0, whiteSpace: "nowrap", height: 32, padding: "0 10px", borderRadius: 8, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
               {dates.find((d) => d.id === dateId)?.label}
               <ChevronDown />
               <select aria-label="Filter by date" value={dateId} onChange={(e) => { setDateId(e.target.value); setLimit(12); }} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }}>
@@ -447,7 +447,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
       {featuredMatch && <div style={{ paddingTop: 12 }}><FeaturedMatchCard f={featuredMatch} onOpenMatch={onOpenMatch} /></div>}
       {/* Market tabs stick right under the Live / Upcoming / Top leagues row. */}
-      <div style={{ position: "sticky", top: "calc(var(--tc-header-h, 69px) + var(--tc-tabs-h, 45px))", zIndex: 19, background: "#222c32", borderBottom: "1px solid #232A33" }}>
+      <div style={{ position: "sticky", top: "calc(var(--tc-header-h, 69px) + var(--tc-tabs-h, 45px))", zIndex: 19, background: "var(--tc-page)", borderBottom: "1px solid var(--tc-divider)" }}>
         <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
       </div>
 
@@ -460,14 +460,14 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
         </section>
       ))}
       {(isLive ? liveLoaded : loaded) && list.length === 0 && (
-        <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "#8B95A1", margin: 0 }}>
+        <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", margin: 0 }}>
           {isLive ? "No live games right now." : "No matches for this filter."}
         </p>
       )}
 
       {list.length > limit && (
         <div style={{ padding: 16 }}>
-          <button onClick={() => setLimit((l) => l + 12)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid #2E3640", background: "transparent", color: "#F2F4F6", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
+          <button onClick={() => setLimit((l) => l + 12)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
         </div>
       )}
     </div>
@@ -479,11 +479,11 @@ export function StatBar({ label, h, a, big }: { label: string; h: number; a: num
   const suffix = label === "Possession" ? "%" : "";
   // The side that's ahead gets the yellow bar and a bold white number; level = both grey.
   const lead = h > a ? "home" : a > h ? "away" : null;
-  const bar = (side: "home" | "away") => (lead === side ? ACCENT : lead ? "#4A5663" : "#6B7883");
-  const num = (side: "home" | "away") => ({ fontWeight: lead === side ? 800 : 700, color: lead === side ? "#F2F4F6" : "#A9B2BD" });
+  const bar = (side: "home" | "away") => (lead === side ? ACCENT : lead ? "var(--tc-bar-low)" : "var(--tc-bar-mid)");
+  const num = (side: "home" | "away") => ({ fontWeight: lead === side ? 800 : 700, color: lead === side ? "var(--tc-text)" : "var(--tc-muted)" });
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: big ? 5 : 4 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: big ? 13 : 12, color: "#A9B2BD" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: big ? 13 : 12, color: "var(--tc-muted)" }}>
         <span style={num("home")}>{h}{suffix}</span>
         <span style={{ fontWeight: 700 }}>{label}</span>
         <span style={num("away")}>{a}{suffix}</span>
@@ -507,12 +507,12 @@ export function ChanceBar({ m, big }: { m: TCMatch; big?: boolean }) {
   const pct = impliedPct(m.o);
   // The most likely outcome gets the yellow bar; its percentage is bold white (yellow stays for actions).
   const top = pct.indexOf(Math.max(...pct));
-  const bar = (i: number) => (i === top ? ACCENT : i === 1 ? "#6B7883" : "#4A5663");
-  const text = (i: number) => (i === top ? "#F2F4F6" : "#A9B2BD");
+  const bar = (i: number) => (i === top ? ACCENT : i === 1 ? "var(--tc-bar-mid)" : "var(--tc-bar-low)");
+  const text = (i: number) => (i === top ? "var(--tc-text)" : "var(--tc-muted)");
   const weight = (i: number) => (i === top ? 800 : 700);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: big ? 6 : 5 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: big ? 13 : 12, color: "#A9B2BD" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: big ? 13 : 12, color: "var(--tc-muted)" }}>
         <span style={{ fontWeight: weight(0), color: text(0) }}>{pct[0]}%</span>
         <span style={{ fontWeight: 700 }}>Chance implied by odds</span>
         <span style={{ fontWeight: weight(2), color: text(2) }}>{pct[2]}%</span>
@@ -520,7 +520,7 @@ export function ChanceBar({ m, big }: { m: TCMatch; big?: boolean }) {
       <div style={{ display: "flex", gap: 3, height: big ? 5 : 4 }}>
         {pct.map((p, i) => <span key={i} style={{ width: `${p}%`, borderRadius: 3, background: bar(i) }} />)}
       </div>
-      <div style={{ textAlign: "center", fontSize: 11, fontWeight: weight(1), color: top === 1 ? "#F2F4F6" : "#8B95A1" }}>Draw {pct[1]}%</div>
+      <div style={{ textAlign: "center", fontSize: 11, fontWeight: weight(1), color: top === 1 ? "var(--tc-text)" : "var(--tc-label)" }}>Draw {pct[1]}%</div>
     </div>
   );
 }
@@ -528,15 +528,15 @@ export function ChanceBar({ m, big }: { m: TCMatch; big?: boolean }) {
 function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TCMatch) => void }) {
   const { isOn, pick } = usePicker();
   return (
-    <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ margin: "4px 16px 0", padding: 16, background: "#1C2229", border: "1px solid #2A323C", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
+    <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ margin: "4px 16px 0", padding: 16, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}><Flag country={f.country} size={14} />{f.country ? `${f.country} · ` : ""}{f.league}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}><Flag country={f.country} size={14} />{f.country ? `${f.country} · ` : ""}{f.league}</span>
         {f.live ? (
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: f.clock === "HT" ? "#A9B2BD" : "#E5484D" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: f.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>
             <span style={{ width: 7, height: 7, borderRadius: 4, background: "#E5484D" }} />{f.clock}
           </span>
         ) : (
-          <span style={{ fontSize: 13, fontWeight: 800, color: "#C3CBD3" }}>{dayLabel(f.start)}</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "var(--tc-soft)" }}>{dayLabel(f.start)}</span>
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
@@ -558,7 +558,7 @@ function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TC
         </div>
       ) : <ChanceBar m={f} />}
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "#8B95A1" }}>
+        <div aria-hidden="true" style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
           {["1", "X", "2"].map((c) => <span key={c} style={{ flex: 1, textAlign: "center" }}>{c}</span>)}
         </div>
         <div style={{ display: "flex", gap: 6 }}>
@@ -570,10 +570,10 @@ function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TC
         </div>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: "#F2F4F6", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <button style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <TrackerIcon />{f.live ? "Match tracker" : "Match preview"}
         </button>
-        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid #3A434E", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>
           +{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}
         </button>
       </div>

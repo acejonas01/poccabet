@@ -54,7 +54,7 @@ export function PromoSlider() {
         {SLIDES.map((src, i) => (
           <a key={src} href="#" onClick={(e) => e.preventDefault()} aria-label={`Promotion ${i + 1}`} style={{
             flex: "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: "1080 / 400", borderRadius: 14,
-            overflow: "hidden", border: "1px solid #2A323C", background: "#1C2229", display: "block",
+            overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
           }}>
             <img src={src} alt="" loading={i === 0 ? "eager" : "lazy"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
           </a>
@@ -64,7 +64,7 @@ export function PromoSlider() {
         {SLIDES.map((_, i) => (
           <button key={i} aria-label={`Go to promotion ${i + 1}`} aria-current={i === active ? "true" : undefined}
             onClick={() => { pausedUntil.current = Date.now() + 8000; setActive(i); go(i); }}
-            style={{ width: i === active ? 18 : 6, height: 6, padding: 0, border: "none", borderRadius: 3, background: i === active ? ACCENT : "#33414A", transition: "width 0.25s" }} />
+            style={{ width: i === active ? 18 : 6, height: 6, padding: 0, border: "none", borderRadius: 3, background: i === active ? ACCENT : "var(--tc-track)", transition: "width 0.25s" }} />
         ))}
       </div>
     </section>
@@ -91,13 +91,13 @@ export function HotGamesStrip() {
       </div>
       <div className="tc-hscroll" style={{ display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
         {GAMES.map((g) => (
-          <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: "0 0 148px", scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "#F2F4F6" }}>
-            <span style={{ display: "block", aspectRatio: "300 / 190", borderRadius: 12, overflow: "hidden", border: "1px solid #2A323C", background: "#1C2229" }}>
+          <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: "0 0 148px", scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
+            <span style={{ display: "block", aspectRatio: "300 / 190", borderRadius: 12, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
               <img src={g.img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: 1, padding: "0 2px" }}>
               <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: g.tag.includes("₦") ? ACCENT : "#8B95A1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.tag}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: g.tag.includes("₦") ? ACCENT : "var(--tc-label)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.tag}</span>
             </span>
           </a>
         ))}
@@ -147,7 +147,7 @@ export function Crest({ name, url, size, fontSize = 12 }: { name: string; url: s
   }
   return (
     <span aria-hidden="true" style={{
-      width: size, height: size, borderRadius: size / 2, background: "#2A3440", flexShrink: 0,
+      width: size, height: size, borderRadius: size / 2, background: "var(--tc-crest-bg)", flexShrink: 0,
       display: "flex", alignItems: "center", justifyContent: "center", fontSize, fontWeight: 800, letterSpacing: 0.5,
     }}>{size >= 30 ? teamCode(name) : ""}</span>
   );
