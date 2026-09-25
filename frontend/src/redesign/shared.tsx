@@ -238,6 +238,28 @@ const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overf
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ---------- loading ----------
+// Once the loader shows, it stays until the yellow has lit 1, X and 2 at least once (one full
+// pass, ~1.7s), even if the data arrives sooner. Nothing loading at first = it never shows.
+export const LOADER_MIN_MS = 1700;
+export function useMinLoading(loading: boolean, minMs = LOADER_MIN_MS) {
+  const started = useRef<number | null>(loading ? Date.now() : null);
+  const [show, setShow] = useState(loading);
+  useEffect(() => {
+    if (loading) {
+      if (started.current === null) started.current = Date.now();
+      setShow(true);
+      return;
+    }
+    if (started.current === null) return setShow(false);
+    const left = minMs - (Date.now() - started.current);
+    const done = () => { started.current = null; setShow(false); };
+    if (left <= 0) return done();
+    const t = setTimeout(done, left);
+    return () => clearTimeout(t);
+  }, [loading, minMs]);
+  return show;
+}
+
 // The splash's 1 X 2 animation, for anything that's loading.
 export function Loader({ label, compact = false }: { label?: string; compact?: boolean }) {
   return (

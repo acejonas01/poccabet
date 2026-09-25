@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, Loader, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useMinLoading, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
@@ -423,6 +423,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
   const featuredMatch = !SHOW_TAB_FEATURE ? undefined : isLive ? featuredLive(live) : featuredUpcoming(tabList, potd?.m.id);
   const list = tabList.filter((m) => m !== featuredMatch);
   const leagues = groupByLeague(list.slice(0, limit));
+  const listLoading = useMinLoading(!(isLive ? liveLoaded : loaded) && list.length === 0);
   let liveIndex = 0;
 
   return (
@@ -471,7 +472,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
         <MarketTabs market={market} setMarket={setMarket} openSheet={openSheet} />
       </div>
 
-      {leagues.map((lg) => (
+      {!listLoading && leagues.map((lg) => (
         <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => isLive
@@ -479,8 +480,8 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
             : <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
       ))}
-      {!(isLive ? liveLoaded : loaded) && list.length === 0 && <Loader label={isLive ? "Loading live games…" : "Loading matches…"} />}
-      {(isLive ? liveLoaded : loaded) && list.length === 0 && (
+      {listLoading && <Loader label={isLive ? "Loading live games…" : "Loading matches…"} />}
+      {!listLoading && (isLive ? liveLoaded : loaded) && list.length === 0 && (
         <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", margin: 0 }}>
           {isLive ? "No live games right now." : "No matches for this filter."}
         </p>
@@ -590,6 +591,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
 
   const ups = [...upList].sort((a, b) => a.start - b.start);
   const total = liveList.length + ups.length;
+  const busy = useMinLoading(!loaded && total === 0);
   const shown = ups.slice(0, limit);
   const days: { key: string; title: string; matches: TCMatch[] }[] = [];
   if (group === "day") {
@@ -610,6 +612,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
         </div>
       </div>
 
+      {busy ? <Loader label="Loading matches…" /> : <>
       {liveList.length > 0 && (group === "day" ? (
         <section>
           <GroupHeader title="Live now" live market={market} />
@@ -633,7 +636,6 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
         </section>
       ))}
 
-      {!loaded && total === 0 && <Loader label="Loading matches…" />}
       {loaded && total === 0 && (
         <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)", textAlign: "center" }}>No matches here right now. Check back soon.</p>
@@ -645,6 +647,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
           <button onClick={() => setLimit((l) => l + 20)} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Load more matches</button>
         </div>
       )}
+      </>}
 
       <SiteFooter />
     </div>

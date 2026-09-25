@@ -12,7 +12,7 @@ import { SPORTS } from "./sports";
 import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
-import { ACCENT, Loader, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -216,11 +216,12 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
   matches: TCMatch[]; pill: string; setPill: (id: string) => void; live: boolean; limit?: number; onMore?: () => void; loading?: boolean;
 }) {
   const leagues = groupByLeague(limit ? matches.slice(0, limit) : matches);
+  const busy = useMinLoading(loading && matches.length === 0);
   let row = 0;
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <Pills pill={pill} setPill={setPill} />
-      {leagues.map((lg) => (
+      {!busy && leagues.map((lg) => (
         <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: "12px 20px 8px", background: "var(--tc-panel-2)" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -263,8 +264,8 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
           ))}
         </section>
       ))}
-      {matches.length === 0 && (loading
-        ? <Loader label={live ? "Loading live games…" : "Loading matches…"} />
+      {busy ? <Loader label={live ? "Loading live games…" : "Loading matches…"} /> : matches.length === 0 && (loading
+        ? null
         : <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{live ? "No live games right now." : "No matches for this filter."}</p>)}
       {onMore && limit !== undefined && matches.length > limit && (
         <button onClick={onMore} style={{ height: 52, border: "none", borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Load more matches</button>

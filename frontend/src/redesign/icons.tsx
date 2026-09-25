@@ -126,3 +126,21 @@ export const EyeIcon = ({ size = 22 }: P) => (
 export const EyeOffIcon = ({ size = 22 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-2.9 3.9M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /><path d="M3 3l18 18" /></svg>
 );
+export const DepositIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M12 4v11M7 10l5 5 5-5" /><path d="M5 20h14" /></svg>
+);
+export const WithdrawIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M12 15V4M7 9l5-5 5 5" /><path d="M5 20h14" /></svg>
+);
+export const ListIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>
+);
+export const MailIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
+);
+export const KeyIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2" /></svg>
+);
+export const LogoutIcon = ({ size = 22 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" /><path d="M10 16l-4-4 4-4M6 12h10" /></svg>
+);

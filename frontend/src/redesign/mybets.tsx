@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
-import { ACCENT, CodeRow, Loader, Sheet, SheetTitle, ticketShare } from "./shared";
+import { ACCENT, CodeRow, Loader, Sheet, SheetTitle, ticketShare, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -139,7 +139,8 @@ export function RedesignMyBets() {
   const { isAuthenticated, refreshBalance } = useAuth();
   const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [fetching, setLoading] = useState(true);
+  const loading = useMinLoading(fetching);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"open" | "settled">("open");
   const [openBet, setOpenBet] = useState<Bet | null>(null);

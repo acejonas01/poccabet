@@ -85,6 +85,8 @@ export const api = {
     ),
   // The logged-in user's account.
   getMe: () => request<Profile>("/api/me"),
+  getTransactions: () =>
+    request<{ transactions: { id: string; type: string; amount: number; balanceAfter: number | null; status: string; createdAt: string }[] }>("/api/wallet/transactions"),
   updateMe: (data: { firstName?: string; lastName?: string; email?: string }) =>
     request<Profile>("/api/me", { method: "PATCH", body: JSON.stringify(data) }),
   emailCodeStart: () => request<{ sentTo: string; resendIn: number; demoCode?: string }>("/api/me/email/start", { method: "POST" }),

@@ -6,10 +6,9 @@ import { ApiError, api, type Profile } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
-import { CheckIcon, ChevronRight, EyeIcon, EyeOffIcon } from "./icons";
-import { ACCENT, Loader, Sheet, SheetTitle } from "./shared";
+import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
+import { ACCENT, Loader, Sheet, SheetTitle, useMinLoading } from "./shared";
 
-const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
 const GREEN = "#2AB572";
@@ -229,6 +228,70 @@ function DeleteSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: (
   );
 }
 
+// ---------- personal details & transactions (sheets) ----------
+function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose: () => void; onEdit: () => void; onVerify: () => void }) {
+  const dob = me.dateOfBirth ? new Date(`${me.dateOfBirth}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—";
+  const row = (label: string, value: ReactNode, extra?: ReactNode) => (
+    <div style={{ ...rowStyle, cursor: "default" }}>
+      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+        <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+      </span>
+      {extra}
+    </div>
+  );
+  return (
+    <Sheet label="Personal details" onClose={onClose}>
+      <SheetTitle title="Personal details" onClose={onClose} />
+      <div style={{ paddingBottom: 8 }}>
+        {row("Name", me.firstName ?? me.displayName)}
+        {row("Surname", me.lastName ?? "—")}
+        {row("Email", me.email ?? "—", me.email && (me.emailVerified
+          ? <Badge ok>Verified</Badge>
+          : <button type="button" onClick={onVerify} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 12, fontWeight: 800 }}>Verify</button>))}
+        {row("Phone number", me.phoneDisplay ?? "—", me.phone && <Badge ok={me.phoneVerified}>{me.phoneVerified ? "Verified" : "Not verified"}</Badge>)}
+        {row("Date of birth", dob)}
+      </div>
+      <div style={{ padding: "8px 20px 24px" }}>
+        <button type="button" onClick={onEdit} style={{ ...primaryBtn(true), width: "100%" }}>EDIT DETAILS</button>
+      </div>
+    </Sheet>
+  );
+}
+
+const TX_LABEL: Record<string, string> = {
+  BET_STAKE: "Bet placed", BET_PAYOUT: "Bet won", BET_REFUND: "Bet refunded", DEPOSIT: "Deposit",
+  WITHDRAWAL: "Withdrawal", BONUS: "Bonus", DEMO_TOPUP: "Demo funds",
+};
+function TransactionsSheet({ onClose }: { onClose: () => void }) {
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof api.getTransactions>>["transactions"] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { api.getTransactions().then((r) => setRows(r.transactions)).catch((e) => setError(errText(e))); }, []);
+  const loading = useMinLoading(!rows && !error);
+  return (
+    <Sheet label="Transactions" onClose={onClose}>
+      <SheetTitle title="Transactions" onClose={onClose} />
+      {loading || (!rows && !error) ? <Loader label="Loading transactions…" compact />
+        : error ? <p style={{ margin: 0, padding: "16px 20px", color: "var(--tc-label)" }}>{error}</p>
+        : !rows!.length ? <p style={{ margin: 0, padding: "16px 20px 28px", color: "var(--tc-label)", textAlign: "center" }}>No transactions yet.</p>
+        : <div style={{ paddingBottom: 16 }}>
+            {rows!.map((t) => (
+              <div key={t.id} style={{ ...rowStyle, cursor: "default" }}>
+                <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{TX_LABEL[t.type] ?? t.type}</span>
+                  <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{new Date(t.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                </span>
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: t.amount >= 0 ? GREEN : "var(--tc-text)" }}>{t.amount >= 0 ? "+" : "−"}{naira(Math.abs(t.amount))}</span>
+                  {t.balanceAfter !== null && <span style={{ fontSize: 11, color: "var(--tc-label)" }}>Balance {naira(t.balanceAfter)}</span>}
+                </span>
+              </div>
+            ))}
+          </div>}
+    </Sheet>
+  );
+}
+
 // ---------- the page ----------
 export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   const navigate = useNavigate();
@@ -236,8 +299,9 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   const { setTheme } = useTheme();
   const [me, setMe] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"edit" | "email" | "password" | "delete" | null>(null);
+  const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const loading = useMinLoading(!me && !error);
 
   useEffect(() => {
     if (!isAuthenticated) { navigate("/login", { replace: true }); return; }
@@ -264,116 +328,107 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   }
 
   if (error) return <p style={{ padding: "40px 0", textAlign: "center", color: "var(--tc-label)" }}>{error}</p>;
-  if (!me) return <Loader label="Loading your account…" />;
+  if (loading || !me) return <Loader label="Loading your account…" />;
 
   const fullName = [me.firstName ?? me.displayName, me.lastName].filter(Boolean).join(" ");
-  const initials = fullName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
-  const since = new Date(me.memberSince).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
-  const dob = me.dateOfBirth ? new Date(`${me.dateOfBirth}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—";
-  const stat = (label: string, value: string, color = "var(--tc-text)") => (
-    <div style={{ ...card, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontFamily: barlow, fontSize: 26, fontWeight: 700, lineHeight: 1.1, color }}>{value}</span>
-      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{label}</span>
-    </div>
-  );
-  const detail = (label: string, value: ReactNode, extra?: ReactNode) => (
-    <div style={{ ...rowStyle, cursor: "default" }}>
-      <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-        <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{label}</span>
-        <span style={{ fontSize: 15, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
-      </span>
-      {extra}
-    </div>
-  );
-  const link = (label: string, onClick: () => void, color = "var(--tc-text)") => (
-    <button type="button" onClick={onClick} style={{ ...rowStyle, color, fontSize: 15, fontWeight: 700 }}>
-      <span style={{ flex: 1 }}>{label}</span><ChevronRight />
+  const initials = fullName.split(/\s+/).map((w) => w.replace(/[^A-Za-z0-9]/g, "")[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "P";
+  const action = (label: string, icon: ReactNode, onClick?: () => void, soon = false) => (
+    <button type="button" onClick={onClick} disabled={!onClick} style={{
+      flex: 1, minWidth: 0, padding: "12px 4px 10px", border: "none", borderRadius: 12, background: "var(--tc-raise)",
+      color: onClick ? "var(--tc-text)" : "var(--tc-faint)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700,
+    }}>
+      <span style={{ color: onClick ? ACCENT : "var(--tc-faint)", display: "flex" }}>{icon}</span>
+      {label}{soon && <span style={{ fontSize: 10, fontWeight: 700, marginTop: -4 }}>soon</span>}
     </button>
   );
+  const item = (icon: ReactNode, label: string, onClick: () => void, right?: ReactNode, color = "var(--tc-text)") => (
+    <button type="button" onClick={onClick} style={{ ...rowStyle, color, fontSize: 15, fontWeight: 600 }}>
+      <span style={{ display: "flex", color: color === "var(--tc-text)" ? "var(--tc-muted)" : color }}>{icon}</span>
+      <span style={{ flex: 1 }}>{label}</span>
+      {right}
+      <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
+    </button>
+  );
+  const group = (title: string, children: ReactNode) => (
+    <section>
+      <h2 style={sectionTitle}>{title}</h2>
+      <div style={{ ...card, overflow: "hidden" }}><div style={{ marginTop: -1 }}>{children}</div></div>
+    </section>
+  );
+  const statCell = (label: string, value: string, color = "var(--tc-text)") => (
+    <div style={{ flex: 1, minWidth: 0, padding: "12px 6px", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <span style={{ fontSize: 16, fontWeight: 800, color, whiteSpace: "nowrap" }}>{value}</span>
+      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--tc-label)" }}>{label}</span>
+    </div>
+  );
+  const winnings = me.stats.winnings >= 1_000_000 ? `₦${(me.stats.winnings / 1e6).toFixed(1)}M` : `₦${Math.round(me.stats.winnings).toLocaleString("en-US")}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      {/* Profile */}
-      <section style={{ ...card, overflow: "hidden", border: "1px solid rgba(245, 197, 24, 0.25)", background: "radial-gradient(120% 120% at 100% 0%, rgba(245, 197, 24, 0.16), transparent 60%), var(--tc-card)" }}>
-        <div style={{ padding: 18, display: "flex", alignItems: "center", gap: 14 }}>
-          <span aria-hidden="true" style={{ width: 60, height: 60, flexShrink: 0, borderRadius: 30, background: ACCENT, color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 26, fontWeight: 700 }}>{initials || "P"}</span>
-          <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
-            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</h1>
-            {me.phoneDisplay && <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-soft)" }}>{me.phoneDisplay}{me.phoneVerified && <Badge ok>Verified</Badge>}</span>}
-            <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Member since {since}</span>
-          </div>
-        </div>
-        {/* Balance */}
-        <div style={{ padding: "14px 18px 18px", borderTop: "1px solid var(--tc-line)", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tc-label)" }}>Balance{me.demo ? " · demo" : ""}</span>
-            <span style={{ fontFamily: barlow, fontSize: 32, fontWeight: 700, color: ACCENT, lineHeight: 1 }}>{naira(me.balance)}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+      {/* Who you are + your money */}
+      <section style={{ ...card, overflow: "hidden" }}>
+        <button type="button" onClick={() => setSheet("details")} style={{ width: "100%", padding: "16px", display: "flex", alignItems: "center", gap: 12, border: "none", background: "transparent", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
+          <span aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 24, border: `1.5px solid ${ACCENT}`, color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>{initials}</span>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 17, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</span>
+            <span style={{ fontSize: 13, color: "var(--tc-label)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.phoneDisplay ?? me.email ?? ""}</span>
+          </span>
+          <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
+        </button>
+        <div style={{ padding: "14px 16px 16px", borderTop: "1px solid var(--tc-line)", display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
+              Total balance{me.demo && <span style={{ padding: "1px 6px", borderRadius: 4, background: "var(--tc-raise)", fontSize: 10, letterSpacing: 0.5 }}>DEMO</span>}
+            </span>
+            <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5 }}>{naira(me.balance)}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {me.demo
-              ? <button type="button" onClick={topUp} style={{ flex: 1, height: 44, borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>+ ₦10,000 demo</button>
-              : <button type="button" disabled style={{ flex: 1, height: 44, borderRadius: 10, border: "none", background: "var(--tc-raise)", color: "var(--tc-faint)", fontSize: 14, fontWeight: 800 }}>Deposit · soon</button>}
-            <button type="button" disabled style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-faint)", fontSize: 14, fontWeight: 800 }}>Withdraw · soon</button>
+            {me.demo ? action("Add funds", <DepositIcon />, topUp) : action("Deposit", <DepositIcon />, undefined, true)}
+            {action("Withdraw", <WithdrawIcon />, undefined, true)}
+            {action("Transactions", <ListIcon />, () => setSheet("transactions"))}
           </div>
           {note && <span role="status" style={{ fontSize: 12, color: "var(--tc-muted)", textAlign: "center" }}>{note}</span>}
         </div>
-      </section>
-
-      {/* Stats */}
-      <section aria-label="Your betting" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10 }}>
-        {stat("Bets placed", String(me.stats.bets))}
-        {stat("Open bets", String(me.stats.open), ACCENT)}
-        {stat("Bets won", String(me.stats.won), GREEN)}
-        {stat("Total winnings", naira(me.stats.winnings), GREEN)}
-      </section>
-
-      {/* Email not verified yet */}
-      {me.email && !me.emailVerified && (
-        <button type="button" onClick={() => setSheet("email")} style={{ ...card, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, textAlign: "left", color: "var(--tc-text)", border: "1px solid rgba(245, 197, 24, 0.4)", cursor: "pointer" }}>
-          <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 15, fontWeight: 800 }}>Verify your email</span>
-            <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>Secure your account and get receipts by email.</span>
-          </span>
-          <span style={{ padding: "8px 14px", borderRadius: 10, background: ACCENT, color: "#13171C", fontSize: 13, fontWeight: 800 }}>Verify</span>
-        </button>
-      )}
-
-      {/* Personal details */}
-      <section>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <h2 style={sectionTitle}>PERSONAL DETAILS</h2>
-          <button type="button" onClick={() => setSheet("edit")} style={{ marginBottom: 8, padding: 0, border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Edit</button>
-        </div>
-        <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ marginTop: -1 }}>
-            {detail("Name", me.firstName ?? me.displayName)}
-            {detail("Surname", me.lastName ?? "—")}
-            {detail("Email", me.email ?? "—", me.email && <Badge ok={me.emailVerified}>{me.emailVerified ? "Verified" : "Not verified"}</Badge>)}
-            {detail("Phone number", me.phoneDisplay ?? "—", me.phone && <Badge ok={me.phoneVerified}>{me.phoneVerified ? "Verified" : "Not verified"}</Badge>)}
-            {detail("Date of birth", dob)}
-          </div>
+        {/* Betting at a glance */}
+        <div style={{ display: "flex", borderTop: "1px solid var(--tc-line)" }}>
+          {statCell("Bets", String(me.stats.bets))}
+          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
+          {statCell("Open", String(me.stats.open))}
+          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
+          {statCell("Won", String(me.stats.won), me.stats.won ? GREEN : undefined)}
+          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
+          {statCell("Winnings", winnings, me.stats.winnings ? GREEN : undefined)}
         </div>
       </section>
 
-      {/* Security & more */}
-      <section>
-        <h2 style={sectionTitle}>ACCOUNT</h2>
-        <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ marginTop: -1 }}>
-            {link("Change password", () => setSheet("password"))}
-            {link("My bets", () => navigate("/my-bets"))}
-            {link("Customer service", onSupport)}
-            {THEMES.includes("d") && link("Switch to classic layout (Theme D)", () => setTheme("d"), "var(--tc-muted)")}
-          </div>
+      {group("BETTING", <>
+        {item(<ReceiptIcon size={22} />, "My bets", () => navigate("/my-bets"), me.stats.open ? <span style={{ padding: "1px 8px", borderRadius: 999, background: "var(--tc-raise)", fontSize: 12, fontWeight: 800 }}>{me.stats.open} open</span> : undefined)}
+        {item(<ListIcon />, "Transactions", () => setSheet("transactions"))}
+      </>)}
+
+      {group("PROFILE & SECURITY", <>
+        {item(<UserIcon size={22} />, "Personal details", () => setSheet("details"))}
+        {me.email && item(<MailIcon />, "Email", () => (me.emailVerified ? setSheet("details") : setSheet("email")), <Badge ok={me.emailVerified}>{me.emailVerified ? "Verified" : "Verify now"}</Badge>)}
+        {item(<KeyIcon />, "Change password", () => setSheet("password"))}
+      </>)}
+
+      {group("HELP", <>
+        {item(<HeadsetIcon size={22} />, "Customer service", onSupport)}
+        {THEMES.includes("d") && item(<ListIcon />, "Classic layout (Theme D)", () => setTheme("d"))}
+      </>)}
+
+      <section style={{ ...card, overflow: "hidden" }}>
+        <div style={{ marginTop: -1 }}>
+          {item(<LogoutIcon />, "Log out", () => { logout(); navigate("/", { replace: true }); })}
         </div>
       </section>
+      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", marginTop: -8, padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
 
-      <button type="button" onClick={() => { logout(); navigate("/", { replace: true }); }} style={{ height: 52, borderRadius: 12, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>Log out</button>
-      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: RED, fontSize: 14, fontWeight: 700 }}>Delete account</button>
-
+      {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} />}
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}
       {sheet === "email" && <VerifyEmailSheet me={me} onClose={() => setSheet(null)} onVerified={saved} />}
       {sheet === "password" && <PasswordSheet onClose={() => setSheet(null)} />}
+      {sheet === "transactions" && <TransactionsSheet onClose={() => setSheet(null)} />}
       {sheet === "delete" && <DeleteSheet onClose={() => setSheet(null)} onDeleted={() => { logout(); navigate("/", { replace: true }); }} />}
     </div>
   );
