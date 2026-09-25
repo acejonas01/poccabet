@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Poccabet mark: gold ring, white P, green "odds up" arrow — from the animated logo's final frame. -->
+  <rect width="200" height="200" rx="44" fill="#131E24"/>
+  <circle cx="100" cy="100" r="78" fill="none" stroke="#F5C518" stroke-width="6"/>
+  <path d="M80 56 V146 M80 56 H106 A24 24 0 0 1 106 104 H80" fill="none" stroke="#F2F4F6" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M112 142 L127 125 L142 142" fill="none" stroke="#2BE36B" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

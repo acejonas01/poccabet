@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icons/app/icon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#131E24" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Poccabet - Sports Betting</title>
 
@@ -12,7 +16,7 @@
     <meta property="og:description" content="Live football odds, casino, virtuals and more. Bet smart, win big." />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://poccabet.vercel.app" />
-    <meta property="og:image" content="https://poccabet.vercel.app/favicon.png" />
+    <meta property="og:image" content="https://poccabet.vercel.app/icons/app/icon-512.png" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Poccabet - Sports Betting" />
     <meta name="twitter:description" content="Live football odds, casino, virtuals and more. Bet smart, win big." />
@@ -24,18 +28,40 @@
 
     <!-- Splash (shown until React mounts): wordmark + a 1 X 2 "picking" animation -->
     <style>
+      /* Splash styles live side by side; ?splash=<name> picks one (default: pick). */
       :root { --splash-bg: #131E24; }
       #app-loader {
         position: fixed;
         inset: 0;
         display: flex;
-        flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 22px;
         background: var(--splash-bg);
       }
-      #app-loader .wm {
+      #app-loader > [data-splash] { display: none; }
+      #app-loader > [data-splash].on { display: flex; }
+      /* ?splash=compare: every style at once, side by side (stacked on phones), each on its own background. */
+      #app-loader.compare { align-items: stretch; }
+      #app-loader.compare > [data-splash] { position: relative; flex: 1; min-width: 0; justify-content: center; align-items: center; }
+      #app-loader.compare > [data-splash] + [data-splash] { border-left: 1px solid rgba(255, 255, 255, 0.08); }
+      #app-loader.compare > [data-splash]::before {
+        content: attr(data-splash);
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        font: 800 11px/1 Manrope, system-ui, sans-serif;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #8B95A1;
+      }
+      @media (max-width: 899px) {
+        #app-loader.compare { flex-direction: column; }
+        #app-loader.compare > [data-splash] + [data-splash] { border-left: none; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+      }
+
+      /* ===== Style "Pick": wordmark slides in, then 1 X 2 odds chips light up in turn ===== */
+      .splash-pick { flex-direction: column; align-items: center; gap: 22px; }
+      .splash-pick .wm {
         font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
         font-style: italic;
         font-weight: 700;
@@ -46,9 +72,9 @@
         opacity: 0;
         transform: translateX(-14px) skewX(-8deg);
       }
-      #app-loader .wm span { color: #F5C518; }
-      #app-loader .odds { display: flex; gap: 6px; opacity: 0; }
-      #app-loader .odds i {
+      .splash-pick .wm span { color: #F5C518; }
+      .splash-pick .odds { display: flex; gap: 6px; opacity: 0; }
+      .splash-pick .odds i {
         width: 36px;
         height: 28px;
         border-radius: 7px;
@@ -60,21 +86,28 @@
         justify-content: center;
       }
       /* Plays once the wordmark font is ready (or after 0.7s), so it never flashes in a fallback font. */
-      #app-loader.ready .wm { animation: splash-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
-      #app-loader.ready .odds { animation: splash-fade 0.3s 0.25s forwards; }
-      #app-loader.ready .odds i { animation: splash-pick 1.8s 0.4s infinite; }
-      #app-loader.ready .odds i:nth-child(2) { animation-delay: 1s; }
-      #app-loader.ready .odds i:nth-child(3) { animation-delay: 1.6s; }
-      @keyframes splash-in { to { opacity: 1; transform: none; } }
-      @keyframes splash-fade { to { opacity: 1; } }
-      @keyframes splash-pick {
+      #app-loader.ready .splash-pick .wm { animation: pick-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      #app-loader.ready .splash-pick .odds { animation: pick-fade 0.3s 0.25s forwards; }
+      #app-loader.ready .splash-pick .odds i { animation: pick-light 1.8s 0.4s infinite; }
+      #app-loader.ready .splash-pick .odds i:nth-child(2) { animation-delay: 1s; }
+      #app-loader.ready .splash-pick .odds i:nth-child(3) { animation-delay: 1.6s; }
+      @keyframes pick-in { to { opacity: 1; transform: none; } }
+      @keyframes pick-fade { to { opacity: 1; } }
+      @keyframes pick-light {
         0%, 30%, 100% { background: #2E3A42; color: #8B95A1; }
         8%, 22% { background: #F5C518; color: #13171C; }
       }
+      /* Mobile (under 900px, same breakpoint as the app): smaller wordmark and chips. */
+      @media (max-width: 899px) {
+        .splash-pick { gap: 16px; }
+        .splash-pick .wm { font-size: 40px; }
+        .splash-pick .odds { gap: 5px; }
+        .splash-pick .odds i { width: 28px; height: 22px; border-radius: 6px; font-size: 12px; }
+      }
       @media (prefers-reduced-motion: reduce) {
-        #app-loader .wm, #app-loader .odds { opacity: 1; transform: none; animation: none !important; }
-        #app-loader .odds i { animation: none !important; }
-        #app-loader .odds i:nth-child(2) { background: #F5C518; color: #13171C; }
+        .splash-pick .wm, .splash-pick .odds { opacity: 1; transform: none; animation: none !important; }
+        .splash-pick .odds i { animation: none !important; }
+        .splash-pick .odds i:nth-child(2) { background: #F5C518; color: #13171C; }
       }
     </style>
     <script>
@@ -91,15 +124,33 @@
     <div id="root">
       <!-- Splash — replaced automatically when React mounts -->
       <div id="app-loader" role="status" aria-label="Loading Poccabet">
-        <div class="wm">Pocca<span>bet</span></div>
-        <div class="odds" aria-hidden="true"><i>1</i><i>X</i><i>2</i></div>
+        <!-- Style "Pick" -->
+        <div class="splash-pick" data-splash="pick" data-font='italic 700 56px "Barlow Condensed"'>
+          <div class="wm">Pocca<span>bet</span></div>
+          <div class="odds" aria-hidden="true"><i>1</i><i>X</i><i>2</i></div>
+        </div>
       </div>
       <script>
         (function () {
           var el = document.getElementById("app-loader");
-          var go = function () { el && el.classList.add("ready"); };
+          // Show the chosen style (?splash=<name>), falling back to "pick".
+          // ?splash=compare shows every style side by side.
+          var want = new URLSearchParams(location.search).get("splash");
+          var all = [].slice.call(el.querySelectorAll("[data-splash]"));
+          var shown = want === "compare" ? all : [el.querySelector('[data-splash="' + want + '"]') || el.querySelector('[data-splash="pick"]')];
+          if (want === "compare") el.classList.add("compare");
+          shown.forEach(function (s) {
+            s.classList.add("on");
+            // A style can fix its own background (data-bg) instead of following the theme.
+            var bg = s.getAttribute("data-bg");
+            if (bg && shown.length > 1) s.style.background = bg;
+            else if (bg) document.documentElement.style.setProperty("--splash-bg", bg);
+          });
+          var go = function () { el.classList.add("ready"); };
           setTimeout(go, 700);
-          if (document.fonts && document.fonts.load) document.fonts.load('italic 700 56px "Barlow Condensed"').then(go, go);
+          if (document.fonts && document.fonts.load && window.Promise) {
+            Promise.all(shown.map(function (s) { return document.fonts.load(s.getAttribute("data-font")); })).then(go, go);
+          }
         })();
       </script>
     </div>
