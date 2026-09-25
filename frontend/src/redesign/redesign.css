@@ -199,3 +199,10 @@
   .tc-loader i { animation: none; }
   .tc-loader i:nth-child(2) { background: #F5C518; color: #13171C; }
 }
+
+/* Bet slip page (phones): fills the screen under the sticky header; the stake panel pins to the bottom. */
+.tc-slip-page {
+  min-height: calc(100vh - var(--tc-header-h, 69px));
+  min-height: calc(100dvh - var(--tc-header-h, 69px));
+  display: flex; flex-direction: column; background: var(--tc-panel);
+}

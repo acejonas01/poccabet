@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
 import type { Dir, TCMatch } from "./data";
-import { CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
+import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
 import { dayLabel, hhmm } from "./data";
 import { Crest, Flag } from "./media";
@@ -452,7 +452,9 @@ const ANY_ODDS_KEY = "pocca-accept-any-odds";
 type Msg = { text: ReactNode; tone: "info" | "ok" | "warn" | "error" };
 const TONE: Record<Msg["tone"], string> = { info: "var(--tc-label)", ok: "#2AB572", warn: ACCENT, error: "#E5484D" };
 
-export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
+// `onBack`: shown as a full page (/betslip) — a back arrow by the title, and the stake / Place
+// bet panel pinned to the bottom of the screen.
+export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; onBack?: () => void }) {
   const { selections, removeSelection, clear, updateSelections, replaceAll } = useBetSlip();
   const { isAuthenticated, setBalance, demo } = useAuth();
   const navigate = useNavigate();
@@ -561,8 +563,13 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
 
   return (
     <>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: inSheet ? "4px 16px 12px" : "16px 16px 12px" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 17, fontWeight: 800 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: inSheet ? "4px 16px 12px" : onBack ? "10px 16px 12px 4px" : "16px 16px 12px" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: onBack ? 20 : 17, fontWeight: 800 }}>
+          {onBack && (
+            <button type="button" aria-label="Back" onClick={onBack} style={{ width: 44, height: 44, marginRight: -4, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ChevronLeft size={20} />
+            </button>
+          )}
           Bet slip{" "}
           <span style={{ minWidth: 24, height: 24, padding: "0 6px", boxSizing: "border-box", borderRadius: 12, background: ACCENT, color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{count}</span>
         </span>
@@ -594,7 +601,10 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
             : <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>}
         </div>
       ))}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
+      <div style={{
+        display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)",
+        ...(onBack ? { position: "sticky", bottom: 0, marginTop: "auto", paddingBottom: "calc(16px + env(safe-area-inset-bottom))", boxShadow: "0 -8px 24px rgba(0, 0, 0, 0.3)" } : {}),
+      }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{mode === "single" && count > 1 ? "Stake per bet" : "Stake"}</span>
           <label style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)" }}>

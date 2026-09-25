@@ -8,7 +8,7 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
@@ -28,9 +28,9 @@ export function RedesignApp() {
   const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
   const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
   const [market, setMarket] = useStoredState("pocca-home-market", "1x2", "session");
-  const [sheet, setSheet] = useState<"markets" | "slip" | "match" | "shortcuts" | "support" | null>(null);
+  const [sheet, setSheet] = useState<"markets" | "match" | "shortcuts" | "support" | null>(null);
   // A shared booking link (/?book=CODE) loads the slip; on phones, open it (desktop shows it in the rail).
-  useBookingLink(() => { if (!desk) setSheet("slip"); });
+  useBookingLink(() => { if (!desk) navigate("/betslip"); });
   // A slip brought back after a reload gets today's prices (and loses games that are over).
   const feedMatches = useMemo(() => [...data.live, ...data.upcoming], [data.live, data.upcoming]);
   useSyncSlipWithFeed(feedMatches, data.upcomingLoaded && data.liveLoaded);
@@ -67,6 +67,9 @@ export function RedesignApp() {
   const onRoot = location.pathname === "/";
   // Sign-up and log-in are full-screen on phones (no header or bottom nav).
   const onAuth = location.pathname === "/login" || location.pathname === "/signup";
+  // The bet slip is its own page on phones: full screen under the header, no bottom nav.
+  const onSlipPage = location.pathname === "/betslip";
+  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
   const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
   const onLeague = location.pathname.startsWith("/league/") || location.pathname.startsWith("/sports");
   const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
@@ -119,17 +122,20 @@ export function RedesignApp() {
         <Route path="/login" element={authPage(<RedesignLogin />)} />
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
+        <Route path="/betslip" element={desk
+          ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
+          : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
         <Route path="/account" element={page(<RedesignAccount onSupport={() => setSheet("support")} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}
 
-      {!desk && !onAuth && (
+      {!desk && !onAuth && !onSlipPage && (
         <BottomNav
           active={navActive as "home" | "live" | "mybets" | "account"}
           liveCount={data.live.length}
           onHome={() => goHome()}
           onLive={goLive}
-          onSlip={() => setSheet("slip")}
+          onSlip={() => navigate("/betslip")}
           onMyBets={() => navigate("/my-bets")}
           onAccount={() => navigate(isAuthenticated ? "/account" : "/login")}
         />
@@ -137,11 +143,6 @@ export function RedesignApp() {
 
       {sheet === "markets" && (
         <MarketsSheet active={market} onPick={(id) => { setMarket(id); setSheet(null); }} onClose={() => setSheet(null)} />
-      )}
-      {sheet === "slip" && (
-        <Sheet label="Bet slip" onClose={() => setSheet(null)}>
-          <BetSlipBody inSheet />
-        </Sheet>
       )}
       {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
       {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
