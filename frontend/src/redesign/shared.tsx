@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
+import { THEMES, useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
 import type { Dir, TCMatch } from "./data";
 import { CheckIcon, CloseIcon, LockIcon, ReceiptIcon } from "./icons";
@@ -502,7 +502,7 @@ export function AccountSheet({ onClose }: { onClose: () => void }) {
           </>
         )}
         <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Log out</button>
-        <button onClick={() => { setTheme("d"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme D)</button>
+        {THEMES.includes("d") && <button onClick={() => { setTheme("d"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme D)</button>}
       </div>
     </Sheet>
   );
@@ -582,6 +582,7 @@ export function useThemeButton() {
   const held = useRef(false);
   const start = () => {
     held.current = false;
+    if (!THEMES.includes("d")) return;
     timer.current = setTimeout(() => { held.current = true; setTheme("d"); }, 800);
   };
   const cancel = () => { if (timer.current) clearTimeout(timer.current); timer.current = null; };

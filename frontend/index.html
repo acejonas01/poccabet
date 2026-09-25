@@ -116,6 +116,9 @@
         var bg = { a: "#131E24", b: "#222C32", c: "#2B363D", d: "#1f2c33" };
         var t = new URLSearchParams(location.search).get("theme");
         try { t = t || localStorage.getItem("pocca-theme-v3"); } catch (e) {}
+        // A build with VITE_THEMES (e.g. "a") only offers those themes. Vite fills this in at build time.
+        var enabled = "%VITE_THEMES%".toLowerCase().split(",").map(function (x) { return x.trim(); }).filter(function (x) { return bg[x]; });
+        if (enabled.length && enabled.indexOf(t) === -1) t = enabled[0];
         document.documentElement.style.setProperty("--splash-bg", bg[t] || bg.a);
       })();
     </script>
