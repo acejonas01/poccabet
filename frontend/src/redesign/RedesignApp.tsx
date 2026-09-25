@@ -4,7 +4,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Auth } from "../pages/Auth";
 import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
@@ -13,6 +12,7 @@ import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useB
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
+import { RedesignLogin, RedesignSignup } from "./auth";
 import "./redesign.css";
 
 
@@ -64,6 +64,9 @@ export function RedesignApp() {
   };
 
   const onRoot = location.pathname === "/";
+  // Sign-up and log-in are full-screen on phones (no header or bottom nav).
+  const onAuth = location.pathname === "/login" || location.pathname === "/signup";
+  const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
   const onLeague = location.pathname.startsWith("/league/") || location.pathname.startsWith("/sports");
   const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
@@ -96,7 +99,7 @@ export function RedesignApp() {
 
   return (
     <div className="tc-root">
-      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} /> : <MobileHeader simulated={data.simulated} />}
+      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} /> : !onAuth && <MobileHeader simulated={data.simulated} />}
       {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}
 
       <Routes>
@@ -112,13 +115,13 @@ export function RedesignApp() {
         <Route path="/sports/:sport/:view" element={desk
           ? deskShell(<SportListPage {...listProps} View={DesktopListPage} />)
           : <SportListPage {...listProps} View={MatchListPage} />} />
-        <Route path="/login" element={page(<Auth mode="login" />)} />
-        <Route path="/signup" element={page(<Auth mode="signup" />)} />
+        <Route path="/login" element={authPage(<RedesignLogin />)} />
+        <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
       </Routes>
       {desk && <SiteFooter desktop />}
 
-      {!desk && (
+      {!desk && !onAuth && (
         <BottomNav
           active={navActive as "home" | "live" | "mybets" | "account"}
           liveCount={data.live.length}

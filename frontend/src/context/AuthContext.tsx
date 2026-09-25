@@ -3,7 +3,8 @@ import { api } from "../api/client";
 
 interface User {
   id: string;
-  email: string;
+  email: string | null;
+  phone?: string | null;
   displayName: string;
 }
 
@@ -12,7 +13,8 @@ interface AuthContextValue {
   balance: number;
   demo: boolean; // play-money wallet (simulation mode)
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (phoneOrEmail: string, password: string) => Promise<void>;
+  signupWithPhone: (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   refreshBalance: () => Promise<void>;
@@ -29,8 +31,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [balance, setBalance] = useState<number>(0);
   const [demo, setDemo] = useState(false);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api.login({ email, password });
+  // A phone number, or an email for older accounts.
+  const login = useCallback(async (phoneOrEmail: string, password: string) => {
+    const id = phoneOrEmail.trim();
+    const res = await api.login(id.includes("@") ? { email: id, password } : { phone: id, password });
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -40,6 +44,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(async (email: string, password: string, displayName: string) => {
     const res = await api.signup({ email, password, displayName });
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("user", JSON.stringify(res.user));
+    setUser(res.user);
+    setBalance(res.wallet.balance);
+    setDemo(!!res.wallet.demo);
+  }, []);
+
+  const signupWithPhone = useCallback(async (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) => {
+    const res = await api.signupPhone(data);
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -68,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, logout, refreshBalance, setBalance }}
+      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, refreshBalance, setBalance }}
     >
       {children}
     </AuthContext.Provider>

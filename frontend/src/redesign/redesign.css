@@ -162,3 +162,7 @@
   .tc-marquee-dup { display: none !important; }
   .tc-marquee-wrap { overflow-x: auto !important; scrollbar-width: none; }
 }
+
+/* Sign-up / log-in on desktop: the full-screen phone layout, shown as a centred card. */
+.tc-auth-desk { max-width: 440px; margin: 32px auto; border-radius: 20px; overflow: hidden; border: 1px solid var(--tc-line); }
+.tc-auth-desk > div { min-height: 0 !important; }

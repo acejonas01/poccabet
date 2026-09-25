@@ -44,7 +44,18 @@ export const api = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  login: (data: { email: string; password: string }) =>
+  // Phone sign-up: send a code → check it → create the account with the verification token.
+  otpStart: (phone: string) =>
+    request<{ phone: string; display: string; resendIn: number; expiresIn: number; demoCode?: string }>("/api/auth/otp/start", {
+      method: "POST", body: JSON.stringify({ phone, purpose: "signup" }),
+    }),
+  otpVerify: (phone: string, code: string) =>
+    request<{ verificationToken: string }>("/api/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code }) }),
+  signupPhone: (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) =>
+    request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/signup/phone", {
+      method: "POST", body: JSON.stringify(data),
+    }),
+  login: (data: { email?: string; phone?: string; password: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(data),

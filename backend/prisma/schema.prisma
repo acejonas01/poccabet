@@ -8,11 +8,14 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  displayName  String
-  createdAt    DateTime @default(now())
+  id              String    @id @default(cuid())
+  email           String?   @unique // older accounts; new ones sign up with a phone number
+  phone           String?   @unique // E.164, e.g. +2348030999969
+  phoneVerifiedAt DateTime?
+  referralCode    String? // code entered at sign-up
+  passwordHash    String
+  displayName     String
+  createdAt       DateTime  @default(now())
 
   wallet Wallet?
   bets   Bet[]
@@ -157,4 +160,19 @@ model Pick {
 
   @@unique([day, deviceId, matchId])
   @@index([day])
+}
+
+// One-time codes sent by SMS (sign-up now; login / password reset later). Only a hash of the
+// code is stored. A code works once, for 5 minutes, with at most 5 tries.
+model OtpCode {
+  id         String    @id @default(cuid())
+  phone      String
+  purpose    String // SIGNUP
+  codeHash   String
+  attempts   Int       @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([phone, purpose, createdAt])
 }
