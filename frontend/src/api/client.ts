@@ -45,13 +45,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
   // Phone sign-up: send a code → check it → create the account with the verification token.
-  otpStart: (phone: string) =>
+  otpStart: (phone: string, email?: string) =>
     request<{ phone: string; display: string; resendIn: number; expiresIn: number; demoCode?: string }>("/api/auth/otp/start", {
-      method: "POST", body: JSON.stringify({ phone, purpose: "signup" }),
+      method: "POST", body: JSON.stringify({ phone, email, purpose: "signup" }),
     }),
   otpVerify: (phone: string, code: string) =>
     request<{ verificationToken: string }>("/api/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code }) }),
-  signupPhone: (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) =>
+  signupPhone: (data: SignupDetails & { verificationToken: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/signup/phone", {
       method: "POST", body: JSON.stringify(data),
     }),
@@ -97,6 +97,10 @@ export const api = {
   placeLegacyBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
 };
+
+export interface SignupDetails {
+  firstName: string; lastName: string; email: string; password: string; ageConfirmed: true; referralCode?: string;
+}
 
 export interface BetSelectionInfo {
   matchId: string; home: string; away: string; league: string; country: string; kickoff: string | null;

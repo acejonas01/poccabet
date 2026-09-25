@@ -12,7 +12,10 @@ model User {
   email           String?   @unique // older accounts; new ones sign up with a phone number
   phone           String?   @unique // E.164, e.g. +2348030999969
   phoneVerifiedAt DateTime?
-  referralCode    String? // code entered at sign-up
+  firstName       String?
+  lastName        String?
+  referralCode    String? // promotion / referral code entered at sign-up
+  ageConfirmedAt  DateTime? // when they confirmed they're over 18 (sign-up)
   passwordHash    String
   displayName     String
   createdAt       DateTime  @default(now())

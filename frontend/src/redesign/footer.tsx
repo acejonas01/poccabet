@@ -75,6 +75,16 @@ export function WinnersStrip({ desktop = false }: { desktop?: boolean }) {
   );
 }
 
+// Red 18+ badge + "Play responsibly" (footer, sign-up).
+export function PlayResponsibly({ center = false }: { center?: boolean }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: center ? "center" : undefined, gap: 10, fontSize: 14, fontWeight: 700 }}>
+      <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
+      Play responsibly
+    </div>
+  );
+}
+
 // ---------- footer ----------
 const LINKS = ["Sports", "Live", "Become an agent", "About us", "Contact us", "Help", "Affiliates", "T&Cs", "Privacy policy"];
 const SOCIALS = [
@@ -104,10 +114,7 @@ export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
             </a>
           ))}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
-          Play responsibly
-        </div>
+        <PlayResponsibly />
         <p style={{ margin: 0, paddingTop: 14, borderTop: "1px solid var(--tc-line)", fontSize: 12, lineHeight: 1.5, color: "var(--tc-label)" }}>
           © {new Date().getFullYear()} Poccabet Technologies Ltd. is regulated by the National Lottery Regulatory Commission.
         </p>

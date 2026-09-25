@@ -39,14 +39,21 @@ const otpFail = (res: Response, err: unknown) => {
 
 // ---------- phone sign-up: 1) send a code  2) check it  3) create the account ----------
 
-// POST /api/auth/otp/start { phone, purpose: "signup" }
+const PHONE_TAKEN = { error: "This number already has an account. Log in instead.", code: "PHONE_TAKEN" };
+const EMAIL_TAKEN = { error: "This email already has an account. Log in instead.", code: "EMAIL_TAKEN" };
+const normEmail = (v: unknown) => String(v ?? "").trim().toLowerCase();
+// Older accounts may have saved their email with capitals, so emails match ignoring case.
+const findByEmail = (email: string) => prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, include: { wallet: true } });
+
+// POST /api/auth/otp/start { phone, email?, purpose: "signup" } — the email (if sent) is checked
+// too, so nobody verifies their number only to be told the email is taken.
 router.post("/otp/start", async (req, res) => {
   const phone = normaliseNgPhone(String(req.body?.phone ?? ""));
   if (!phone) return res.status(400).json({ error: "Enter a valid Nigerian mobile number", code: "INVALID_PHONE" });
+  const email = normEmail(req.body?.email);
   try {
-    if (await prisma.user.findUnique({ where: { phone } })) {
-      return res.status(409).json({ error: "This number already has an account. Log in instead.", code: "PHONE_TAKEN" });
-    }
+    if (await prisma.user.findUnique({ where: { phone } })) return res.status(409).json(PHONE_TAKEN);
+    if (email && (await findByEmail(email))) return res.status(409).json(EMAIL_TAKEN);
     res.json({ phone, display: formatNgPhone(phone), ...(await startOtp(phone, "SIGNUP")) });
   } catch (err) {
     otpFail(res, err);
@@ -65,11 +72,15 @@ router.post("/otp/verify", async (req, res) => {
   }
 });
 
+const name = (label: string) => z.string().trim().min(2, `Enter your ${label}`).max(40);
 const phoneSignupSchema = z.object({
   verificationToken: z.string().min(10),
+  firstName: name("name"),
+  lastName: name("surname"),
+  email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Use at least 8 characters").max(100),
-  displayName: z.string().trim().max(40).optional(),
-  referralCode: z.string().trim().max(32).optional(),
+  ageConfirmed: z.literal(true, { message: "You must be over 18 to open an account" }),
+  referralCode: z.string().trim().max(32).optional(), // promotion code
 });
 
 // POST /api/auth/signup/phone — create the account for a verified number.
@@ -78,18 +89,22 @@ router.post("/signup/phone", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid details", code: "INVALID_DETAILS" });
   const phone = phoneFromToken(parsed.data.verificationToken, "SIGNUP");
   if (!phone) return res.status(401).json({ error: "Your verification expired. Please verify your number again.", code: "VERIFICATION_EXPIRED" });
-  const { password, displayName, referralCode } = parsed.data;
+  const { firstName, lastName, email, password, referralCode } = parsed.data;
   try {
-    if (await prisma.user.findUnique({ where: { phone } })) {
-      return res.status(409).json({ error: "This number already has an account. Log in instead.", code: "PHONE_TAKEN" });
-    }
-    // (Two sign-ups racing for the same number are still caught below by the unique index.)
+    if (await prisma.user.findUnique({ where: { phone } })) return res.status(409).json(PHONE_TAKEN);
+    if (await findByEmail(email)) return res.status(409).json(EMAIL_TAKEN);
+    // (Two sign-ups racing for the same number or email are still caught below by the unique indexes.)
+    const now = new Date();
     const user = await prisma.user.create({
       data: {
         phone,
-        phoneVerifiedAt: new Date(),
+        phoneVerifiedAt: now,
+        email,
+        firstName,
+        lastName,
+        ageConfirmedAt: now,
         referralCode: referralCode || null,
-        displayName: displayName && displayName.length >= 2 ? displayName : `Player ${phone.slice(-4)}`,
+        displayName: firstName,
         passwordHash: await bcrypt.hash(password, 10),
         wallet: newWallet(),
       },
@@ -98,7 +113,7 @@ router.post("/signup/phone", async (req, res) => {
     sendSession(res, user, 201);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      return res.status(409).json({ error: "This number already has an account. Log in instead.", code: "PHONE_TAKEN" });
+      return res.status(409).json(String(err.meta?.target ?? "").includes("email") ? EMAIL_TAKEN : PHONE_TAKEN);
     }
     otpFail(res, err);
   }
@@ -119,7 +134,7 @@ router.post("/signup", async (req, res) => {
   }
   const { email, password, displayName } = parsed.data;
 
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await findByEmail(email);
   if (existing) {
     return res.status(409).json({ error: "Email already registered" });
   }
@@ -144,11 +159,12 @@ router.post("/login", async (req, res) => {
   if (!parsed.success) {
     return res.status(400).json({ error: "Enter your phone number and password", code: "INVALID_DETAILS" });
   }
-  const { email, password } = parsed.data;
+  const { password } = parsed.data;
+  const email = parsed.data.email?.trim().toLowerCase();
   const phone = parsed.data.phone ? normaliseNgPhone(parsed.data.phone) : null;
   if (!phone && !email) return res.status(400).json({ error: "Enter your phone number and password", code: "INVALID_DETAILS" });
 
-  const user = await prisma.user.findUnique({ where: phone ? { phone } : { email: email! }, include: { wallet: true } });
+  const user = phone ? await prisma.user.findUnique({ where: { phone }, include: { wallet: true } }) : await findByEmail(email!);
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: phone ? "Wrong phone number or password" : "Wrong email or password", code: "INVALID_CREDENTIALS" });
   }

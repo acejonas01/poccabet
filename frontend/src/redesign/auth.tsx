@@ -4,9 +4,10 @@ import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type R
 import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { ChevronLeft, CloseIcon } from "./icons";
+import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
 import { Flag } from "./media";
-import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
+import { PlayResponsibly } from "./footer";
+import { ACCENT } from "./shared";
 
 const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -34,22 +35,6 @@ function Shell({ children, onClose, banner }: { children: ReactNode; onClose: ()
       </div>
       <div style={{ flex: 1, marginTop: -24, padding: "28px 20px calc(28px + env(safe-area-inset-bottom))", borderRadius: "22px 22px 0 0", background: "var(--tc-panel)", display: "flex", flexDirection: "column", gap: 18 }}>
         {children}
-      </div>
-    </div>
-  );
-}
-
-function WelcomeBanner() {
-  return (
-    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-      <div style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, lineHeight: 1, letterSpacing: 0.5 }}>
-        WELCOME <span style={{ color: ACCENT }}>OFFER</span>
-      </div>
-      <div style={{ width: "100%", maxWidth: 340, padding: "14px 16px", borderRadius: 14, background: "rgba(0, 0, 0, 0.25)", border: "1px solid rgba(245, 197, 24, 0.3)", display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontFamily: barlow, fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
-          UP TO <span style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</span> BONUS
-        </span>
-        <span style={{ fontSize: 13, color: "var(--tc-soft)" }}>on your first deposit · football, Aviator & more</span>
       </div>
     </div>
   );
@@ -98,19 +83,33 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
   );
 }
 
-// ---------- sign-up ----------
+// ---------- sign-up: Open Account form → verify the number by SMS → Congratulations ----------
+const formInput = (bad: boolean): CSSProperties => ({
+  width: "100%", height: 52, boxSizing: "border-box", padding: "0 16px", borderRadius: 10,
+  border: `1.5px solid ${bad ? "#E5484D" : "transparent"}`, background: "var(--tc-raise)", outline: "none",
+  color: "var(--tc-text)", fontFamily: "inherit", fontSize: 17,
+});
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function FormField({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
+  return (
+    <label style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span style={{ fontSize: 16, color: "var(--tc-text)" }}>{label}</span>
+      {children}
+      {error && <span style={{ fontSize: 13, color: "#E5484D" }}>{error}</span>}
+    </label>
+  );
+}
+
 export function RedesignSignup() {
   const navigate = useNavigate();
-  const { signupWithPhone } = useAuth();
-  const [step, setStep] = useState<"phone" | "code" | "password">("phone");
-  const [digits, setDigits] = useState("");
-  const [hasReferral, setHasReferral] = useState(false);
-  const [referral, setReferral] = useState("");
+  const { signupWithPhone, balance, demo } = useAuth();
+  const [step, setStep] = useState<"form" | "code" | "done">("form");
+  const [f, setF] = useState({ firstName: "", lastName: "", digits: "", email: "", password: "", promo: "", over18: false });
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [showPw, setShowPw] = useState(false);
   const [sent, setSent] = useState<{ phone: string; display: string; demoCode?: string } | null>(null);
   const [code, setCode] = useState("");
-  const [token, setToken] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [wait, setWait] = useState(0); // seconds until "Resend code"
@@ -122,23 +121,59 @@ export function RedesignSignup() {
     return () => clearTimeout(t);
   }, [wait]);
 
+  const set = (k: keyof typeof f) => (v: string | boolean) => { setF((x) => ({ ...x, [k]: v })); setError(null); };
+  const touch = (k: string) => () => setTouched((t) => ({ ...t, [k]: true }));
+  const problems = {
+    firstName: f.firstName.trim().length < 2 ? "Enter your name" : null,
+    lastName: f.lastName.trim().length < 2 ? "Enter your surname" : null,
+    digits: !validLocal(f.digits) ? "Enter a valid Nigerian mobile number" : null,
+    email: !EMAIL_RE.test(f.email.trim()) ? "Enter a valid email" : null,
+    password: f.password.length < 8 ? "Use at least 8 characters" : null,
+    over18: !f.over18 ? "You must be over 18 to open an account" : null,
+  };
+  const valid = Object.values(problems).every((p) => !p);
+  const shown = (k: keyof typeof problems) => (touched[k] ? problems[k] : null);
   const close = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
 
   async function sendCode(e?: FormEvent) {
     e?.preventDefault();
-    if (!validLocal(digits) || busy) return setError(validLocal(digits) ? null : "Enter a valid Nigerian mobile number");
+    if (!valid) return setTouched({ firstName: true, lastName: true, digits: true, email: true, password: true, over18: true });
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await api.otpStart(digits);
+      const res = await api.otpStart(f.digits, f.email.trim());
       setSent(res);
       setWait(res.resendIn);
       setCode("");
       setStep("code");
       setTimeout(() => codeInput.current?.focus(), 50);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "TOO_SOON" && sent) {
-        setStep("code"); // a code is already on its way
+      if (err instanceof ApiError && err.code === "TOO_SOON" && sent) setStep("code"); // a code is already on its way
+      setError(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Right code → create the account straight away (everything else was on the form).
+  async function checkCode(value = code) {
+    if (value.length !== 6 || busy || !sent) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { verificationToken } = await api.otpVerify(sent.phone, value);
+      await signupWithPhone({
+        verificationToken, firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(),
+        password: f.password, ageConfirmed: true, referralCode: f.promo.trim() || undefined,
+      });
+      setStep("done");
+    } catch (err) {
+      if (err instanceof ApiError && ["EMAIL_TAKEN", "PHONE_TAKEN", "INVALID_DETAILS", "VERIFICATION_EXPIRED"].includes(err.code ?? "")) {
+        setStep("form"); // something on the form needs changing
+      } else {
+        setCode("");
+        codeInput.current?.focus();
       }
       setError(errText(err));
     } finally {
@@ -146,85 +181,76 @@ export function RedesignSignup() {
     }
   }
 
-  async function checkCode(value = code) {
-    if (value.length !== 6 || busy || !sent) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await api.otpVerify(sent.phone, value);
-      setToken(res.verificationToken);
-      setStep("password");
-    } catch (err) {
-      setError(errText(err));
-      setCode("");
-      codeInput.current?.focus();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    if (password.length < 8 || busy) return setError(password.length < 8 ? "Use at least 8 characters" : null);
-    setBusy(true);
-    setError(null);
-    try {
-      await signupWithPhone({ verificationToken: token, password, displayName: name.trim() || undefined, referralCode: hasReferral ? referral.trim() || undefined : undefined });
-      navigate("/", { replace: true });
-    } catch (err) {
-      if (err instanceof ApiError && err.code === "VERIFICATION_EXPIRED") setStep("phone");
-      setError(errText(err));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const backBtn = (to: () => void, label: string) => (
-    <button type="button" onClick={to} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
-      <ChevronLeft size={16} />{label}
-    </button>
-  );
-
-  // 1) phone number
-  if (step === "phone") {
+  // 1) Open Account
+  if (step === "form") {
     return (
-      <Shell onClose={close} banner={<WelcomeBanner />}>
-        <form onSubmit={sendCode} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--tc-soft)", textAlign: "center" }}>Join for that Poccabet feeling!</h1>
-          <PhoneField digits={digits} onChange={(d) => { setDigits(d); setError(null); }} autoFocus />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-            <span id="ref-label" style={{ fontSize: 16, color: "var(--tc-text)" }}>Do you have a referral code?</span>
-            <button type="button" role="switch" aria-checked={hasReferral} aria-labelledby="ref-label" onClick={() => setHasReferral((v) => !v)} style={{
-              position: "relative", width: 52, height: 30, flexShrink: 0, borderRadius: 15, border: "none", padding: 0,
-              background: hasReferral ? ACCENT : "var(--tc-track)", transition: "background 0.15s",
-            }}>
-              <span style={{ position: "absolute", top: 3, left: hasReferral ? 25 : 3, width: 24, height: 24, borderRadius: 12, background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.3)", transition: "left 0.15s" }} />
-            </button>
-          </div>
-          {hasReferral && (
-            <label style={fieldBox}>
-              <span style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
-                <span style={smallLabel}>Referral code</span>
-                <input value={referral} onChange={(e) => setReferral(e.target.value.toUpperCase())} autoCapitalize="characters" style={{ ...textInput, fontSize: 18 }} />
+      <div style={{ minHeight: "100dvh", background: "var(--tc-page)" }}>
+        <div style={{ position: "relative" }}>
+          <img src="/slides/Slide-1-m.jpg" alt="" style={{ display: "block", width: "100%", aspectRatio: "1080 / 400", objectFit: "cover" }} />
+          <button aria-label="Close" onClick={close} style={{ position: "absolute", top: "calc(8px + env(safe-area-inset-top))", right: 8, width: 40, height: 40, borderRadius: 20, border: "none", background: "rgba(0, 0, 0, 0.5)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CloseIcon size={18} />
+          </button>
+        </div>
+        <form onSubmit={sendCode} noValidate style={{ padding: "24px 20px calc(32px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 18 }}>
+          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>Open Account</h1>
+          <FormField label="Name *" error={shown("firstName")}>
+            <input autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} onBlur={touch("firstName")} style={formInput(!!shown("firstName"))} />
+          </FormField>
+          <FormField label="Surname *" error={shown("lastName")}>
+            <input autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} onBlur={touch("lastName")} style={formInput(!!shown("lastName"))} />
+          </FormField>
+          <FormField label="Mobile Number *" error={shown("digits")}>
+            <span style={{ display: "flex", gap: 10 }}>
+              <span aria-hidden="true" style={{ ...formInput(false), width: 96, flexShrink: 0, display: "flex", alignItems: "center", gap: 8, background: "var(--tc-outline)", color: "var(--tc-soft)" }}>
+                <Flag country="Nigeria" size={18} />+234
               </span>
+              <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="801 234 5678" value={grouped(f.digits)}
+                onChange={(e) => set("digits")(localDigits(e.target.value))} onBlur={touch("digits")} style={formInput(!!shown("digits"))} />
+            </span>
+          </FormField>
+          <FormField label="Email *" error={shown("email")}>
+            <input type="email" autoComplete="email" inputMode="email" value={f.email} onChange={(e) => set("email")(e.target.value)} onBlur={touch("email")} style={formInput(!!shown("email"))} />
+          </FormField>
+          <FormField label="Password *" error={shown("password")}>
+            <span style={{ position: "relative", display: "block" }}>
+              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56 }} />
+              <button type="button" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {showPw ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            </span>
+          </FormField>
+          <FormField label="Promotion Code (optional)">
+            <input autoCapitalize="characters" value={f.promo} onChange={(e) => set("promo")(e.target.value.toUpperCase())} style={formInput(false)} />
+          </FormField>
+
+          <div style={{ borderRadius: 10, background: "var(--tc-panel)", border: `1.5px solid ${shown("over18") ? "#E5484D" : "transparent"}`, overflow: "hidden" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px", background: "var(--tc-raise)", cursor: "pointer" }}>
+              <input type="checkbox" checked={f.over18} onChange={(e) => { set("over18")(e.target.checked); touch("over18")(); }} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: ACCENT }} />
+              <span style={{ fontSize: 17 }}>I am over 18 years old *</span>
             </label>
-          )}
+            <p style={{ margin: 0, padding: "10px 16px 12px", fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>
+              By creating an account you agree to accept our <a href="#" onClick={(e) => e.preventDefault()}>Terms and Conditions</a>, are over 18 and are aware of our Responsible Gambling Policy.
+            </p>
+          </div>
+
           {errorLine(error)}
-          <button type="submit" disabled={busy} style={primaryBtn(validLocal(digits) && !busy)}>{busy ? "SENDING CODE…" : "GET STARTED"}</button>
+          <button type="submit" disabled={busy} style={{ ...primaryBtn(valid && !busy), borderRadius: 10 }}>{busy ? "SENDING CODE…" : "VERIFY & CREATE ACCOUNT"}</button>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
             Already have an account? <a href="/login" onClick={(e) => { e.preventDefault(); navigate("/login", { replace: true }); }} style={{ fontWeight: 800 }}>Log in</a>
           </p>
-          <p style={{ margin: 0, fontSize: 12, color: "var(--tc-label)", textAlign: "center" }}>18+ only · Please play responsibly</p>
+          <PlayResponsibly center />
         </form>
-      </Shell>
+      </div>
     );
   }
 
-  // 2) the code
+  // 2) the SMS code
   if (step === "code" && sent) {
     return (
       <Shell onClose={close}>
-        {backBtn(() => { setStep("phone"); setError(null); }, "Change number")}
+        <button type="button" onClick={() => { setStep("form"); setError(null); }} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
+          <ChevronLeft size={16} />Edit details
+        </button>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Verify your number</h1>
           <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Enter the 6-digit code we sent to <strong style={{ color: "var(--tc-text)" }}>{sent.display}</strong></p>
@@ -241,19 +267,16 @@ export function RedesignSignup() {
             value={code} onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 6); setCode(v); setError(null); if (v.length === 6) checkCode(v); }}
             style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, fontSize: 16, border: "none" }} />
           <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
-            {Array.from({ length: 6 }, (_, i) => {
-              const active = i === Math.min(code.length, 5);
-              return (
-                <span key={i} style={{
-                  height: 58, borderRadius: 12, background: "var(--tc-page)", border: `2px solid ${error ? "#E5484D" : active ? ACCENT : "var(--tc-outline)"}`,
-                  display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 30, fontWeight: 700,
-                }}>{code[i] ?? ""}</span>
-              );
-            })}
+            {Array.from({ length: 6 }, (_, i) => (
+              <span key={i} style={{
+                height: 58, borderRadius: 12, background: "var(--tc-page)", border: `2px solid ${error ? "#E5484D" : i === Math.min(code.length, 5) ? ACCENT : "var(--tc-outline)"}`,
+                display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 30, fontWeight: 700,
+              }}>{code[i] ?? ""}</span>
+            ))}
           </span>
         </label>
         {errorLine(error)}
-        <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CHECKING…" : "VERIFY"}</button>
+        <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CREATING ACCOUNT…" : "VERIFY & CREATE ACCOUNT"}</button>
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
           Didn't get it?{" "}
           {wait > 0
@@ -264,26 +287,24 @@ export function RedesignSignup() {
     );
   }
 
-  // 3) password (+ optional name)
+  // 3) Congratulations
   return (
-    <Shell onClose={close}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, color: "#2AB572" }}>✓ Number verified</span>
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Secure your account</h1>
-        <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>You'll log in with {sent?.display} and this password.</p>
+    <Shell onClose={() => navigate("/", { replace: true })}>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "12px 0", textAlign: "center" }}>
+        <span aria-hidden="true" style={{ width: 84, height: 84, borderRadius: 42, background: "rgba(42, 181, 114, 0.14)", border: "2px solid #2AB572", color: "#2AB572", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CheckIcon size={44} />
+        </span>
+        <h1 style={{ margin: 0, fontFamily: barlow, fontStyle: "italic", fontSize: 40, fontWeight: 700, lineHeight: 1 }}>CONGRATULATIONS!</h1>
+        <p style={{ margin: 0, fontSize: 17 }}>Welcome to Poccabet, <strong>{f.firstName.trim()}</strong>.</p>
+        <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Your account is ready and your number {sent?.display} is verified.</p>
+        {demo && (
+          <p style={{ margin: 0, padding: "12px 16px", borderRadius: 12, background: "var(--tc-page)", fontSize: 14, color: "var(--tc-soft)" }}>
+            We've added <strong style={{ color: ACCENT }}>{`₦${balance.toLocaleString("en-US")}`}</strong> in demo funds so you can start betting.
+          </p>
+        )}
       </div>
-      <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <label style={fieldBox}>
-          <span style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
-            <span style={smallLabel}>Your name (optional)</span>
-            <input value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" maxLength={40} style={{ ...textInput, fontSize: 18 }} />
-          </span>
-        </label>
-        <PasswordField value={password} onChange={(v) => { setPassword(v); setError(null); }} label="Create a password" autoComplete="new-password" />
-        <span style={{ fontSize: 12, color: password.length >= 8 ? "#2AB572" : "var(--tc-label)" }}>{password.length >= 8 ? "✓ " : ""}At least 8 characters</span>
-        {errorLine(error)}
-        <button type="submit" disabled={busy} style={primaryBtn(password.length >= 8 && !busy)}>{busy ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}</button>
-      </form>
+      <button type="button" onClick={() => navigate("/", { replace: true })} style={primaryBtn(true)}>START BETTING</button>
+      <PlayResponsibly center />
     </Shell>
   );
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
-import { api } from "../api/client";
+import { api, type SignupDetails } from "../api/client";
 
 interface User {
   id: string;
@@ -14,7 +14,7 @@ interface AuthContextValue {
   demo: boolean; // play-money wallet (simulation mode)
   isAuthenticated: boolean;
   login: (phoneOrEmail: string, password: string) => Promise<void>;
-  signupWithPhone: (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) => Promise<void>;
+  signupWithPhone: (data: SignupDetails & { verificationToken: string }) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   refreshBalance: () => Promise<void>;
@@ -51,7 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDemo(!!res.wallet.demo);
   }, []);
 
-  const signupWithPhone = useCallback(async (data: { verificationToken: string; password: string; displayName?: string; referralCode?: string }) => {
+  const signupWithPhone = useCallback(async (data: SignupDetails & { verificationToken: string }) => {
     const res = await api.signupPhone(data);
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
