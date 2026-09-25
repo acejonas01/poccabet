@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
-import { ACCENT, Sheet, SheetTitle } from "./shared";
+import { ACCENT, CodeRow, Sheet, SheetTitle } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -44,14 +44,14 @@ const Totals = ({ bet }: { bet: Bet }) => (
   <div style={{ display: "flex", gap: 12, padding: "12px 16px 14px", borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
     {figure("STAKE", naira(bet.stake))}
     {figure(bet.type === "ACCUMULATOR" ? "TOTAL ODDS" : "ODDS", bet.totalOdds.toFixed(2))}
-    {figure(bet.status === "WON" ? "WON" : "TO WIN", naira(bet.potentialPayout), bet.status === "LOST" ? "var(--tc-label)" : ACCENT)}
+    {bet.status === "WON" ? figure("WON", naira(bet.payout ?? bet.potentialPayout), "#2AB572")
+      : bet.status === "VOID" ? figure("RETURNED", naira(bet.payout ?? bet.stake))
+      : figure("TO WIN", naira(bet.potentialPayout), bet.status === "LOST" ? "var(--tc-label)" : ACCENT)}
   </div>
 );
 
 // The full ticket, opened by tapping a bet.
 function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => navigator.clipboard?.writeText(bet.ticket).then(() => setCopied(true), () => {});
   const row = (label: string, value: ReactNode) => (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
       <span style={{ color: "var(--tc-label)" }}>{label}</span><span style={{ fontWeight: 700, textAlign: "right" }}>{value}</span>
@@ -86,10 +86,9 @@ function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
         );
       })}
       <Totals bet={bet} />
-      <div style={{ padding: "14px 20px 20px" }}>
-        <button onClick={copy} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>
-          {copied ? "Ticket ID copied" : "Copy ticket ID"}
-        </button>
+      <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, color: "var(--tc-label)" }}>TICKET ID</span>
+        <CodeRow code={bet.ticket} share={{ text: `My Poccabet ticket: ${bet.ticket}. Check it on`, url: location.origin }} />
       </div>
     </Sheet>
   );
@@ -137,7 +136,7 @@ function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
 }
 
 export function RedesignMyBets() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, refreshBalance } = useAuth();
   const navigate = useNavigate();
   const [bets, setBets] = useState<Bet[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +146,8 @@ export function RedesignMyBets() {
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
-    api.getMyBets().then((r) => setBets(r.bets)).catch((e) => setError(e.message)).finally(() => setLoading(false));
+    // Loading bets also settles any finished ones, so refresh the balance for winnings.
+    api.getMyBets().then((r) => { setBets(r.bets); refreshBalance().catch(() => {}); }).catch((e) => setError(e.message)).finally(() => setLoading(false));
   }, [isAuthenticated]);
 
   const open = bets.filter((b) => b.status === "PENDING");

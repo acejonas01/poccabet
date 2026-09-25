@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, api } from "../api/client";
+import { ApiError, api, type BookedLeg } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
 import type { Dir, TCMatch } from "./data";
-import { CheckIcon, CloseIcon, LockIcon, ReceiptIcon } from "./icons";
+import { CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
 import { dayLabel, hhmm } from "./data";
 import { Crest, Flag } from "./media";
@@ -237,6 +237,115 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
 const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// ---------- copy & share (booking codes, tickets) ----------
+// Copy works on https/localhost through the clipboard API; over plain http (e.g. testing on a
+// phone over the local network) it falls back to a hidden text box.
+export async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const box = document.createElement("textarea");
+    box.value = text;
+    box.setAttribute("readonly", "");
+    box.style.cssText = "position:fixed;opacity:0;top:0;left:0";
+    document.body.appendChild(box);
+    box.select();
+    const ok = document.execCommand("copy");
+    box.remove();
+    return ok;
+  }
+}
+// The phone's share menu (WhatsApp, SMS, …) where there is one; otherwise copy the message.
+export async function shareText(text: string, url?: string): Promise<"shared" | "copied" | "failed"> {
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, ...(url ? { url } : {}) });
+      return "shared";
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError") return "failed"; // user closed the menu
+    }
+  }
+  return (await copyText(url ? `${text} ${url}` : text)) ? "copied" : "failed";
+}
+
+// Anyone opening this link gets the booked slip loaded (useBookingLink below).
+export const bookingLink = (code: string) => `${location.origin}/?book=${encodeURIComponent(code)}`;
+
+// A booked leg (with today's price) as a slip selection.
+const toSelection = (l: BookedLeg) => ({
+  outcomeId: `${l.matchId}|${l.market}|${l.selection}`, label: l.selection, odds: l.odds, marketName: l.marketLabel, eventLabel: `${l.home} vs ${l.away}`,
+});
+
+// Opening a shared booking link (/?book=CODE) loads that slip; `onLoaded` shows it (mobile: opens the slip sheet).
+export function useBookingLink(onLoaded: () => void) {
+  const { replaceAll } = useBetSlip();
+  const navigate = useNavigate();
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("book");
+    if (!code) return;
+    params.delete("book");
+    navigate({ pathname: window.location.pathname, search: params.toString() ? `?${params}` : "" }, { replace: true });
+    api.loadSlip(code)
+      .then((res) => { if (res.available.length) { replaceAll(res.available.map(toSelection)); onLoaded(); } })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
+const iconBtn: CSSProperties = {
+  width: 44, height: 44, flexShrink: 0, borderRadius: 12, border: "1px solid var(--tc-outline)",
+  background: "var(--tc-page)", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center",
+};
+
+// One code with its Copy and Share buttons. The icons confirm with a tick for a moment.
+export function CodeRow({ code, share }: { code: string; share: { text: string; url?: string } }) {
+  const [done, setDone] = useState<"copy" | "share" | null>(null);
+  const flash = (what: "copy" | "share") => { setDone(what); setTimeout(() => setDone(null), 1600); };
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, letterSpacing: 2, lineHeight: 1, userSelect: "all" }}>{code}</span>
+      <button aria-label={`Copy ${code}`} title="Copy" onClick={async () => { if (await copyText(code)) flash("copy"); }} style={iconBtn}>
+        {done === "copy" ? <CheckIcon size={18} style={{ color: "#2AB572" }} /> : <CopyIcon />}
+      </button>
+      <button aria-label={`Share ${code}`} title="Share" onClick={async () => { if ((await shareText(share.text, share.url)) !== "failed") flash("share"); }} style={{ ...iconBtn, background: ACCENT, border: "none", color: "#13171C" }}>
+        {done === "share" ? <CheckIcon size={18} /> : <ShareIcon />}
+      </button>
+    </div>
+  );
+}
+
+type CodeCardData = { kind: "booking" | "ticket"; codes: string[] };
+
+// Shown at the top of the slip after Book bet / Place bet: the code(s), big, with Copy & Share.
+function CodeCard({ data, onClose, onViewBets }: { data: CodeCardData; onClose: () => void; onViewBets: () => void }) {
+  const booking = data.kind === "booking";
+  return (
+    <section aria-label={booking ? "Booking code" : "Ticket ID"} style={{ margin: "0 16px 14px", padding: "12px 14px 14px", borderRadius: 12, border: `1px solid ${booking ? ACCENT : "#2AB572"}`, background: "var(--tc-card)", display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, letterSpacing: 0.8, color: booking ? ACCENT : "#2AB572" }}>
+          {!booking && <CheckIcon size={14} />}
+          {booking ? "BOOKING CODE" : data.codes.length > 1 ? `${data.codes.length} BETS PLACED · TICKET IDS` : "BET PLACED · TICKET ID"}
+        </span>
+        <button aria-label="Close" onClick={onClose} style={{ width: 32, height: 32, margin: -6, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <CloseIcon size={14} />
+        </button>
+      </div>
+      {data.codes.map((c) => (
+        <CodeRow key={c} code={c} share={booking
+          ? { text: `Load my Poccabet slip with booking code ${c}:`, url: bookingLink(c) }
+          : { text: `My Poccabet ticket: ${c}. Check it on`, url: location.origin }} />
+      ))}
+      <span style={{ fontSize: 12, color: "var(--tc-label)" }}>
+        {booking
+          ? "Anyone can load this slip with the code or the shared link."
+          : <>Track it in <a href="/my-bets" onClick={(e) => { e.preventDefault(); onViewBets(); }}>My Bets</a>, or check it anytime with this ID.</>}
+      </span>
+    </section>
+  );
+}
+
 // Slip selections from the redesign carry "<matchId>|<market>|<selection>" as their id.
 const legOf = (outcomeId: string) => {
   const [matchId, market, selection] = outcomeId.split("|");
@@ -258,6 +367,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
   const [stake, setStake] = useState(1000);
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<Msg | null>(null);
+  const [codeCard, setCodeCard] = useState<CodeCardData | null>(null);
   const [busy, setBusy] = useState(false);
   const [changed, setChanged] = useState(false); // prices moved: the button asks to accept them
   const [anyOdds, setAnyOdds] = useState(() => { try { return localStorage.getItem(ANY_ODDS_KEY) === "1"; } catch { return false; } });
@@ -285,6 +395,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
     if (blocked) return setMsg({ tone: "warn", text: "Remove the selections that are no longer available, then place your bet." });
     setBusy(true);
     setMsg(null);
+    setCodeCard(null);
     try {
       const res = await api.placeBets({
         mode, stake, acceptOdds: anyOdds ? "any" : "higher", idempotencyKey: keyRef.current.key,
@@ -293,11 +404,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
       setBalance(res.balance);
       clear();
       setChanged(false);
-      const tickets = res.bets.map((b) => b.ticket).join(", ");
-      setMsg({
-        tone: "ok",
-        text: <>{res.bets.length > 1 ? `${res.bets.length} bets placed` : "Bet placed"} · Ticket {tickets} · <a href="/my-bets" onClick={(e) => { e.preventDefault(); navigate("/my-bets"); }}>View</a></>,
-      });
+      setCodeCard({ kind: "ticket", codes: res.bets.map((b) => b.ticket) });
     } catch (err) {
       if (err instanceof ApiError && (err.code === "ODDS_CHANGED" || err.code === "SELECTIONS_UNAVAILABLE")) {
         const changes: Record<string, { odds?: number; unavailable?: boolean }> = {};
@@ -323,9 +430,8 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
     setBusy(true);
     try {
       const res = await api.bookSlip(live.map((s) => legOf(s.outcomeId)));
-      setCode(res.code);
-      navigator.clipboard?.writeText(res.code).catch(() => {});
-      setMsg({ tone: "ok", text: <>Booking code <strong style={{ letterSpacing: 1 }}>{res.code}</strong> · share it or load it later</> });
+      setMsg(null);
+      setCodeCard({ kind: "booking", codes: [res.code] });
     } catch (err) {
       setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't book this slip" });
     } finally {
@@ -336,11 +442,10 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
   async function load() {
     if (!code.trim() || busy) return setMsg({ tone: "info", text: "Enter a booking code to load a slip" });
     setBusy(true);
+    setCodeCard(null);
     try {
       const res = await api.loadSlip(code.trim());
-      replaceAll(res.available.map((l) => ({
-        outcomeId: `${l.matchId}|${l.market}|${l.selection}`, label: l.selection, odds: l.odds, marketName: l.marketLabel, eventLabel: `${l.home} vs ${l.away}`,
-      })));
+      replaceAll(res.available.map(toSelection));
       setChanged(false);
       const gone = res.unavailable.length;
       setMsg({
@@ -373,6 +478,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
           <button onClick={() => setMode("single")} style={segBtn(mode === "single")}>Single</button>
         </div>
       </div>
+      {codeCard && <CodeCard data={codeCard} onClose={() => setCodeCard(null)} onViewBets={() => navigate("/my-bets")} />}
       <div style={{ display: "flex", gap: 8, padding: "0 16px 14px" }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Booking code</span>

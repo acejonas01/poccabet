@@ -9,7 +9,7 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
+import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
@@ -27,6 +27,8 @@ export function RedesignApp() {
   const [dateId, setDateId] = useState("all");
   const [market, setMarket] = useState("1x2");
   const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | "shortcuts" | "support" | null>(null);
+  // A shared booking link (/?book=CODE) loads the slip; on phones, open it (desktop shows it in the rail).
+  useBookingLink(() => { if (!desk) setSheet("slip"); });
   // Match whose markets sheet is open — looked up live so its odds keep updating.
   const [matchId, setMatchId] = useState<string | null>(null);
   const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
