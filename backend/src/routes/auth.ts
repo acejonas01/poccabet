@@ -72,6 +72,16 @@ router.post("/otp/verify", async (req, res) => {
   }
 });
 
+// Whole years old on `today` for a yyyy-mm-dd birth date (null if the date doesn't exist).
+export function ageOn(dob: string, today: Date): number | null {
+  const [y, m, d] = dob.split("-").map(Number);
+  const born = new Date(Date.UTC(y, m - 1, d));
+  if (born.getUTCFullYear() !== y || born.getUTCMonth() !== m - 1 || born.getUTCDate() !== d || born > today) return null;
+  let age = today.getUTCFullYear() - y;
+  if (today.getUTCMonth() < m - 1 || (today.getUTCMonth() === m - 1 && today.getUTCDate() < d)) age--;
+  return age;
+}
+
 const name = (label: string) => z.string().trim().min(2, `Enter your ${label}`).max(40);
 const phoneSignupSchema = z.object({
   verificationToken: z.string().min(10),
@@ -80,6 +90,7 @@ const phoneSignupSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email"),
   password: z.string().min(8, "Use at least 8 characters").max(100),
   ageConfirmed: z.literal(true, { message: "You must be over 18 to open an account" }),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter your date of birth"),
   referralCode: z.string().trim().max(32).optional(), // promotion code
 });
 
@@ -89,7 +100,10 @@ router.post("/signup/phone", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid details", code: "INVALID_DETAILS" });
   const phone = phoneFromToken(parsed.data.verificationToken, "SIGNUP");
   if (!phone) return res.status(401).json({ error: "Your verification expired. Please verify your number again.", code: "VERIFICATION_EXPIRED" });
-  const { firstName, lastName, email, password, referralCode } = parsed.data;
+  const { firstName, lastName, email, password, referralCode, dateOfBirth } = parsed.data;
+  const age = ageOn(dateOfBirth, new Date());
+  if (age === null || age > 120) return res.status(400).json({ error: "Enter a valid date of birth", code: "INVALID_DETAILS" });
+  if (age < 18) return res.status(400).json({ error: "You must be 18 or older to open an account", code: "UNDER_18" });
   try {
     if (await prisma.user.findUnique({ where: { phone } })) return res.status(409).json(PHONE_TAKEN);
     if (await findByEmail(email)) return res.status(409).json(EMAIL_TAKEN);
@@ -103,6 +117,7 @@ router.post("/signup/phone", async (req, res) => {
         firstName,
         lastName,
         ageConfirmedAt: now,
+        dateOfBirth: new Date(`${dateOfBirth}T00:00:00Z`),
         referralCode: referralCode || null,
         displayName: firstName,
         passwordHash: await bcrypt.hash(password, 10),

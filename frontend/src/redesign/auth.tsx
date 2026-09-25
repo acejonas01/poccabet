@@ -120,7 +120,8 @@ function FormField({ label, error, children }: { label: string; error?: string |
 export function RedesignSignup() {
   const navigate = useNavigate();
   const { signupWithPhone, balance, demo } = useAuth();
-  const [step, setStep] = useState<"phone" | "code" | "details" | "done">("phone");
+  const [step, setStep] = useState<"phone" | "code" | "details" | "dob" | "done">("phone");
+  const [dob, setDob] = useState({ day: "", month: "", year: "" });
   const [hasPromo, setHasPromo] = useState(false);
   const [token, setToken] = useState("");
   const [f, setF] = useState({ firstName: "", lastName: "", digits: "", email: "", password: "", promo: "", over18: false });
@@ -189,21 +190,40 @@ export function RedesignSignup() {
     }
   }
 
-  async function create(e: FormEvent) {
+  function toDob(e: FormEvent) {
     e.preventDefault();
     if (!valid) return setTouched({ firstName: true, lastName: true, email: true, password: true, over18: true });
-    if (busy) return;
+    setError(null);
+    setStep("dob");
+  }
+
+  // Date of birth → age (whole years), or null until all three are picked.
+  const dobIso = dob.day && dob.month && dob.year ? `${dob.year}-${dob.month.padStart(2, "0")}-${dob.day.padStart(2, "0")}` : "";
+  const age = (() => {
+    if (!dobIso) return null;
+    const [y, m, d] = dobIso.split("-").map(Number);
+    const born = new Date(y, m - 1, d);
+    if (born.getMonth() !== m - 1) return -1; // e.g. 31 February
+    const now = new Date();
+    return now.getFullYear() - y - (now.getMonth() < m - 1 || (now.getMonth() === m - 1 && now.getDate() < d) ? 1 : 0);
+  })();
+  const dobProblem = age === null ? null : age < 0 ? "That date doesn't exist" : age < 18 ? "You must be 18 or older to open an account" : null;
+
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    if (!dobIso || dobProblem || busy) return;
     setBusy(true);
     setError(null);
     try {
       await signupWithPhone({
         verificationToken: token, firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(),
-        password: f.password, ageConfirmed: true, referralCode: hasPromo ? f.promo.trim() || undefined : undefined,
+        password: f.password, ageConfirmed: true, dateOfBirth: dobIso, referralCode: hasPromo ? f.promo.trim() || undefined : undefined,
       });
       setStep("done");
     } catch (err) {
       // Verification ran out (15 min) or the number got taken meanwhile: start again from the number.
       if (err instanceof ApiError && (err.code === "VERIFICATION_EXPIRED" || err.code === "PHONE_TAKEN")) setStep("phone");
+      else if (err instanceof ApiError && (err.code === "EMAIL_TAKEN" || err.code === "INVALID_DETAILS")) setStep("details");
       setError(errText(err));
     } finally {
       setBusy(false);
@@ -287,7 +307,7 @@ export function RedesignSignup() {
   if (step === "details") {
     return (
       <Shell onClose={close}>
-        <form onSubmit={create} noValidate style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <form onSubmit={toDob} noValidate style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
             <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "#2AB572" }}><CheckIcon size={14} />{sent?.display} verified</span>
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>Almost done</h1>
@@ -320,13 +340,49 @@ export function RedesignSignup() {
           </div>
 
           {errorLine(error)}
-          <button type="submit" disabled={busy} style={primaryBtn(valid && !busy)}>{busy ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}</button>
+          <button type="submit" style={primaryBtn(valid)}>CONTINUE</button>
         </form>
       </Shell>
     );
   }
 
-  // 4) Congratulations
+  // 4) date of birth
+  if (step === "dob") {
+    const thisYear = new Date().getFullYear();
+    const select = (label: string, value: string, set: (v: string) => void, options: [string, string][]) => (
+      <label style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+        <span style={{ fontSize: 14, color: "var(--tc-muted)" }}>{label}</span>
+        <select value={value} onChange={(e) => { set(e.target.value); setError(null); }} style={{ ...formInput(!!dobProblem), padding: "0 12px", appearance: "auto" }}>
+          <option value="">{label}</option>
+          {options.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+        </select>
+      </label>
+    );
+    return (
+      <Shell onClose={close}>
+        <button type="button" onClick={() => { setStep("details"); setError(null); }} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
+          <ChevronLeft size={16} />Back
+        </button>
+        <form onSubmit={create} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>Date of birth</h1>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>You must be 18 or older to bet on Poccabet.</p>
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            {select("Day", dob.day, (v) => setDob((x) => ({ ...x, day: v })), Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1)]))}
+            {select("Month", dob.month, (v) => setDob((x) => ({ ...x, month: v })),
+              ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"].map((m, i) => [String(i + 1), m]))}
+            {select("Year", dob.year, (v) => setDob((x) => ({ ...x, year: v })), Array.from({ length: 83 }, (_, i) => String(thisYear - 18 - i)).map((y) => [y, y]))}
+          </div>
+          {dobProblem && <p role="alert" style={{ margin: 0, fontSize: 13, color: "#E5484D" }}>{dobProblem}</p>}
+          {errorLine(error)}
+          <button type="submit" disabled={busy} style={primaryBtn(!!dobIso && !dobProblem && !busy)}>{busy ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}</button>
+        </form>
+      </Shell>
+    );
+  }
+
+  // 5) Congratulations
   return (
     <Shell onClose={() => navigate("/", { replace: true })}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "12px 0", textAlign: "center" }}>

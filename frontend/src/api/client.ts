@@ -99,7 +99,7 @@ export const api = {
 };
 
 export interface SignupDetails {
-  firstName: string; lastName: string; email: string; password: string; ageConfirmed: true; referralCode?: string;
+  firstName: string; lastName: string; email: string; password: string; ageConfirmed: true; dateOfBirth: string; referralCode?: string;
 }
 
 export interface BetSelectionInfo {
