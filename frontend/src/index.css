@@ -45,6 +45,8 @@
 
 
 * { box-sizing: border-box; }
+/* Stop iPhones enlarging text when the phone is turned to landscape. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }

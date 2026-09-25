@@ -6,7 +6,7 @@ import { ApiError, api, type Profile } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
-import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
+import { CheckIcon, ChevronRight, DepositIcon, GiftIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
 import { ACCENT, Loader, Sheet, SheetTitle, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -316,12 +316,10 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
     setBalance(p.balance);
     updateUser({ displayName: p.displayName, email: p.email });
   };
-  async function topUp() {
+  async function claimBonus() {
     try {
-      const res = await api.demoTopUp();
-      setBalance(res.balance);
-      setMe((m) => (m ? { ...m, balance: res.balance } : m));
-      setNote("₦10,000 demo funds added");
+      saved(await api.claimBonus());
+      setNote(null);
     } catch (err) {
       setNote(errText(err));
     }
@@ -383,7 +381,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
             <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5 }}>{naira(me.balance)}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {me.demo ? action("Add funds", <DepositIcon />, topUp) : action("Deposit", <DepositIcon />, undefined, true)}
+            {action("Deposit", <DepositIcon />, undefined, true)}
             {action("Withdraw", <WithdrawIcon />, undefined, true)}
             {action("Transactions", <ListIcon />, () => setSheet("transactions"))}
           </div>
@@ -400,6 +398,20 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
           {statCell("Winnings", winnings, me.stats.winnings ? GREEN : undefined)}
         </div>
       </section>
+
+      {/* Welcome bonus: one claim, unlocked by verifying the email. */}
+      {me.bonus.amount > 0 && !me.bonus.claimed && (
+        <section style={{ ...card, padding: 16, display: "flex", alignItems: "center", gap: 14, border: "1px solid rgba(245, 197, 24, 0.45)", background: "linear-gradient(135deg, rgba(245, 197, 24, 0.14), transparent 70%), var(--tc-card)" }}>
+          <span aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 22, background: "rgba(245, 197, 24, 0.16)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}><GiftIcon /></span>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 15, fontWeight: 800 }}>{naira(me.bonus.amount).replace(".00", "")} welcome bonus</span>
+            <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{me.emailVerified ? "Ready to claim. One per account." : "Verify your email to unlock it."}</span>
+          </span>
+          <button type="button" onClick={() => (me.emailVerified ? claimBonus() : setSheet("email"))} style={{ flexShrink: 0, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>
+            {me.emailVerified ? "Claim" : "Verify"}
+          </button>
+        </section>
+      )}
 
       {group("BETTING", <>
         {item(<ReceiptIcon size={22} />, "My bets", () => navigate("/my-bets"), me.stats.open ? <span style={{ padding: "1px 8px", borderRadius: 999, background: "var(--tc-raise)", fontSize: 12, fontWeight: 800 }}>{me.stats.open} open</span> : undefined)}

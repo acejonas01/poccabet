@@ -12,8 +12,8 @@ export const RULES = {
   maxStake: toKobo(env("BET_MAX_STAKE", 1_000_000)),
   maxSelections: env("BET_MAX_SELECTIONS", 30),
   maxPayout: toKobo(env("BET_MAX_PAYOUT", 50_000_000)),
-  // Play money: what a new account starts with, and the demo top-up (simulation only).
-  startingBalance: SIMULATE ? toKobo(env("DEMO_STARTING_BALANCE", 10_000)) : 0,
-  demoTopUp: toKobo(10_000),
-  demoTopUpBelow: toKobo(100_000), // top-ups stop once a demo wallet holds this much
+  // New accounts start empty. The welcome bonus is claimed once, after verifying the email
+  // (play money in simulation; off with real money until bonus terms exist — set WELCOME_BONUS).
+  startingBalance: 0,
+  welcomeBonus: toKobo(Number(process.env.WELCOME_BONUS ?? (SIMULATE ? 10_000 : 0)) || 0),
 };

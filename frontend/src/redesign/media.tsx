@@ -81,15 +81,17 @@ export function PromoSlider({ desktop = false }: { desktop?: boolean }) {
   return (
     <section aria-label="Promotions" style={{ marginTop: desktop ? 0 : 14 }}>
       <div style={{ position: "relative" }}>
-      <div ref={track} className="tc-hscroll" style={{ display: "flex", gap: GAP, overflowX: "auto", padding: desktop ? 0 : "0 16px", scrollSnapType: "x mandatory", scrollPaddingLeft: desktop ? 0 : 16 }}>
+      {/* Heights come from the images themselves (width/height attributes), not CSS aspect-ratio:
+          iPhone Safari kept stale aspect-ratio heights after rotating to landscape and back. */}
+      <div ref={track} className="tc-hscroll" style={{ display: "flex", alignItems: "flex-start", gap: GAP, overflowX: "auto", padding: desktop ? 0 : "0 16px", scrollSnapType: "x mandatory", scrollPaddingLeft: desktop ? 0 : 16 }}>
         {LOOP.map((src, i) => (
           <a key={i} href="#" onClick={(e) => e.preventDefault()} aria-label={`Promotion ${(i % N) + 1}`}
             aria-hidden={i < N || i >= 2 * N ? true : undefined} tabIndex={i < N || i >= 2 * N ? -1 : undefined}
             style={{
-              flex: desktop ? "0 0 100%" : "0 0 calc(100% - 24px)", scrollSnapAlign: "start", aspectRatio: desktop ? "2120 / 400" : "1080 / 400", borderRadius: 14,
+              flex: desktop ? "0 0 100%" : "0 0 calc(100% - 24px)", scrollSnapAlign: "start", borderRadius: 14,
               overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
             }}>
-            <img src={src} alt="" loading={i === N || i === N + 1 ? "eager" : "lazy"} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <img src={src} alt="" width={desktop ? 2120 : 1080} height={400} loading={i === N || i === N + 1 ? "eager" : "lazy"} style={{ width: "100%", height: "auto", display: "block" }} />
           </a>
         ))}
       </div>
@@ -134,8 +136,8 @@ export function HotGamesStrip({ desktop = false }: { desktop?: boolean }) {
         : { display: "flex", gap: 10, overflowX: "auto", padding: "0 16px 4px", scrollSnapType: "x mandatory", scrollPaddingLeft: 16 }}>
         {GAMES.map((g) => (
           <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: desktop ? undefined : "0 0 148px", minWidth: 0, scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
-            <span style={{ display: "block", aspectRatio: "300 / 190", borderRadius: 12, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
-              <img src={g.img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            <span style={{ display: "block", borderRadius: 12, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
+              <img src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: 1, padding: "0 2px" }}>
               <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>

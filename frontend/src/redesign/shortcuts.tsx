@@ -144,8 +144,8 @@ export function ShortcutsPanel({ onClose }: { onClose: () => void }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
                 {GAMES.map((g) => (
                   <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
-                    <span style={{ display: "block", aspectRatio: "300 / 190", borderRadius: 10, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
-                      <img src={g.img} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                    <span style={{ display: "block", borderRadius: 10, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
+                      <img src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
                   </a>

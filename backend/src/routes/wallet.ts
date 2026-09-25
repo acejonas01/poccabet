@@ -2,8 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
-import { formatNaira, toNaira } from "../betting/money";
-import { RULES } from "../betting/rules";
+import { toNaira } from "../betting/money";
 
 const router = Router();
 
@@ -31,29 +30,6 @@ router.get("/transactions", requireAuth, async (req: AuthedRequest, res) => {
       balanceAfter: t.balanceAfter === null ? null : toNaira(t.balanceAfter),
     })),
   });
-});
-
-// POST /api/wallet/demo-topup — play money for testing. Only exists in simulation mode;
-// real deposits (Paystack/Flutterwave) replace it.
-router.post("/demo-topup", requireAuth, async (req: AuthedRequest, res) => {
-  if (!SIMULATE) return res.status(404).json({ error: "Not available" });
-  const result = await prisma.$transaction(async (tx) => {
-    const topped = await tx.wallet.updateMany({
-      where: { userId: req.userId!, balance: { lt: RULES.demoTopUpBelow } },
-      data: { balance: { increment: RULES.demoTopUp } },
-    });
-    const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId: req.userId! } });
-    if (topped.count === 1) {
-      await tx.transaction.create({
-        data: { walletId: wallet.id, type: "DEMO_TOPUP", amount: RULES.demoTopUp, balanceAfter: wallet.balance, status: "COMPLETED" },
-      });
-    }
-    return { added: topped.count === 1, balance: wallet.balance };
-  });
-  if (!result.added) {
-    return res.status(400).json({ error: `Demo top-ups stop at ${formatNaira(RULES.demoTopUpBelow)}`, code: "TOPUP_LIMIT", balance: toNaira(result.balance) });
-  }
-  res.json({ balance: toNaira(result.balance) });
 });
 
 export default router;

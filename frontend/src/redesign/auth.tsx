@@ -169,7 +169,8 @@ function FormField({ label, error, children }: { label: string; error?: string |
 
 export function RedesignSignup() {
   const navigate = useNavigate();
-  const { signupWithPhone, balance, demo } = useAuth();
+  const { signupWithPhone } = useAuth();
+  const [bonus, setBonus] = useState(0); // welcome bonus on offer, shown on Congratulations
   const [step, setStep] = useState<"phone" | "code" | "details" | "dob" | "done">("phone");
   const [dob, setDob] = useState({ day: "", month: "", year: "" });
   const [hasPromo, setHasPromo] = useState(false);
@@ -270,6 +271,7 @@ export function RedesignSignup() {
         password: f.password, ageConfirmed: true, dateOfBirth: dobIso, referralCode: hasPromo ? f.promo.trim() || undefined : undefined,
       });
       setStep("done");
+      api.getMe().then((p) => setBonus(p.bonus.claimed ? 0 : p.bonus.amount)).catch(() => {});
     } catch (err) {
       // Verification ran out (15 min) or the number got taken meanwhile: start again from the number.
       if (err instanceof ApiError && (err.code === "VERIFICATION_EXPIRED" || err.code === "PHONE_TAKEN")) setStep("phone");
@@ -428,13 +430,14 @@ export function RedesignSignup() {
         <h1 style={{ margin: 0, fontFamily: barlow, fontStyle: "italic", fontSize: 40, fontWeight: 700, lineHeight: 1 }}>CONGRATULATIONS!</h1>
         <p style={{ margin: 0, fontSize: 17 }}>Welcome to Poccabet, <strong>{f.firstName.trim()}</strong>.</p>
         <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Your account is ready and your number {sent?.display} is verified.</p>
-        {demo && (
-          <p style={{ margin: 0, padding: "12px 16px", borderRadius: 12, background: "var(--tc-page)", fontSize: 14, color: "var(--tc-soft)" }}>
-            We've added <strong style={{ color: ACCENT }}>{`₦${balance.toLocaleString("en-US")}`}</strong> in demo funds so you can start betting.
+        {bonus > 0 && (
+          <p style={{ margin: 0, padding: "12px 16px", borderRadius: 12, background: "var(--tc-page)", border: "1px solid rgba(245, 197, 24, 0.35)", fontSize: 14, color: "var(--tc-soft)" }}>
+            Verify your email to claim your <strong style={{ color: ACCENT }}>{`₦${bonus.toLocaleString("en-US")}`}</strong> welcome bonus.
           </p>
         )}
       </div>
-      <button type="button" onClick={() => navigate("/", { replace: true })} style={primaryBtn(true)}>START BETTING</button>
+      {bonus > 0 && <button type="button" onClick={() => navigate("/account", { replace: true })} style={primaryBtn(true)}>CLAIM MY BONUS</button>}
+      <button type="button" onClick={() => navigate("/", { replace: true })} style={bonus > 0 ? { ...primaryBtn(true), background: "transparent", border: "1px solid var(--tc-btn-line)", color: "var(--tc-text)" } : primaryBtn(true)}>START BETTING</button>
       <PlayResponsibly center />
     </Shell>
   );

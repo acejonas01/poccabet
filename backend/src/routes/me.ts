@@ -9,6 +9,7 @@ import { formatNgPhone } from "../lib/phone";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { OtpError, consumeOtp, startOtp } from "../auth/otp";
 import { toNaira } from "../betting/money";
+import { RULES } from "../betting/rules";
 
 const router = Router();
 router.use(requireAuth);
@@ -37,6 +38,8 @@ async function profile(userId: string) {
     memberSince: u.createdAt,
     balance: toNaira(u.wallet?.balance ?? 0),
     demo: SIMULATE,
+    // Welcome bonus: offered when set up (WELCOME_BONUS), claimed once, needs a verified email.
+    bonus: { amount: toNaira(RULES.welcomeBonus), claimed: !!u.bonusClaimedAt },
     stats: {
       bets: byStatus.reduce((n, b) => n + b._count._all, 0),
       open: count("PENDING"),
@@ -107,6 +110,32 @@ router.post("/email/verify", async (req: AuthedRequest, res) => {
     if (!me.email) return res.status(400).json({ error: "Add an email first", code: "NO_EMAIL" });
     await consumeOtp(me.email.toLowerCase(), "EMAIL_VERIFY", code);
     await prisma.user.update({ where: { id: me.id }, data: { emailVerifiedAt: new Date() } });
+    res.json(await profile(me.id));
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+// POST /api/me/bonus — claim the welcome bonus: once per account, only with a verified email.
+router.post("/bonus", async (req: AuthedRequest, res) => {
+  if (!RULES.welcomeBonus) return res.status(404).json({ error: "There's no welcome bonus right now", code: "NO_BONUS" });
+  try {
+    const me = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
+    if (!me.emailVerifiedAt) return res.status(403).json({ error: "Verify your email to claim your welcome bonus", code: "EMAIL_NOT_VERIFIED" });
+    const claimed = await prisma.$transaction(async (tx) => {
+      // One UPDATE that only succeeds for an unclaimed, verified account: two taps can't claim twice.
+      const mark = await tx.user.updateMany({
+        where: { id: me.id, bonusClaimedAt: null, emailVerifiedAt: { not: null } },
+        data: { bonusClaimedAt: new Date() },
+      });
+      if (mark.count !== 1) return false;
+      const wallet = await tx.wallet.update({ where: { userId: me.id }, data: { balance: { increment: RULES.welcomeBonus } } });
+      await tx.transaction.create({
+        data: { walletId: wallet.id, type: "BONUS", amount: RULES.welcomeBonus, balanceAfter: wallet.balance, reference: "welcome", status: "COMPLETED" },
+      });
+      return true;
+    });
+    if (!claimed) return res.status(409).json({ error: "You've already claimed your welcome bonus", code: "ALREADY_CLAIMED" });
     res.json(await profile(me.id));
   } catch (err) {
     fail(res, err);

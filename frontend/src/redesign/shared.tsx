@@ -509,7 +509,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
         setChanged(err.code === "ODDS_CHANGED");
         setMsg({ tone: "warn", text: err.code === "ODDS_CHANGED" ? "Some odds have changed. Check the new prices, then accept to place." : "Some selections can't be bet on any more. Remove them to continue." });
       } else if (err instanceof ApiError && err.code === "INSUFFICIENT_FUNDS") {
-        setMsg({ tone: "error", text: demo ? `${err.message} Add demo funds from your account.` : err.message });
+        setMsg({ tone: "error", text: demo ? `${err.message} Claim your welcome bonus in your account.` : err.message });
       } else {
         setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't place the bet" });
       }

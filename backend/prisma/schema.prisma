@@ -11,6 +11,7 @@ model User {
   id              String    @id @default(cuid())
   email           String?   @unique // older accounts; new ones sign up with a phone number
   emailVerifiedAt DateTime?
+  bonusClaimedAt  DateTime? // welcome bonus (one per account, needs a verified email)
   deletedAt       DateTime? // account deleted: personal details erased, login blocked; bets and ledger kept
   phone           String?   @unique // E.164, e.g. +2348030999969
   phoneVerifiedAt DateTime?

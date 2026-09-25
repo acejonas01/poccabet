@@ -61,7 +61,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getWallet: () => request<{ balance: number; demo?: boolean }>("/api/wallet"),
-  demoTopUp: () => request<{ balance: number }>("/api/wallet/demo-topup", { method: "POST" }),
+  claimBonus: () => request<Profile>("/api/me/bonus", { method: "POST" }),
   getEvents: () => request<{ events: any[] }>("/api/events"),
   getLiveOdds: (sport?: string) =>
     request<{ events: any[]; provider: string; count: number }>(
@@ -114,6 +114,7 @@ export interface Profile {
   id: string; firstName: string | null; lastName: string | null; displayName: string;
   email: string | null; emailVerified: boolean; phone: string | null; phoneDisplay: string | null; phoneVerified: boolean;
   dateOfBirth: string | null; memberSince: string; balance: number; demo: boolean;
+  bonus: { amount: number; claimed: boolean }; // welcome bonus: claimed once, needs a verified email
   stats: { bets: number; open: number; won: number; lost: number; staked: number; winnings: number };
 }
 
