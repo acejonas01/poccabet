@@ -90,7 +90,7 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
     <label style={{ ...fieldBox, alignItems: "center" }}>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
         <span style={smallLabel}>{label}</span>
-        <input type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...textInput, fontSize: 18 }} />
+        <input type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...textInput, fontSize: 18, ...(show ? {} : hiddenPw) }} />
       </span>
       <button type="button" onClick={() => setShow((s) => !s)} style={{ height: 44, padding: "0 14px", border: "none", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 800 }}>
         {show ? "Hide" : "Show"}
@@ -105,6 +105,10 @@ const formInput = (bad: boolean): CSSProperties => ({
   border: `1.5px solid ${bad ? "#E5484D" : "transparent"}`, background: "var(--tc-raise)", outline: "none",
   color: "var(--tc-text)", fontFamily: "inherit", fontSize: 17,
 });
+// Hidden passwords: the phone's own font at 16px gives normal-sized dots (our font draws huge ones;
+// 16px is the smallest size that doesn't make iPhones zoom in).
+const hiddenPw: CSSProperties = { fontSize: 16, fontFamily: "-apple-system, system-ui, sans-serif", letterSpacing: 2 };
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 function FormField({ label, error, children }: { label: string; error?: string | null; children: ReactNode }) {
@@ -323,7 +327,7 @@ export function RedesignSignup() {
           </FormField>
           <FormField label="Password *" error={shown("password")}>
             <span style={{ position: "relative", display: "block" }}>
-              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56 }} />
+              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56, ...(showPw ? {} : hiddenPw) }} />
               <button type="button" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {showPw ? <EyeIcon /> : <EyeOffIcon />}
               </button>
@@ -408,7 +412,7 @@ export function RedesignSignup() {
 export function RedesignLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [useEmail, setUseEmail] = useState(false); // older accounts signed up with an email
+  const [useEmail, setUseEmail] = useState(false);
   const [digits, setDigits] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -436,6 +440,18 @@ export function RedesignLogin() {
     <Shell onClose={close} banner={<p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--tc-soft)" }}>Welcome back</p>}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Log in</h1>
+        {/* Log in with either: the phone number or the email on the account. */}
+        <div role="tablist" aria-label="Log in with" style={{ display: "flex", padding: 4, borderRadius: 12, background: "var(--tc-page)" }}>
+          {([["phone", "Phone number"], ["email", "Email"]] as const).map(([id, label]) => {
+            const on = (id === "email") === useEmail;
+            return (
+              <button key={id} type="button" role="tab" aria-selected={on} onClick={() => { setUseEmail(id === "email"); setError(null); }} style={{
+                flex: 1, height: 40, borderRadius: 9, border: "none", background: on ? "var(--tc-raise)" : "transparent",
+                color: on ? "var(--tc-text)" : "var(--tc-muted)", fontSize: 14, fontWeight: on ? 800 : 700,
+              }}>{label}</button>
+            );
+          })}
+        </div>
         {useEmail ? (
           <label style={fieldBox}>
             <span style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
@@ -452,9 +468,6 @@ export function RedesignLogin() {
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
           New to Poccabet? <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup", { replace: true }); }} style={{ fontWeight: 800 }}>Create an account</a>
         </p>
-        <button type="button" onClick={() => { setUseEmail((v) => !v); setError(null); }} style={{ alignSelf: "center", padding: 0, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>
-          {useEmail ? "Log in with your phone number" : "Signed up with an email? Log in with email"}
-        </button>
       </form>
     </Shell>
   );
