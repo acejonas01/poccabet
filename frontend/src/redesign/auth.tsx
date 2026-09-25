@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
 import { Flag } from "./media";
 import { PlayResponsibly } from "./footer";
-import { ACCENT } from "./shared";
+import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
 
 const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -35,6 +35,22 @@ function Shell({ children, onClose, banner }: { children: ReactNode; onClose: ()
       </div>
       <div style={{ flex: 1, marginTop: -24, padding: "28px 20px calc(28px + env(safe-area-inset-bottom))", borderRadius: "22px 22px 0 0", background: "var(--tc-panel)", display: "flex", flexDirection: "column", gap: 18 }}>
         {children}
+      </div>
+    </div>
+  );
+}
+
+function WelcomeBanner() {
+  return (
+    <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      <div style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, lineHeight: 1, letterSpacing: 0.5 }}>
+        WELCOME <span style={{ color: ACCENT }}>OFFER</span>
+      </div>
+      <div style={{ width: "100%", maxWidth: 340, padding: "14px 16px", borderRadius: 14, background: "rgba(0, 0, 0, 0.25)", border: "1px solid rgba(245, 197, 24, 0.3)", display: "flex", flexDirection: "column", gap: 6 }}>
+        <span style={{ fontFamily: barlow, fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
+          UP TO <span style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</span> BONUS
+        </span>
+        <span style={{ fontSize: 13, color: "var(--tc-soft)" }}>on your first deposit · football, Aviator & more</span>
       </div>
     </div>
   );
@@ -83,7 +99,7 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
   );
 }
 
-// ---------- sign-up: Open Account form → verify the number by SMS → Congratulations ----------
+// ---------- sign-up: phone number → SMS code → your details → Congratulations ----------
 const formInput = (bad: boolean): CSSProperties => ({
   width: "100%", height: 52, boxSizing: "border-box", padding: "0 16px", borderRadius: 10,
   border: `1.5px solid ${bad ? "#E5484D" : "transparent"}`, background: "var(--tc-raise)", outline: "none",
@@ -104,7 +120,9 @@ function FormField({ label, error, children }: { label: string; error?: string |
 export function RedesignSignup() {
   const navigate = useNavigate();
   const { signupWithPhone, balance, demo } = useAuth();
-  const [step, setStep] = useState<"form" | "code" | "done">("form");
+  const [step, setStep] = useState<"phone" | "code" | "details" | "done">("phone");
+  const [hasPromo, setHasPromo] = useState(false);
+  const [token, setToken] = useState("");
   const [f, setF] = useState({ firstName: "", lastName: "", digits: "", email: "", password: "", promo: "", over18: false });
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [showPw, setShowPw] = useState(false);
@@ -126,23 +144,22 @@ export function RedesignSignup() {
   const problems = {
     firstName: f.firstName.trim().length < 2 ? "Enter your name" : null,
     lastName: f.lastName.trim().length < 2 ? "Enter your surname" : null,
-    digits: !validLocal(f.digits) ? "Enter a valid Nigerian mobile number" : null,
     email: !EMAIL_RE.test(f.email.trim()) ? "Enter a valid email" : null,
     password: f.password.length < 8 ? "Use at least 8 characters" : null,
     over18: !f.over18 ? "You must be over 18 to open an account" : null,
   };
-  const valid = Object.values(problems).every((p) => !p);
+  const valid = Object.values(problems).every((p) => !p); // the details step
+  const phoneOk = validLocal(f.digits);
   const shown = (k: keyof typeof problems) => (touched[k] ? problems[k] : null);
   const close = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
 
   async function sendCode(e?: FormEvent) {
     e?.preventDefault();
-    if (!valid) return setTouched({ firstName: true, lastName: true, digits: true, email: true, password: true, over18: true });
-    if (busy) return;
+    if (!phoneOk || busy) return setError(phoneOk ? null : "Enter a valid Nigerian mobile number");
     setBusy(true);
     setError(null);
     try {
-      const res = await api.otpStart(f.digits, f.email.trim());
+      const res = await api.otpStart(f.digits);
       setSent(res);
       setWait(res.resendIn);
       setCode("");
@@ -156,91 +173,70 @@ export function RedesignSignup() {
     }
   }
 
-  // Right code → create the account straight away (everything else was on the form).
   async function checkCode(value = code) {
     if (value.length !== 6 || busy || !sent) return;
     setBusy(true);
     setError(null);
     try {
-      const { verificationToken } = await api.otpVerify(sent.phone, value);
-      await signupWithPhone({
-        verificationToken, firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(),
-        password: f.password, ageConfirmed: true, referralCode: f.promo.trim() || undefined,
-      });
-      setStep("done");
+      setToken((await api.otpVerify(sent.phone, value)).verificationToken);
+      setStep("details");
     } catch (err) {
-      if (err instanceof ApiError && ["EMAIL_TAKEN", "PHONE_TAKEN", "INVALID_DETAILS", "VERIFICATION_EXPIRED"].includes(err.code ?? "")) {
-        setStep("form"); // something on the form needs changing
-      } else {
-        setCode("");
-        codeInput.current?.focus();
-      }
+      setCode("");
+      codeInput.current?.focus();
       setError(errText(err));
     } finally {
       setBusy(false);
     }
   }
 
-  // 1) Open Account
-  if (step === "form") {
+  async function create(e: FormEvent) {
+    e.preventDefault();
+    if (!valid) return setTouched({ firstName: true, lastName: true, email: true, password: true, over18: true });
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await signupWithPhone({
+        verificationToken: token, firstName: f.firstName.trim(), lastName: f.lastName.trim(), email: f.email.trim(),
+        password: f.password, ageConfirmed: true, referralCode: hasPromo ? f.promo.trim() || undefined : undefined,
+      });
+      setStep("done");
+    } catch (err) {
+      // Verification ran out (15 min) or the number got taken meanwhile: start again from the number.
+      if (err instanceof ApiError && (err.code === "VERIFICATION_EXPIRED" || err.code === "PHONE_TAKEN")) setStep("phone");
+      setError(errText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // 1) phone number (the lively first screen)
+  if (step === "phone") {
     return (
-      <div style={{ minHeight: "100dvh", background: "var(--tc-page)" }}>
-        <div style={{ position: "relative" }}>
-          <img src="/slides/Slide-1-m.jpg" alt="" style={{ display: "block", width: "100%", aspectRatio: "1080 / 400", objectFit: "cover" }} />
-          <button aria-label="Close" onClick={close} style={{ position: "absolute", top: "calc(8px + env(safe-area-inset-top))", right: 8, width: 40, height: 40, borderRadius: 20, border: "none", background: "rgba(0, 0, 0, 0.5)", color: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CloseIcon size={18} />
-          </button>
-        </div>
-        <form onSubmit={sendCode} noValidate style={{ padding: "24px 20px calc(32px + env(safe-area-inset-bottom))", display: "flex", flexDirection: "column", gap: 18 }}>
-          <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>Open Account</h1>
-          <FormField label="Name *" error={shown("firstName")}>
-            <input autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} onBlur={touch("firstName")} style={formInput(!!shown("firstName"))} />
-          </FormField>
-          <FormField label="Surname *" error={shown("lastName")}>
-            <input autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} onBlur={touch("lastName")} style={formInput(!!shown("lastName"))} />
-          </FormField>
-          <FormField label="Mobile Number *" error={shown("digits")}>
-            <span style={{ display: "flex", gap: 10 }}>
-              <span aria-hidden="true" style={{ ...formInput(false), width: 96, flexShrink: 0, display: "flex", alignItems: "center", gap: 8, background: "var(--tc-outline)", color: "var(--tc-soft)" }}>
-                <Flag country="Nigeria" size={18} />+234
-              </span>
-              <input type="tel" inputMode="numeric" autoComplete="tel-national" placeholder="801 234 5678" value={grouped(f.digits)}
-                onChange={(e) => set("digits")(localDigits(e.target.value))} onBlur={touch("digits")} style={formInput(!!shown("digits"))} />
-            </span>
-          </FormField>
-          <FormField label="Email *" error={shown("email")}>
-            <input type="email" autoComplete="email" inputMode="email" value={f.email} onChange={(e) => set("email")(e.target.value)} onBlur={touch("email")} style={formInput(!!shown("email"))} />
-          </FormField>
-          <FormField label="Password *" error={shown("password")}>
-            <span style={{ position: "relative", display: "block" }}>
-              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56 }} />
-              <button type="button" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {showPw ? <EyeIcon /> : <EyeOffIcon />}
-              </button>
-            </span>
-          </FormField>
-          <FormField label="Promotion Code (optional)">
-            <input autoCapitalize="characters" value={f.promo} onChange={(e) => set("promo")(e.target.value.toUpperCase())} style={formInput(false)} />
-          </FormField>
-
-          <div style={{ borderRadius: 10, background: "var(--tc-panel)", border: `1.5px solid ${shown("over18") ? "#E5484D" : "transparent"}`, overflow: "hidden" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px", background: "var(--tc-raise)", cursor: "pointer" }}>
-              <input type="checkbox" checked={f.over18} onChange={(e) => { set("over18")(e.target.checked); touch("over18")(); }} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: ACCENT }} />
-              <span style={{ fontSize: 17 }}>I am over 18 years old *</span>
-            </label>
-            <p style={{ margin: 0, padding: "10px 16px 12px", fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>
-              By creating an account you agree to accept our <a href="#" onClick={(e) => e.preventDefault()}>Terms and Conditions</a>, are over 18 and are aware of our Responsible Gambling Policy.
-            </p>
+      <Shell onClose={close} banner={<WelcomeBanner />}>
+        <form onSubmit={sendCode} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: "var(--tc-soft)", textAlign: "center" }}>Join for that Poccabet feeling!</h1>
+          <PhoneField digits={f.digits} onChange={(d) => set("digits")(d)} autoFocus />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+            <span id="promo-label" style={{ fontSize: 16 }}>Do you have a promotion code?</span>
+            <button type="button" role="switch" aria-checked={hasPromo} aria-labelledby="promo-label" onClick={() => setHasPromo((v) => !v)} style={{
+              position: "relative", width: 52, height: 30, flexShrink: 0, borderRadius: 15, border: "none", padding: 0,
+              background: hasPromo ? ACCENT : "var(--tc-track)", transition: "background 0.15s",
+            }}>
+              <span style={{ position: "absolute", top: 3, left: hasPromo ? 25 : 3, width: 24, height: 24, borderRadius: 12, background: "#FFFFFF", boxShadow: "0 1px 3px rgba(0,0,0,0.3)", transition: "left 0.15s" }} />
+            </button>
           </div>
-
+          {hasPromo && (
+            <input aria-label="Promotion code" placeholder="Promotion code" autoCapitalize="characters" value={f.promo} onChange={(e) => set("promo")(e.target.value.toUpperCase())} style={formInput(false)} />
+          )}
           {errorLine(error)}
-          <button type="submit" disabled={busy} style={{ ...primaryBtn(valid && !busy), borderRadius: 10 }}>{busy ? "SENDING CODE…" : "VERIFY & CREATE ACCOUNT"}</button>
+          <button type="submit" disabled={busy} style={primaryBtn(phoneOk && !busy)}>{busy ? "SENDING CODE…" : "GET STARTED"}</button>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
             Already have an account? <a href="/login" onClick={(e) => { e.preventDefault(); navigate("/login", { replace: true }); }} style={{ fontWeight: 800 }}>Log in</a>
           </p>
           <PlayResponsibly center />
         </form>
-      </div>
+      </Shell>
     );
   }
 
@@ -248,8 +244,8 @@ export function RedesignSignup() {
   if (step === "code" && sent) {
     return (
       <Shell onClose={close}>
-        <button type="button" onClick={() => { setStep("form"); setError(null); }} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
-          <ChevronLeft size={16} />Edit details
+        <button type="button" onClick={() => { setStep("phone"); setError(null); }} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
+          <ChevronLeft size={16} />Change number
         </button>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Verify your number</h1>
@@ -276,7 +272,7 @@ export function RedesignSignup() {
           </span>
         </label>
         {errorLine(error)}
-        <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CREATING ACCOUNT…" : "VERIFY & CREATE ACCOUNT"}</button>
+        <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CHECKING…" : "VERIFY"}</button>
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
           Didn't get it?{" "}
           {wait > 0
@@ -287,7 +283,50 @@ export function RedesignSignup() {
     );
   }
 
-  // 3) Congratulations
+  // 3) your details (number already verified)
+  if (step === "details") {
+    return (
+      <Shell onClose={close}>
+        <form onSubmit={create} noValidate style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "#2AB572" }}><CheckIcon size={14} />{sent?.display} verified</span>
+            <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>Almost done</h1>
+          </div>
+          <FormField label="Name *" error={shown("firstName")}>
+            <input autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} onBlur={touch("firstName")} style={formInput(!!shown("firstName"))} />
+          </FormField>
+          <FormField label="Surname *" error={shown("lastName")}>
+            <input autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} onBlur={touch("lastName")} style={formInput(!!shown("lastName"))} />
+          </FormField>
+          <FormField label="Email *" error={shown("email")}>
+            <input type="email" autoComplete="email" inputMode="email" value={f.email} onChange={(e) => set("email")(e.target.value)} onBlur={touch("email")} style={formInput(!!shown("email"))} />
+          </FormField>
+          <FormField label="Password *" error={shown("password")}>
+            <span style={{ position: "relative", display: "block" }}>
+              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56 }} />
+              <button type="button" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {showPw ? <EyeIcon /> : <EyeOffIcon />}
+              </button>
+            </span>
+          </FormField>
+          <div style={{ borderRadius: 10, background: "var(--tc-panel)", border: `1.5px solid ${shown("over18") ? "#E5484D" : "transparent"}`, overflow: "hidden" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px", background: "var(--tc-raise)", cursor: "pointer" }}>
+              <input type="checkbox" checked={f.over18} onChange={(e) => { set("over18")(e.target.checked); touch("over18")(); }} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: ACCENT }} />
+              <span style={{ fontSize: 17 }}>I am over 18 years old *</span>
+            </label>
+            <p style={{ margin: 0, padding: "10px 16px 12px", fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>
+              By creating an account you agree to accept our <a href="#" onClick={(e) => e.preventDefault()}>Terms and Conditions</a>, are over 18 and are aware of our Responsible Gambling Policy.
+            </p>
+          </div>
+
+          {errorLine(error)}
+          <button type="submit" disabled={busy} style={primaryBtn(valid && !busy)}>{busy ? "CREATING ACCOUNT…" : "CREATE ACCOUNT"}</button>
+        </form>
+      </Shell>
+    );
+  }
+
+  // 4) Congratulations
   return (
     <Shell onClose={() => navigate("/", { replace: true })}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14, padding: "12px 0", textAlign: "center" }}>
