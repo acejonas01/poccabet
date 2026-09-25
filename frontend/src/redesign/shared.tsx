@@ -452,8 +452,8 @@ const ANY_ODDS_KEY = "pocca-accept-any-odds";
 type Msg = { text: ReactNode; tone: "info" | "ok" | "warn" | "error" };
 const TONE: Record<Msg["tone"], string> = { info: "var(--tc-label)", ok: "#2AB572", warn: ACCENT, error: "#E5484D" };
 
-// `onBack`: shown as a full page (/betslip) — a back arrow by the title, and the stake / Place
-// bet panel pinned to the bottom of the screen.
+// `onBack`: shown as a full page (/betslip) — a back arrow by the title; the stake / Place bet
+// panel follows the selections and scrolls with them.
 export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; onBack?: () => void }) {
   const { selections, removeSelection, clear, updateSelections, replaceAll } = useBetSlip();
   const { isAuthenticated, setBalance, demo } = useAuth();
@@ -603,7 +603,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
       ))}
       <div style={{
         display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)",
-        ...(onBack ? { position: "sticky", bottom: 0, marginTop: "auto", paddingBottom: "calc(16px + env(safe-area-inset-bottom))", boxShadow: "0 -8px 24px rgba(0, 0, 0, 0.3)" } : {}),
+        ...(onBack ? { paddingBottom: "calc(16px + env(safe-area-inset-bottom))" } : {}),
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{mode === "single" && count > 1 ? "Stake per bet" : "Stake"}</span>
