@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 
 export interface Selection {
   outcomeId: string; // redesign: "<matchId>|<market>|<selection>"; Theme D: a database outcome id
@@ -22,8 +22,32 @@ interface BetSlipContextValue {
 
 const BetSlipContext = createContext<BetSlipContextValue | undefined>(undefined);
 
+// The slip is kept on the device so a reload (or coming back later) doesn't lose it: for
+// 24 hours after the last change. Prices are refreshed from the feed once the site loads.
+const STORE_KEY = "pocca-slip-v1";
+const KEEP_FOR = 24 * 3600 * 1000;
+
+function savedSelections(): Selection[] {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE_KEY) ?? "null");
+    if (saved && Date.now() - saved.at < KEEP_FOR && Array.isArray(saved.selections)) return saved.selections;
+  } catch {
+    // unreadable or blocked storage: start empty
+  }
+  return [];
+}
+
 export function BetSlipProvider({ children }: { children: ReactNode }) {
-  const [selections, setSelections] = useState<Selection[]>([]);
+  const [selections, setSelections] = useState<Selection[]>(savedSelections);
+
+  useEffect(() => {
+    try {
+      if (selections.length) localStorage.setItem(STORE_KEY, JSON.stringify({ at: Date.now(), selections }));
+      else localStorage.removeItem(STORE_KEY);
+    } catch {
+      // storage full or blocked: the slip still works, it just won't survive a reload
+    }
+  }, [selections]);
 
   const addSelection = useCallback((s: Selection) => {
     setSelections((prev) => {

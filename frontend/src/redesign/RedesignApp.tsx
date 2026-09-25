@@ -1,7 +1,7 @@
 // Themes A (default) and B: the "Poccabet Homepage Redesign" layout. B uses lighter league headers.
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
@@ -9,7 +9,7 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop } from "./shared";
+import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
@@ -23,12 +23,16 @@ export function RedesignApp() {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
-  const [tab, setTab] = useState<HomeTab>("upcoming");
-  const [dateId, setDateId] = useState("all");
-  const [market, setMarket] = useState("1x2");
+  // Remembered until the browser tab is closed, so a reload lands where you were.
+  const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
+  const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
+  const [market, setMarket] = useStoredState("pocca-home-market", "1x2", "session");
   const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | "shortcuts" | "support" | null>(null);
   // A shared booking link (/?book=CODE) loads the slip; on phones, open it (desktop shows it in the rail).
   useBookingLink(() => { if (!desk) setSheet("slip"); });
+  // A slip brought back after a reload gets today's prices (and loses games that are over).
+  const feedMatches = useMemo(() => [...data.live, ...data.upcoming], [data.live, data.upcoming]);
+  useSyncSlipWithFeed(feedMatches, data.upcomingLoaded && data.liveLoaded);
   // Match whose markets sheet is open — looked up live so its odds keep updating.
   const [matchId, setMatchId] = useState<string | null>(null);
   const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;

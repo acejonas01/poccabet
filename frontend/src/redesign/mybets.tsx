@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
-import { ACCENT, CodeRow, Sheet, SheetTitle } from "./shared";
+import { ACCENT, CodeRow, Sheet, SheetTitle, ticketShare } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -88,7 +88,7 @@ function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
       <Totals bet={bet} />
       <div style={{ padding: "14px 20px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, color: "var(--tc-label)" }}>TICKET ID</span>
-        <CodeRow code={bet.ticket} share={{ text: `My Poccabet ticket: ${bet.ticket}. Check it on`, url: location.origin }} />
+        <CodeRow code={bet.ticket} share={ticketShare(bet.ticket, bet.selections.length, bet.totalOdds)} />
       </div>
     </Sheet>
   );

@@ -237,6 +237,49 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
 const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// ---------- state that survives a reload ----------
+// "local": kept on the device (e.g. the stake you like). "session": kept until the browser tab
+// is closed (where you were on the page), so a new visit starts fresh.
+export function useStoredState<T>(key: string, initial: T, where: "local" | "session" = "local") {
+  const store = () => (where === "local" ? window.localStorage : window.sessionStorage);
+  const [value, setValue] = useState<T>(() => {
+    try {
+      const raw = store().getItem(key);
+      return raw === null ? initial : (JSON.parse(raw) as T);
+    } catch {
+      return initial;
+    }
+  });
+  useEffect(() => {
+    try { store().setItem(key, JSON.stringify(value)); } catch { /* storage blocked: just not remembered */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, value]);
+  return [value, setValue] as const;
+}
+
+// Keeps the slip's prices in step with the feed: new odds come in, suspended or finished
+// matches show as unavailable (and come back if they reopen). Runs whenever the feed refreshes.
+export function useSyncSlipWithFeed(matches: TCMatch[], ready: boolean) {
+  const { selections, updateSelections } = useBetSlip();
+  useEffect(() => {
+    if (!ready || !selections.length) return;
+    const byId = new Map(matches.map((m) => [m.id, m]));
+    const changes: Record<string, { odds?: number; unavailable?: boolean }> = {};
+    for (const s of selections) {
+      const [matchId, market, col] = s.outcomeId.split("|");
+      if (!market) continue; // Theme D selection
+      const m = byId.get(matchId);
+      const cols = market === "cs" ? CORRECT_SCORE.cols : MK.find((x) => x.id === market)?.cols;
+      const price = m && cols ? deriveOdds(m.o, m.ou)[market]?.[cols.indexOf(col)] ?? 0 : 0;
+      const unavailable = !(price > 1);
+      const odds = unavailable ? s.odds : price;
+      if (odds !== s.odds || unavailable !== !!s.unavailable) changes[s.outcomeId] = { odds, unavailable };
+    }
+    if (Object.keys(changes).length) updateSelections(changes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, ready]);
+}
+
 // ---------- copy & share (booking codes, tickets) ----------
 // Copy works on https/localhost through the clipboard API; over plain http (e.g. testing on a
 // phone over the local network) it falls back to a hidden text box.
@@ -266,11 +309,30 @@ export async function shareText(text: string, url?: string): Promise<"shared" | 
       if ((err as Error)?.name === "AbortError") return "failed"; // user closed the menu
     }
   }
-  return (await copyText(url ? `${text} ${url}` : text)) ? "copied" : "failed";
+  return (await copyText(url ? `${text}\n${url}` : text)) ? "copied" : "failed";
 }
 
+// Shared links must open on the public site, even when sharing from a local test copy
+// (a phone can't open "192.168…" or "localhost", and chat apps can't build a preview for it).
+// VITE_PUBLIC_URL sets it per deployment (e.g. the Theme-A-only site); otherwise the live site.
+const LOCAL = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
+export const publicOrigin = () =>
+  String(import.meta.env.VITE_PUBLIC_URL || (LOCAL.test(location.hostname) ? "https://poccabet.vercel.app" : location.origin)).replace(/\/$/, "");
+
 // Anyone opening this link gets the booked slip loaded (useBookingLink below).
-export const bookingLink = (code: string) => `${location.origin}/?book=${encodeURIComponent(code)}`;
+export const bookingLink = (code: string) => `${publicOrigin()}/?book=${encodeURIComponent(code)}`;
+
+// What gets shared. The link goes separately (share menus put it last, with its preview).
+const slipLine = (count: number, odds: number) =>
+  `${count} selection${count === 1 ? "" : "s"}${count > 1 ? ` · total odds ${odds.toFixed(2)}` : ` · odds ${odds.toFixed(2)}`}`;
+export const bookingShare = (code: string, count: number, odds: number) => ({
+  text: `My Poccabet slip is ready ⚽\n${slipLine(count, odds)}\nBooking code: ${code}\nTap the link to load it, or enter the code in the bet slip:`,
+  url: bookingLink(code),
+});
+export const ticketShare = (ticket: string, count: number, odds: number) => ({
+  text: `I just placed a bet on Poccabet ⚽\nTicket ID: ${ticket} · ${slipLine(count, odds)}\nCheck it anytime:`,
+  url: publicOrigin(),
+});
 
 // A booked leg (with today's price) as a slip selection.
 const toSelection = (l: BookedLeg) => ({
@@ -316,7 +378,7 @@ export function CodeRow({ code, share }: { code: string; share: { text: string; 
   );
 }
 
-type CodeCardData = { kind: "booking" | "ticket"; codes: string[] };
+type CodeCardData = { kind: "booking" | "ticket"; codes: { code: string; count: number; odds: number }[] };
 
 // Shown at the top of the slip after Book bet / Place bet: the code(s), big, with Copy & Share.
 function CodeCard({ data, onClose, onViewBets }: { data: CodeCardData; onClose: () => void; onViewBets: () => void }) {
@@ -333,9 +395,7 @@ function CodeCard({ data, onClose, onViewBets }: { data: CodeCardData; onClose: 
         </button>
       </div>
       {data.codes.map((c) => (
-        <CodeRow key={c} code={c} share={booking
-          ? { text: `Load my Poccabet slip with booking code ${c}:`, url: bookingLink(c) }
-          : { text: `My Poccabet ticket: ${c}. Check it on`, url: location.origin }} />
+        <CodeRow key={c.code} code={c.code} share={booking ? bookingShare(c.code, c.count, c.odds) : ticketShare(c.code, c.count, c.odds)} />
       ))}
       <span style={{ fontSize: 12, color: "var(--tc-label)" }}>
         {booking
@@ -363,9 +423,9 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
   const { selections, removeSelection, clear, updateSelections, replaceAll } = useBetSlip();
   const { isAuthenticated, setBalance, demo } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"multiple" | "single">("multiple");
-  const [stake, setStake] = useState(1000);
-  const [code, setCode] = useState("");
+  const [mode, setMode] = useStoredState<"multiple" | "single">("pocca-slip-mode", "multiple");
+  const [stake, setStake] = useStoredState("pocca-slip-stake", 1000);
+  const [code, setCode] = useStoredState("pocca-slip-code", "", "session");
   const [msg, setMsg] = useState<Msg | null>(null);
   const [codeCard, setCodeCard] = useState<CodeCardData | null>(null);
   const [busy, setBusy] = useState(false);
@@ -404,7 +464,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
       setBalance(res.balance);
       clear();
       setChanged(false);
-      setCodeCard({ kind: "ticket", codes: res.bets.map((b) => b.ticket) });
+      setCodeCard({ kind: "ticket", codes: res.bets.map((b) => ({ code: b.ticket, count: b.selections.length, odds: b.totalOdds })) });
     } catch (err) {
       if (err instanceof ApiError && (err.code === "ODDS_CHANGED" || err.code === "SELECTIONS_UNAVAILABLE")) {
         const changes: Record<string, { odds?: number; unavailable?: boolean }> = {};
@@ -431,7 +491,7 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
     try {
       const res = await api.bookSlip(live.map((s) => legOf(s.outcomeId)));
       setMsg(null);
-      setCodeCard({ kind: "booking", codes: [res.code] });
+      setCodeCard({ kind: "booking", codes: [{ code: res.code, count: live.length, odds: total }] });
     } catch (err) {
       setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't book this slip" });
     } finally {
