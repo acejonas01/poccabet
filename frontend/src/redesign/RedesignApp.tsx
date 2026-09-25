@@ -83,8 +83,9 @@ export function RedesignApp() {
     upcoming: data.upcoming, live: data.live, loaded: data.upcomingLoaded, market, setMarket,
     openSheet: () => setSheet("markets"), onOpenMatch: (m: TCMatch) => { setMatchId(m.id); setSheet("match"); },
   };
+  // Mobile keeps the bottom free for the fixed nav and the Betslip ticket that sticks up above it.
   const page = (el: ReactNode) => (
-    <div className={desk ? undefined : "tc-mobile-page"} style={{ maxWidth: 720, margin: "0 auto", padding: desk ? 24 : 16 }}>{el}</div>
+    <div style={{ maxWidth: 720, margin: "0 auto", padding: desk ? 24 : "16px 16px calc(104px + env(safe-area-inset-bottom))" }}>{el}</div>
   );
 
   return (

@@ -1,10 +1,10 @@
 // My Bets for the redesign (Themes A–C): Open / Settled tabs and one card per bet.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
-import { ACCENT } from "./shared";
+import { ACCENT, Sheet, SheetTitle } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -28,22 +28,86 @@ function pickName(s: BetSelectionInfo) {
   return s.selection;
 }
 
-function BetCard({ bet }: { bet: Bet }) {
-  const st = STATUS[bet.status] ?? { label: bet.status, color: "var(--tc-label)" };
-  const multi = bet.type === "ACCUMULATOR";
-  const figure = (label: string, value: string, color = "var(--tc-text)") => (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, color: "var(--tc-label)" }}>{label}</span>
-      <span style={{ fontSize: 15, fontWeight: 800, color, whiteSpace: "nowrap" }}>{value}</span>
+const statusOf = (bet: Bet) => STATUS[bet.status] ?? { label: bet.status, color: "var(--tc-label)" };
+const RESULT_TEXT: Record<string, string> = { WON: "Won", LOST: "Lost", VOID: "Void", PENDING: "Open" };
+const figure = (label: string, value: string, color = "var(--tc-text)") => (
+  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+    <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.4, color: "var(--tc-label)" }}>{label}</span>
+    <span style={{ fontSize: 15, fontWeight: 800, color, whiteSpace: "nowrap" }}>{value}</span>
+  </div>
+);
+const Pill = ({ bet }: { bet: Bet }) => {
+  const st = statusOf(bet);
+  return <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, border: `1px solid ${st.color}`, color: st.color, fontSize: 12, fontWeight: 800 }}>{st.label}</span>;
+};
+const Totals = ({ bet }: { bet: Bet }) => (
+  <div style={{ display: "flex", gap: 12, padding: "12px 16px 14px", borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
+    {figure("STAKE", naira(bet.stake))}
+    {figure(bet.type === "ACCUMULATOR" ? "TOTAL ODDS" : "ODDS", bet.totalOdds.toFixed(2))}
+    {figure(bet.status === "WON" ? "WON" : "TO WIN", naira(bet.potentialPayout), bet.status === "LOST" ? "var(--tc-label)" : ACCENT)}
+  </div>
+);
+
+// The full ticket, opened by tapping a bet.
+function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => navigator.clipboard?.writeText(bet.ticket).then(() => setCopied(true), () => {});
+  const row = (label: string, value: ReactNode) => (
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, fontSize: 13 }}>
+      <span style={{ color: "var(--tc-label)" }}>{label}</span><span style={{ fontWeight: 700, textAlign: "right" }}>{value}</span>
     </div>
   );
   return (
-    <article style={{ background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" }}>
+    <Sheet label={`Ticket ${bet.ticket}`} onClose={onClose}>
+      <SheetTitle title={`Ticket ${bet.ticket}`} onClose={onClose} />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: "0 20px 14px" }}>
+        {row("Status", <Pill bet={bet} />)}
+        {row("Bet type", bet.type === "ACCUMULATOR" ? `Multiple · ${bet.selections.length} selections` : "Single")}
+        {row("Placed", placedAt(bet.createdAt))}
+        {bet.settledAt && row("Settled", placedAt(bet.settledAt))}
+      </div>
+      {bet.selections.map((s, i) => {
+        const kickoff = s.kickoff ? new Date(s.kickoff) : null;
+        return (
+          <div key={i} style={{ display: "flex", gap: 10, padding: "12px 20px", borderTop: "1px solid var(--tc-line)" }}>
+            <span aria-hidden="true" style={{ width: 8, height: 8, flexShrink: 0, marginTop: 6, borderRadius: 4, background: RESULT_DOT[s.result] ?? RESULT_DOT.PENDING }} />
+            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>{pickName(s)} <span style={{ fontWeight: 600, color: "var(--tc-soft)" }}>· {s.marketLabel}</span></span>
+              <span style={{ fontSize: 13 }}>{s.home} vs {s.away}</span>
+              <span style={{ fontSize: 12, color: "var(--tc-label)" }}>
+                {[s.league, kickoff && kickoff.toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })].filter(Boolean).join(" · ")}
+              </span>
+            </div>
+            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: RESULT_DOT[s.result] === RESULT_DOT.PENDING ? "var(--tc-label)" : RESULT_DOT[s.result] }}>{RESULT_TEXT[s.result] ?? s.result}</span>
+            </div>
+          </div>
+        );
+      })}
+      <Totals bet={bet} />
+      <div style={{ padding: "14px 20px 20px" }}>
+        <button onClick={copy} style={{ width: "100%", height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>
+          {copied ? "Ticket ID copied" : "Copy ticket ID"}
+        </button>
+      </div>
+    </Sheet>
+  );
+}
+
+function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
+  const multi = bet.type === "ACCUMULATOR";
+  // The whole card is one button: tapping anywhere (the "Open" pill too) opens the ticket.
+  return (
+    <button onClick={onOpen} aria-label={`Ticket ${bet.ticket}, ${statusOf(bet).label}. Show details`} style={{
+      width: "100%", padding: 0, textAlign: "left", font: "inherit", color: "inherit", cursor: "pointer",
+      background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden", display: "block",
+    }}>
       {/* Header: type + status, then ticket and when it was placed */}
       <div style={{ padding: "14px 16px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <span style={{ fontSize: 15, fontWeight: 800 }}>{multi ? `Multiple · ${bet.selections.length} selections` : "Single"}</span>
-          <span style={{ flexShrink: 0, padding: "3px 10px", borderRadius: 999, border: `1px solid ${st.color}`, color: st.color, fontSize: 12, fontWeight: 800 }}>{st.label}</span>
+          <Pill bet={bet} />
         </div>
         <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
       </div>
@@ -67,12 +131,8 @@ function BetCard({ bet }: { bet: Bet }) {
       })}
 
       {/* Stake · odds · to win */}
-      <div style={{ display: "flex", gap: 12, padding: "12px 16px 14px", borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
-        {figure("STAKE", naira(bet.stake))}
-        {figure(multi ? "TOTAL ODDS" : "ODDS", bet.totalOdds.toFixed(2))}
-        {figure(bet.status === "WON" ? "WON" : "TO WIN", naira(bet.potentialPayout), bet.status === "LOST" ? "var(--tc-label)" : ACCENT)}
-      </div>
-    </article>
+      <Totals bet={bet} />
+    </button>
   );
 }
 
@@ -83,6 +143,7 @@ export function RedesignMyBets() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"open" | "settled">("open");
+  const [openBet, setOpenBet] = useState<Bet | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
@@ -117,9 +178,10 @@ export function RedesignMyBets() {
           {loading ? note("Loading your bets…")
             : error ? note(error)
             : shown.length === 0 ? note(tab === "open" ? "No open bets. Tap any odds to start a slip." : "No settled bets yet.")
-            : shown.map((b) => <BetCard key={b.id} bet={b} />)}
+            : shown.map((b) => <BetCard key={b.id} bet={b} onOpen={() => setOpenBet(b)} />)}
         </>
       )}
+      {openBet && <TicketSheet bet={openBet} onClose={() => setOpenBet(null)} />}
     </div>
   );
 }
