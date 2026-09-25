@@ -463,6 +463,8 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
   const [code, setCode] = useStoredState("pocca-slip-code", "", "session");
   const [msg, setMsg] = useState<Msg | null>(null);
   const [codeCard, setCodeCard] = useState<CodeCardData | null>(null);
+  const [loadingCode, setLoadingCode] = useState(false);
+  const showCodeLoader = useMinLoading(loadingCode);
   const [busy, setBusy] = useState(false);
   const [changed, setChanged] = useState(false); // prices moved: the button asks to accept them
   const [anyOdds, setAnyOdds] = useState(() => { try { return localStorage.getItem(ANY_ODDS_KEY) === "1"; } catch { return false; } });
@@ -537,6 +539,8 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
   async function load() {
     if (!code.trim() || busy) return setMsg({ tone: "info", text: "Enter a booking code to load a slip" });
     setBusy(true);
+    setLoadingCode(true);
+    setMsg(null);
     setCodeCard(null);
     try {
       const res = await api.loadSlip(code.trim());
@@ -553,6 +557,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
       setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't load that code" });
     } finally {
       setBusy(false);
+      setLoadingCode(false);
     }
   }
 
@@ -586,8 +591,10 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
         </label>
         <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
-      <div style={{ display: count ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
-      {selections.map((s) => (
+      {/* Loading a booking code: the 1 X 2 loader (one full pass) in place of the selections. */}
+      {showCodeLoader && <div style={{ borderTop: "1px solid var(--tc-line)" }}><Loader label="Loading slip…" compact /></div>}
+      <div style={{ display: count || showCodeLoader ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
+      {!showCodeLoader && selections.map((s) => (
         <div key={s.outcomeId} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
           <button aria-label={`Remove ${s.eventLabel} ${s.marketName} · ${s.label}`} onClick={() => removeSelection(s.outcomeId)} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CloseIcon size={12} width={2.6} />
