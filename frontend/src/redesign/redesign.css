@@ -166,6 +166,8 @@
 /* Sign-up / log-in on desktop: the full-screen phone layout, shown as a centred card. */
 .tc-auth-desk { max-width: 440px; margin: 32px auto; border-radius: 20px; overflow: hidden; border: 1px solid var(--tc-line); }
 .tc-auth-desk > div { min-height: 0 !important; }
+/* Full screen on phones (100vh fallback for browsers without dvh). */
+.tc-auth-shell { min-height: 100vh; min-height: 100dvh; }
 
 /* Phones zoom in (and stay zoomed) when a text box with text under 16px is tapped. Keep every
    text box at 16px or more on phones — set it inline on the input itself (inline beats this rule;
@@ -173,3 +175,8 @@
 @media (max-width: 899px) {
   .tc-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .tc-root select, .tc-root textarea { font-size: 16px; }
 }
+
+/* Pulsing red "live" dot (log-in hero). */
+@keyframes tc-live-pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); } }
+.tc-live-pulse { width: 8px; height: 8px; border-radius: 4px; background: #E5484D; flex-shrink: 0; animation: tc-live-pulse 1.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tc-live-pulse { animation: none; } }

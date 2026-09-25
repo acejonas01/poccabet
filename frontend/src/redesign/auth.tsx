@@ -23,10 +23,24 @@ const grouped = (d: string) => [d.slice(0, 3), d.slice(3, 6), d.slice(6)].filter
 const validLocal = (d: string) => /^[789][01]\d{8}$/.test(d);
 
 // ---------- shared pieces ----------
-function Shell({ children, onClose, banner }: { children: ReactNode; onClose: () => void; banner?: ReactNode }) {
+// `image`: a photo behind the top section, fading into the page (log-in hero).
+function Shell({ children, onClose, banner, image }: { children: ReactNode; onClose: () => void; banner?: ReactNode; image?: string }) {
+  // The page behind these screens takes the form's colour, so no darker strip shows below the
+  // form on phones where the visible screen is taller than the content (e.g. iPhone toolbars).
+  useEffect(() => {
+    if (window.innerWidth >= 900) return; // desktop shows these as a card on the normal page
+    const prev = document.body.style.background;
+    document.body.style.background = "var(--tc-panel)";
+    return () => { document.body.style.background = prev; };
+  }, []);
   return (
-    <div style={{ minHeight: "100dvh", display: "flex", flexDirection: "column", background: "var(--tc-page)" }}>
-      <div style={{ position: "relative", padding: "calc(16px + env(safe-area-inset-top)) 20px 44px", background: "radial-gradient(120% 90% at 50% 0%, rgba(245, 197, 24, 0.18), transparent 65%), var(--tc-league)", textAlign: "center" }}>
+    <div className="tc-auth-shell" style={{ display: "flex", flexDirection: "column", background: "var(--tc-panel)" }}>
+      <div style={{
+        position: "relative", padding: `calc(16px + env(safe-area-inset-top)) 20px ${image ? 48 : 44}px`, textAlign: "center",
+        background: image
+          ? `linear-gradient(180deg, rgba(8, 12, 15, 0.35) 0%, rgba(8, 12, 15, 0.15) 35%, var(--tc-panel) 100%), url(${image}) center 20% / cover`
+          : "radial-gradient(120% 90% at 50% 0%, rgba(245, 197, 24, 0.18), transparent 65%), var(--tc-league)",
+      }}>
         <button aria-label="Close" onClick={onClose} style={{ position: "absolute", top: "calc(10px + env(safe-area-inset-top))", right: 10, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CloseIcon size={20} />
         </button>
@@ -409,6 +423,25 @@ export function RedesignSignup() {
 }
 
 // ---------- log in ----------
+// The welcome at the top of log-in: a big headline and how many games are live right now.
+function LoginHero() {
+  const [live, setLive] = useState<number | null>(null);
+  useEffect(() => { api.getLiveFixtures().then((r) => setLive(r.count)).catch(() => {}); }, []);
+  return (
+    <div style={{ marginTop: 88, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+      <h2 style={{ margin: 0, fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 46, lineHeight: 0.95, letterSpacing: 0.5, textShadow: "0 2px 12px rgba(0, 0, 0, 0.6)" }}>
+        WELCOME <span style={{ color: ACCENT }}>BACK</span>
+      </h2>
+      <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#F2F4F6", textShadow: "0 1px 8px rgba(0, 0, 0, 0.7)" }}>Your next big win is one tap away</p>
+      {!!live && (
+        <span style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, background: "rgba(8, 12, 15, 0.6)", border: "1px solid rgba(229, 72, 77, 0.5)", fontSize: 13, fontWeight: 800 }}>
+          <span aria-hidden="true" className="tc-live-pulse" />
+          {live} game{live === 1 ? "" : "s"} live now
+        </span>
+      )}
+    </div>
+  );
+}
 export function RedesignLogin() {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -437,7 +470,7 @@ export function RedesignLogin() {
   }
 
   return (
-    <Shell onClose={close} banner={<p style={{ margin: "12px 0 0", fontSize: 15, color: "var(--tc-soft)" }}>Welcome back</p>}>
+    <Shell onClose={close} image="/slides/Slide-1-m.jpg" banner={<LoginHero />}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Log in</h1>
         {/* Log in with either: the phone number or the email on the account. */}
