@@ -5,7 +5,6 @@ import { useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Auth } from "../pages/Auth";
-import { MyBets } from "../pages/MyBets";
 import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
@@ -13,6 +12,7 @@ import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type 
 import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useIsDesktop } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
+import { RedesignMyBets } from "./mybets";
 import "./redesign.css";
 
 
@@ -107,7 +107,7 @@ export function RedesignApp() {
           : <SportListPage {...listProps} View={MatchListPage} />} />
         <Route path="/login" element={page(<Auth mode="login" />)} />
         <Route path="/signup" element={page(<Auth mode="signup" />)} />
-        <Route path="/my-bets" element={page(<MyBets />)} />
+        <Route path="/my-bets" element={page(<RedesignMyBets />)} />
       </Routes>
       {desk && <SiteFooter desktop />}
 
