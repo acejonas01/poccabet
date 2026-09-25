@@ -27,11 +27,21 @@ const validLocal = (d: string) => /^[789][01]\d{8}$/.test(d);
 function Shell({ children, onClose, banner, image }: { children: ReactNode; onClose: () => void; banner?: ReactNode; image?: string }) {
   // The page behind these screens takes the form's colour, so no darker strip shows below the
   // form on phones where the visible screen is taller than the content (e.g. iPhone toolbars).
+  // iPhone Safari also tints the area around its toolbars with the page's theme colour, so that
+  // matches too while these screens are open (and goes back afterwards).
   useEffect(() => {
     if (window.innerWidth >= 900) return; // desktop shows these as a card on the normal page
-    const prev = document.body.style.background;
-    document.body.style.background = "var(--tc-panel)";
-    return () => { document.body.style.background = prev; };
+    const panel = getComputedStyle(document.documentElement).getPropertyValue("--tc-panel").trim() || "#1B2429";
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const prev = { body: document.body.style.background, html: document.documentElement.style.background, theme: meta?.content };
+    document.body.style.background = panel;
+    document.documentElement.style.background = panel;
+    if (meta) meta.content = panel;
+    return () => {
+      document.body.style.background = prev.body;
+      document.documentElement.style.background = prev.html;
+      if (meta && prev.theme) meta.content = prev.theme;
+    };
   }, []);
   return (
     <div className="tc-auth-shell" style={{ display: "flex", flexDirection: "column", background: "var(--tc-panel)" }}>
