@@ -80,7 +80,29 @@ function WelcomeBanner() {
   );
 }
 
-const primaryBtn = (enabled: boolean): CSSProperties => ({
+// A 6-digit code: one real input (so phones can fill it from the SMS / email), drawn as 6 boxes.
+export function CodeBoxes({ value, onChange, error, inputRef }: {
+  value: string; onChange: (v: string) => void; error?: boolean; inputRef?: React.Ref<HTMLInputElement>;
+}) {
+  return (
+    <label style={{ position: "relative", display: "block" }}>
+      <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Verification code</span>
+      <input ref={inputRef} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus
+        value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, fontSize: 16, border: "none" }} />
+      <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
+        {Array.from({ length: 6 }, (_, i) => (
+          <span key={i} style={{
+            height: 58, borderRadius: 12, background: "var(--tc-page)", border: `2px solid ${error ? "#E5484D" : i === Math.min(value.length, 5) ? ACCENT : "var(--tc-outline)"}`,
+            display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 30, fontWeight: 700,
+          }}>{value[i] ?? ""}</span>
+        ))}
+      </span>
+    </label>
+  );
+}
+
+export const primaryBtn = (enabled: boolean): CSSProperties => ({
   height: 54, borderRadius: 27, border: "none", background: enabled ? ACCENT : "var(--tc-raise)",
   color: enabled ? "#13171C" : "var(--tc-faint)", fontSize: 16, fontWeight: 800, letterSpacing: 0.6,
 });
@@ -124,14 +146,14 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
 }
 
 // ---------- sign-up: phone number → SMS code → your details → Congratulations ----------
-const formInput = (bad: boolean): CSSProperties => ({
+export const formInput = (bad: boolean): CSSProperties => ({
   width: "100%", height: 52, boxSizing: "border-box", padding: "0 16px", borderRadius: 10,
   border: `1.5px solid ${bad ? "#E5484D" : "transparent"}`, background: "var(--tc-raise)", outline: "none",
   color: "var(--tc-text)", fontFamily: "inherit", fontSize: 17,
 });
 // Hidden passwords: the phone's own font at 16px gives normal-sized dots (our font draws huge ones;
 // 16px is the smallest size that doesn't make iPhones zoom in).
-const hiddenPw: CSSProperties = { fontSize: 16, fontFamily: "-apple-system, system-ui, sans-serif", letterSpacing: 2 };
+export const hiddenPw: CSSProperties = { fontSize: 16, fontFamily: "-apple-system, system-ui, sans-serif", letterSpacing: 2 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -304,21 +326,7 @@ export function RedesignSignup() {
             Demo mode — no SMS is sent. Your code is <strong style={{ color: ACCENT, letterSpacing: 2 }}>{sent.demoCode}</strong>
           </p>
         )}
-        {/* One real input (so the phone can fill the code from the SMS), drawn as 6 boxes. */}
-        <label style={{ position: "relative", display: "block" }}>
-          <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Verification code</span>
-          <input ref={codeInput} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus
-            value={code} onChange={(e) => { const v = e.target.value.replace(/\D/g, "").slice(0, 6); setCode(v); setError(null); if (v.length === 6) checkCode(v); }}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, fontSize: 16, border: "none" }} />
-          <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
-            {Array.from({ length: 6 }, (_, i) => (
-              <span key={i} style={{
-                height: 58, borderRadius: 12, background: "var(--tc-page)", border: `2px solid ${error ? "#E5484D" : i === Math.min(code.length, 5) ? ACCENT : "var(--tc-outline)"}`,
-                display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 30, fontWeight: 700,
-              }}>{code[i] ?? ""}</span>
-            ))}
-          </span>
-        </label>
+        <CodeBoxes value={code} error={!!error} inputRef={codeInput} onChange={(v) => { setCode(v); setError(null); if (v.length === 6) checkCode(v); }} />
         {errorLine(error)}
         <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CHECKING…" : "VERIFY"}</button>
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>

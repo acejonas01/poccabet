@@ -8,10 +8,11 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { AccountSheet, BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { BetSlipBody, MarketsSheet, MatchMarketsSheet, Sheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
+import { RedesignAccount } from "./account";
 import { RedesignLogin, RedesignSignup } from "./auth";
 import "./redesign.css";
 
@@ -27,7 +28,7 @@ export function RedesignApp() {
   const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
   const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
   const [market, setMarket] = useStoredState("pocca-home-market", "1x2", "session");
-  const [sheet, setSheet] = useState<"markets" | "slip" | "account" | "match" | "shortcuts" | "support" | null>(null);
+  const [sheet, setSheet] = useState<"markets" | "slip" | "match" | "shortcuts" | "support" | null>(null);
   // A shared booking link (/?book=CODE) loads the slip; on phones, open it (desktop shows it in the rail).
   useBookingLink(() => { if (!desk) setSheet("slip"); });
   // A slip brought back after a reload gets today's prices (and loses games that are over).
@@ -71,7 +72,7 @@ export function RedesignApp() {
   const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
 
   const home = desk ? (
-    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} />
+    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
       openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }}
@@ -118,6 +119,7 @@ export function RedesignApp() {
         <Route path="/login" element={authPage(<RedesignLogin />)} />
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
+        <Route path="/account" element={page(<RedesignAccount onSupport={() => setSheet("support")} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}
 
@@ -129,7 +131,7 @@ export function RedesignApp() {
           onLive={goLive}
           onSlip={() => setSheet("slip")}
           onMyBets={() => navigate("/my-bets")}
-          onAccount={() => (isAuthenticated ? setSheet("account") : navigate("/login"))}
+          onAccount={() => navigate(isAuthenticated ? "/account" : "/login")}
         />
       )}
 
@@ -141,7 +143,6 @@ export function RedesignApp() {
           <BetSlipBody inSheet />
         </Sheet>
       )}
-      {sheet === "account" && <AccountSheet onClose={() => setSheet(null)} />}
       {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
       {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
       {sheet === "support" && <SupportSheet onClose={() => setSheet(null)} />}

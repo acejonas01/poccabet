@@ -10,6 +10,8 @@ datasource db {
 model User {
   id              String    @id @default(cuid())
   email           String?   @unique // older accounts; new ones sign up with a phone number
+  emailVerifiedAt DateTime?
+  deletedAt       DateTime? // account deleted: personal details erased, login blocked; bets and ledger kept
   phone           String?   @unique // E.164, e.g. +2348030999969
   phoneVerifiedAt DateTime?
   firstName       String?
@@ -166,12 +168,12 @@ model Pick {
   @@index([day])
 }
 
-// One-time codes sent by SMS (sign-up now; login / password reset later). Only a hash of the
-// code is stored. A code works once, for 5 minutes, with at most 5 tries.
+// One-time codes (SMS for sign-up, email for verifying an email). Only a hash of the code is
+// stored. A code works once, for 5 minutes, with at most 5 tries.
 model OtpCode {
   id         String    @id @default(cuid())
-  phone      String
-  purpose    String // SIGNUP
+  phone      String // where the code went: a phone number, or an email address for EMAIL_VERIFY
+  purpose    String // SIGNUP | EMAIL_VERIFY
   codeHash   String
   attempts   Int       @default(0)
   expiresAt  DateTime

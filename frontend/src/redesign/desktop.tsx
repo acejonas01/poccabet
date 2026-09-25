@@ -12,7 +12,7 @@ import { SPORTS } from "./sports";
 import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
-import { ACCENT, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -64,7 +64,7 @@ export function DesktopHeader({ search, setSearch, simulated, onSupport }: { sea
         </button>}
         {isAuthenticated ? (
           <>
-            <span style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
+            <button onClick={() => navigate("/account")} title="My account" style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</button>
             <button onClick={logout} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
           </>
         ) : (
@@ -212,8 +212,8 @@ function ColHeads({ pill }: { pill: string }) {
   );
 }
 
-function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
-  matches: TCMatch[]; pill: string; setPill: (id: string) => void; live: boolean; limit?: number; onMore?: () => void;
+function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = false }: {
+  matches: TCMatch[]; pill: string; setPill: (id: string) => void; live: boolean; limit?: number; onMore?: () => void; loading?: boolean;
 }) {
   const leagues = groupByLeague(limit ? matches.slice(0, limit) : matches);
   let row = 0;
@@ -263,9 +263,9 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore }: {
           ))}
         </section>
       ))}
-      {matches.length === 0 && (
-        <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{live ? "No live games right now." : "No matches for this filter."}</p>
-      )}
+      {matches.length === 0 && (loading
+        ? <Loader label={live ? "Loading live games…" : "Loading matches…"} />
+        : <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{live ? "No live games right now." : "No matches for this filter."}</p>)}
       {onMore && limit !== undefined && matches.length > limit && (
         <button onClick={onMore} style={{ height: 52, border: "none", borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Load more matches</button>
       )}
@@ -290,8 +290,8 @@ const matchSearch = (m: TCMatch, q: string) => !q || `${m.home} ${m.away} ${m.le
 // ---------- home ----------
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the table below.
 // The Live tab leads with the featured live match (score, stats, 1X2).
-export function DesktopHome({ upcoming, live, tab, setTab, search }: {
-  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; search: string;
+export function DesktopHome({ upcoming, live, tab, setTab, search, loaded = true }: {
+  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; search: string; loaded?: boolean;
 }) {
   const navigate = useNavigate();
   const { isOn, pick } = usePicker();
@@ -372,7 +372,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, search }: {
 
       {featuredMatch && <FeaturedMatchWide f={featuredMatch} onMoreMarkets={() => setPill("dc")} />}
 
-      <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} />
+      <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} loading={!loaded} />
 
       <WinnersStrip desktop />
     </main>
@@ -411,7 +411,7 @@ export function DesktopListPage({ title, sub, country, liveList, upList, loaded,
       {(ups.length > 0 || liveList.length === 0) && (
         <>
           {liveList.length > 0 && <h2 style={{ margin: "4px 0 0", fontSize: 16, fontWeight: 800 }}>Upcoming</h2>}
-          <LeagueTable matches={ups} pill={pill} setPill={setPill} live={false} limit={limit} onMore={() => setLimit((l) => l + 20)} />
+          <LeagueTable matches={ups} pill={pill} setPill={setPill} live={false} limit={limit} onMore={() => setLimit((l) => l + 20)} loading={!loaded} />
         </>
       )}
     </main>

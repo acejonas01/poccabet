@@ -181,3 +181,21 @@
 @keyframes tc-live-pulse { 0% { box-shadow: 0 0 0 0 rgba(229, 72, 77, 0.6); } 70%, 100% { box-shadow: 0 0 0 7px rgba(229, 72, 77, 0); } }
 .tc-live-pulse { width: 8px; height: 8px; border-radius: 4px; background: #E5484D; flex-shrink: 0; animation: tc-live-pulse 1.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .tc-live-pulse { animation: none; } }
+
+/* Loading: the splash's 1 X 2 chips lighting up in turn (see Loader in shared.tsx). */
+.tc-loader { display: flex; gap: 5px; }
+.tc-loader i {
+  width: 28px; height: 22px; border-radius: 6px; background: var(--tc-odd); color: var(--tc-label);
+  font: normal 700 12px 'Barlow Condensed', 'Arial Narrow', sans-serif; display: flex; align-items: center; justify-content: center;
+  animation: tc-loader-pick 1.8s infinite;
+}
+.tc-loader i:nth-child(2) { animation-delay: 0.6s; }
+.tc-loader i:nth-child(3) { animation-delay: 1.2s; }
+@keyframes tc-loader-pick {
+  0%, 30%, 100% { background: var(--tc-odd); color: var(--tc-label); }
+  8%, 22% { background: #F5C518; color: #13171C; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-loader i { animation: none; }
+  .tc-loader i:nth-child(2) { background: #F5C518; color: #13171C; }
+}

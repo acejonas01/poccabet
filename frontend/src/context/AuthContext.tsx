@@ -19,6 +19,7 @@ interface AuthContextValue {
   logout: () => void;
   refreshBalance: () => Promise<void>;
   setBalance: (naira: number) => void;
+  updateUser: (changes: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -60,6 +61,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDemo(!!res.wallet.demo);
   }, []);
 
+  // After editing the profile: keep the header name etc. in step.
+  const updateUser = useCallback((changes: Partial<User>) => {
+    setUser((u) => {
+      if (!u) return u;
+      const next = { ...u, ...changes };
+      localStorage.setItem("user", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -81,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, refreshBalance, setBalance }}
+      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, refreshBalance, setBalance, updateUser }}
     >
       {children}
     </AuthContext.Provider>

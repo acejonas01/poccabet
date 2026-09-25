@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { prisma } from "../lib/prisma";
 
 export interface AuthedRequest extends Request {
   userId?: string;
 }
 
-export function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
+// A valid token for an account that still exists (deleted accounts are logged out everywhere).
+export async function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   const token = header?.startsWith("Bearer ") ? header.slice(7) : undefined;
 
@@ -13,11 +15,18 @@ export function requireAuth(req: AuthedRequest, res: Response, next: NextFunctio
     return res.status(401).json({ error: "Missing authorization token" });
   }
 
+  let userId: string;
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET!) as { sub: string };
-    req.userId = payload.sub;
-    next();
+    userId = (jwt.verify(token, process.env.JWT_SECRET!) as { sub: string }).sub;
   } catch {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { deletedAt: true } });
+    if (!user || user.deletedAt) return res.status(401).json({ error: "This account no longer exists", code: "ACCOUNT_DELETED" });
+  } catch (err) {
+    return next(err);
+  }
+  req.userId = userId;
+  next();
 }

@@ -9,7 +9,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
@@ -479,6 +479,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
             : <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
       ))}
+      {!(isLive ? liveLoaded : loaded) && list.length === 0 && <Loader label={isLive ? "Loading live games…" : "Loading matches…"} />}
       {(isLive ? liveLoaded : loaded) && list.length === 0 && (
         <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", margin: 0 }}>
           {isLive ? "No live games right now." : "No matches for this filter."}
@@ -632,6 +633,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
         </section>
       ))}
 
+      {!loaded && total === 0 && <Loader label="Loading matches…" />}
       {loaded && total === 0 && (
         <div style={{ padding: "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)", textAlign: "center" }}>No matches here right now. Check back soon.</p>

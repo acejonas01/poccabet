@@ -4,8 +4,9 @@ import { createHash, randomInt, timingSafeEqual } from "node:crypto";
 import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { smsSender } from "../lib/sms";
+import { emailSender } from "../lib/email";
 
-export type OtpPurpose = "SIGNUP";
+export type OtpPurpose = "SIGNUP" | "EMAIL_VERIFY";
 
 export const OTP_RULES = {
   length: 6,
@@ -25,9 +26,11 @@ export class OtpError extends Error {
 const secret = () => process.env.JWT_SECRET!;
 const hashCode = (phone: string, code: string) => createHash("sha256").update(`${phone}:${code}:${secret()}`).digest("hex");
 
+// `phone` is where the code goes: a phone number (SMS), or an email address for EMAIL_VERIFY.
 export async function startOtp(phone: string, purpose: OtpPurpose, now = Date.now()) {
-  const sender = smsSender();
-  if (!sender) throw new OtpError("SMS_UNAVAILABLE", "We can't send codes right now. Please try again later.", 503);
+  const byEmail = purpose === "EMAIL_VERIFY";
+  const sender = byEmail ? emailSender() : smsSender();
+  if (!sender) throw new OtpError(byEmail ? "EMAIL_UNAVAILABLE" : "SMS_UNAVAILABLE", "We can't send codes right now. Please try again later.", 503);
 
   const recent = await prisma.otpCode.findMany({
     where: { phone, purpose, createdAt: { gte: new Date(now - 3600_000) } },
@@ -45,7 +48,9 @@ export async function startOtp(phone: string, purpose: OtpPurpose, now = Date.no
   await prisma.otpCode.create({
     data: { phone, purpose, codeHash: hashCode(phone, code), expiresAt: new Date(now + OTP_RULES.ttlMs) },
   });
-  await sender.send(phone, `Your Poccabet code is ${code}. It expires in 5 minutes. Never share it with anyone.`);
+  const text = `Your Poccabet code is ${code}. It expires in 5 minutes. Never share it with anyone.`;
+  if (byEmail) await emailSender()!.send(phone, "Verify your email", text);
+  else await smsSender()!.send(phone, text);
   return {
     resendIn: OTP_RULES.resendAfterMs / 1000,
     expiresIn: OTP_RULES.ttlMs / 1000,
@@ -53,7 +58,8 @@ export async function startOtp(phone: string, purpose: OtpPurpose, now = Date.no
   };
 }
 
-export async function verifyOtp(phone: string, purpose: OtpPurpose, code: string, now = Date.now()) {
+// Checks a code and uses it up (throws OtpError if it's wrong, expired or out of tries).
+export async function consumeOtp(phone: string, purpose: OtpPurpose, code: string, now = Date.now()) {
   const latest = await prisma.otpCode.findFirst({ where: { phone, purpose, consumedAt: null }, orderBy: { createdAt: "desc" } });
   if (!latest || latest.expiresAt.getTime() < now) throw new OtpError("CODE_EXPIRED", "That code has expired. Request a new one.");
   if (latest.attempts >= OTP_RULES.maxAttempts) throw new OtpError("TOO_MANY_ATTEMPTS", "Too many wrong tries. Request a new code.", 429);
@@ -74,6 +80,11 @@ export async function verifyOtp(phone: string, purpose: OtpPurpose, code: string
 
   const used = await prisma.otpCode.updateMany({ where: { id: latest.id, consumedAt: null }, data: { consumedAt: new Date(now) } });
   if (used.count !== 1) throw new OtpError("CODE_EXPIRED", "That code was already used. Request a new one.");
+}
+
+// Sign-up: a right code is swapped for a short-lived verification token.
+export async function verifyOtp(phone: string, purpose: OtpPurpose, code: string, now = Date.now()) {
+  await consumeOtp(phone, purpose, code, now);
   return jwt.sign({ sub: phone, purpose, typ: "otp" }, secret(), { expiresIn: OTP_RULES.tokenTtl as jwt.SignOptions["expiresIn"] });
 }
 

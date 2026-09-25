@@ -83,6 +83,16 @@ export const api = {
       `/api/odds/sync${sport ? `?sport=${sport}` : ""}`,
       { method: "POST" }
     ),
+  // The logged-in user's account.
+  getMe: () => request<Profile>("/api/me"),
+  updateMe: (data: { firstName?: string; lastName?: string; email?: string }) =>
+    request<Profile>("/api/me", { method: "PATCH", body: JSON.stringify(data) }),
+  emailCodeStart: () => request<{ sentTo: string; resendIn: number; demoCode?: string }>("/api/me/email/start", { method: "POST" }),
+  emailCodeVerify: (code: string) => request<Profile>("/api/me/email/verify", { method: "POST", body: JSON.stringify({ code }) }),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<{ ok: boolean }>("/api/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+  deleteAccount: (password: string) =>
+    request<{ ok: boolean }>("/api/me", { method: "DELETE", body: JSON.stringify({ password, confirm: "DELETE" }) }),
   getMyBets: () => request<{ bets: Bet[] }>("/api/bets"),
   // Bet slip → bets. The server re-prices every selection; `odds` is what the user saw.
   placeBets: (data: {
@@ -97,6 +107,13 @@ export const api = {
   placeLegacyBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
 };
+
+export interface Profile {
+  id: string; firstName: string | null; lastName: string | null; displayName: string;
+  email: string | null; emailVerified: boolean; phone: string | null; phoneDisplay: string | null; phoneVerified: boolean;
+  dateOfBirth: string | null; memberSince: string; balance: number; demo: boolean;
+  stats: { bets: number; open: number; won: number; lost: number; staked: number; winnings: number };
+}
 
 export interface SignupDetails {
   firstName: string; lastName: string; email: string; password: string; ageConfirmed: true; dateOfBirth: string; referralCode?: string;

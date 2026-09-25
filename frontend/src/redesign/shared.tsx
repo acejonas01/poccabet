@@ -237,6 +237,17 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
 const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// ---------- loading ----------
+// The splash's 1 X 2 animation, for anything that's loading.
+export function Loader({ label, compact = false }: { label?: string; compact?: boolean }) {
+  return (
+    <div role="status" aria-live="polite" style={{ padding: compact ? "16px" : "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+      <span className="tc-loader" aria-hidden="true"><i>1</i><i>X</i><i>2</i></span>
+      <span style={{ fontSize: 13, color: "var(--tc-label)" }}>{label ?? "Loading…"}</span>
+    </div>
+  );
+}
+
 // ---------- state that survives a reload ----------
 // "local": kept on the device (e.g. the stake you like). "session": kept until the browser tab
 // is closed (where you were on the page), so a new visit starts fresh.
@@ -640,39 +651,6 @@ export function CheckBet() {
   );
 }
 
-export function AccountSheet({ onClose }: { onClose: () => void }) {
-  const { user, balance, logout, demo, setBalance } = useAuth();
-  const { setTheme } = useTheme();
-  const [note, setNote] = useState<string | null>(null);
-  async function topUp() {
-    try {
-      const res = await api.demoTopUp();
-      setBalance(res.balance);
-      setNote("₦10,000 demo funds added");
-    } catch (err) {
-      setNote(err instanceof Error ? err.message : "Couldn't add demo funds");
-    }
-  }
-  return (
-    <Sheet label="Account" onClose={onClose}>
-      <SheetTitle title={user?.displayName ?? "Account"} onClose={onClose} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 20px 24px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
-          <span>Balance{demo ? " (demo)" : ""}</span>
-          <span style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>{naira(balance)}</span>
-        </div>
-        {demo && (
-          <>
-            <button onClick={topUp} style={{ height: 48, borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 15, fontWeight: 800 }}>Add ₦10,000 demo funds</button>
-            <span role="status" style={{ fontSize: 12, color: "var(--tc-label)", textAlign: "center" }}>{note ?? "Play money for testing. Real deposits come later."}</span>
-          </>
-        )}
-        <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Log out</button>
-        {THEMES.includes("d") && <button onClick={() => { setTheme("d"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme D)</button>}
-      </div>
-    </Sheet>
-  );
-}
 
 // Small "demo data" tag shown while the backend serves simulated games.
 // Hidden for now: uncomment the <span> (and remove `return null`) to show it again next to the logo.
