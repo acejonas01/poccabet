@@ -22,51 +22,86 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&family=Manrope:wght@400;600;700;800&display=swap" />
 
-    <!-- Loading skeleton styles (shown until JS hydrates) -->
+    <!-- Splash (shown until React mounts): wordmark + a 1 X 2 "picking" animation -->
     <style>
+      :root { --splash-bg: #131E24; }
       #app-loader {
+        position: fixed;
+        inset: 0;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        min-height: 100vh;
-        background: #1f2c33;
-        color: #8a9098;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        gap: 1rem;
+        gap: 22px;
+        background: var(--splash-bg);
       }
-      #app-loader img { width: 64px; height: 64px; }
-      #app-loader .loader-text { font-size: 14px; letter-spacing: 1px; }
-      #app-loader .loader-bar {
-        width: 120px;
-        height: 3px;
-        background: #2a3a42;
-        border-radius: 3px;
-        overflow: hidden;
+      #app-loader .wm {
+        font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        font-style: italic;
+        font-weight: 700;
+        font-size: 56px;
+        letter-spacing: -0.5px;
+        line-height: 1;
+        color: #F2F4F6;
+        opacity: 0;
+        transform: translateX(-14px) skewX(-8deg);
       }
-      #app-loader .loader-bar::after {
-        content: '';
-        display: block;
-        width: 40%;
-        height: 100%;
-        background: #4ba586;
-        border-radius: 3px;
-        animation: slide 1s ease-in-out infinite;
+      #app-loader .wm span { color: #F5C518; }
+      #app-loader .odds { display: flex; gap: 6px; opacity: 0; }
+      #app-loader .odds i {
+        width: 36px;
+        height: 28px;
+        border-radius: 7px;
+        background: #2E3A42;
+        color: #8B95A1;
+        font: normal 700 15px 'Barlow Condensed', 'Arial Narrow', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
-      @keyframes slide {
-        0% { transform: translateX(-100%); }
-        100% { transform: translateX(350%); }
+      /* Plays once the wordmark font is ready (or after 0.7s), so it never flashes in a fallback font. */
+      #app-loader.ready .wm { animation: splash-in 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+      #app-loader.ready .odds { animation: splash-fade 0.3s 0.25s forwards; }
+      #app-loader.ready .odds i { animation: splash-pick 1.8s 0.4s infinite; }
+      #app-loader.ready .odds i:nth-child(2) { animation-delay: 1s; }
+      #app-loader.ready .odds i:nth-child(3) { animation-delay: 1.6s; }
+      @keyframes splash-in { to { opacity: 1; transform: none; } }
+      @keyframes splash-fade { to { opacity: 1; } }
+      @keyframes splash-pick {
+        0%, 30%, 100% { background: #2E3A42; color: #8B95A1; }
+        8%, 22% { background: #F5C518; color: #13171C; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #app-loader .wm, #app-loader .odds { opacity: 1; transform: none; animation: none !important; }
+        #app-loader .odds i { animation: none !important; }
+        #app-loader .odds i:nth-child(2) { background: #F5C518; color: #13171C; }
       }
     </style>
+    <script>
+      // Splash background = the saved theme's page colour (same key and ?theme= override as ThemeContext).
+      (function () {
+        var bg = { a: "#131E24", b: "#222C32", c: "#2B363D", d: "#1f2c33" };
+        var t = new URLSearchParams(location.search).get("theme");
+        try { t = t || localStorage.getItem("pocca-theme-v3"); } catch (e) {}
+        document.documentElement.style.setProperty("--splash-bg", bg[t] || bg.a);
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
-      <!-- Loading skeleton — removed automatically when React mounts -->
-      <div id="app-loader">
-        <img src="/favicon.png" alt="Poccabet" />
-        <span class="loader-text">POCCABET</span>
-        <div class="loader-bar"></div>
+      <!-- Splash — replaced automatically when React mounts -->
+      <div id="app-loader" role="status" aria-label="Loading Poccabet">
+        <div class="wm">Pocca<span>bet</span></div>
+        <div class="odds" aria-hidden="true"><i>1</i><i>X</i><i>2</i></div>
       </div>
+      <script>
+        (function () {
+          var el = document.getElementById("app-loader");
+          var go = function () { el && el.classList.add("ready"); };
+          setTimeout(go, 700);
+          if (document.fonts && document.fonts.load) document.fonts.load('italic 700 56px "Barlow Condensed"').then(go, go);
+        })();
+      </script>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
