@@ -1,11 +1,12 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
 
 export interface Selection {
-  outcomeId: string;
+  outcomeId: string; // redesign: "<matchId>|<market>|<selection>"; Theme D: a database outcome id
   label: string;
   odds: number;
   marketName: string;
   eventLabel: string;
+  unavailable?: boolean; // the server said it can't be bet any more (match started, market suspended…)
 }
 
 interface BetSlipContextValue {
@@ -14,6 +15,9 @@ interface BetSlipContextValue {
   removeSelection: (outcomeId: string) => void;
   clear: () => void;
   combinedOdds: number;
+  // After the server answers: new prices, and selections that can't be bet any more.
+  updateSelections: (changes: Record<string, { odds?: number; unavailable?: boolean }>) => void;
+  replaceAll: (next: Selection[]) => void;
 }
 
 const BetSlipContext = createContext<BetSlipContextValue | undefined>(undefined);
@@ -36,10 +40,16 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
 
   const clear = useCallback(() => setSelections([]), []);
 
+  const updateSelections = useCallback((changes: Record<string, { odds?: number; unavailable?: boolean }>) => {
+    setSelections((prev) => prev.map((s) => (changes[s.outcomeId] ? { ...s, ...changes[s.outcomeId] } : s)));
+  }, []);
+
+  const replaceAll = useCallback((next: Selection[]) => setSelections(next), []);
+
   const combinedOdds = selections.reduce((acc, s) => acc * s.odds, 1);
 
   return (
-    <BetSlipContext.Provider value={{ selections, addSelection, removeSelection, clear, combinedOdds }}>
+    <BetSlipContext.Provider value={{ selections, addSelection, removeSelection, clear, combinedOdds, updateSelections, replaceAll }}>
       {children}
     </BetSlipContext.Provider>
   );

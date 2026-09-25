@@ -10,11 +10,13 @@ interface User {
 interface AuthContextValue {
   user: User | null;
   balance: number;
+  demo: boolean; // play-money wallet (simulation mode)
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
   refreshBalance: () => Promise<void>;
+  setBalance: (naira: number) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return stored ? JSON.parse(stored) : null;
   });
   const [balance, setBalance] = useState<number>(0);
+  const [demo, setDemo] = useState(false);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login({ email, password });
@@ -32,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
     setBalance(res.wallet.balance);
+    setDemo(!!res.wallet.demo);
   }, []);
 
   const signup = useCallback(async (email: string, password: string, displayName: string) => {
@@ -40,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
     setBalance(res.wallet.balance);
+    setDemo(!!res.wallet.demo);
   }, []);
 
   const logout = useCallback(() => {
@@ -47,12 +52,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user");
     setUser(null);
     setBalance(0);
+    setDemo(false);
   }, []);
 
   const refreshBalance = useCallback(async () => {
     if (!localStorage.getItem("token")) return;
     const res = await api.getWallet();
     setBalance(res.balance);
+    setDemo(!!res.demo);
   }, []);
 
   useEffect(() => {
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, balance, isAuthenticated: !!user, login, signup, logout, refreshBalance }}
+      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, logout, refreshBalance, setBalance }}
     >
       {children}
     </AuthContext.Provider>

@@ -28,7 +28,7 @@ export function BetSlipPanel() {
 
     setPlacing(true);
     try {
-      await api.placeBet({ stake, outcomeIds: selections.map((s) => s.outcomeId) });
+      await api.placeLegacyBet({ stake, outcomeIds: selections.map((s) => s.outcomeId) });
       setMessage("Bet placed!");
       clear();
       await refreshBalance();

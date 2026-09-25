@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/client";
+import { ApiError, api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
@@ -237,33 +237,120 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
 const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Slip selections from the redesign carry "<matchId>|<market>|<selection>" as their id.
+const legOf = (outcomeId: string) => {
+  const [matchId, market, selection] = outcomeId.split("|");
+  return { matchId, market, selection };
+};
+// A fresh key per slip submission (so a retried request can't bet twice). crypto.randomUUID
+// only exists on https/localhost, so there's a fallback for testing over the local network.
+const newKey = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+const ANY_ODDS_KEY = "pocca-accept-any-odds";
+
+type Msg = { text: ReactNode; tone: "info" | "ok" | "warn" | "error" };
+const TONE: Record<Msg["tone"], string> = { info: "var(--tc-label)", ok: "#2AB572", warn: ACCENT, error: "#E5484D" };
+
 export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
-  const { selections, removeSelection, clear } = useBetSlip();
-  const { isAuthenticated, refreshBalance } = useAuth();
+  const { selections, removeSelection, clear, updateSelections, replaceAll } = useBetSlip();
+  const { isAuthenticated, setBalance, demo } = useAuth();
   const navigate = useNavigate();
   const [mode, setMode] = useState<"multiple" | "single">("multiple");
   const [stake, setStake] = useState(1000);
   const [code, setCode] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<Msg | null>(null);
   const [busy, setBusy] = useState(false);
+  const [changed, setChanged] = useState(false); // prices moved: the button asks to accept them
+  const [anyOdds, setAnyOdds] = useState(() => { try { return localStorage.getItem(ANY_ODDS_KEY) === "1"; } catch { return false; } });
+
+  // Same slip + stake + mode = same key; anything changes = a new submission.
+  const signature = `${mode}|${stake}|${selections.map((s) => `${s.outcomeId}@${s.odds}`).join(",")}`;
+  const keyRef = useRef({ signature: "", key: "" });
+  if (keyRef.current.signature !== signature) keyRef.current = { signature, key: newKey() };
 
   const count = selections.length;
-  const total = selections.reduce((a, s) => a * s.odds, 1);
-  const win = mode === "multiple" ? stake * total : selections.reduce((a, s) => a + stake * s.odds, 0);
+  const blocked = selections.some((s) => s.unavailable);
+  const live = selections.filter((s) => !s.unavailable);
+  const total = live.reduce((a, s) => a * s.odds, 1);
+  const win = mode === "multiple" ? stake * total : live.reduce((a, s) => a + stake * s.odds, 0);
+  const totalStake = mode === "multiple" || count <= 1 ? stake : stake * count;
+
+  function toggleAnyOdds(v: boolean) {
+    setAnyOdds(v);
+    try { localStorage.setItem(ANY_ODDS_KEY, v ? "1" : "0"); } catch { /* ignore */ }
+  }
 
   async function place() {
     if (!isAuthenticated) return navigate("/login");
     if (!count || busy) return;
+    if (blocked) return setMsg({ tone: "warn", text: "Remove the selections that are no longer available, then place your bet." });
     setBusy(true);
     setMsg(null);
     try {
-      if (mode === "multiple") await api.placeBet({ stake, outcomeIds: selections.map((s) => s.outcomeId) });
-      else for (const s of selections) await api.placeBet({ stake, outcomeIds: [s.outcomeId] });
+      const res = await api.placeBets({
+        mode, stake, acceptOdds: anyOdds ? "any" : "higher", idempotencyKey: keyRef.current.key,
+        selections: selections.map((s) => ({ ...legOf(s.outcomeId), odds: s.odds })),
+      });
+      setBalance(res.balance);
       clear();
-      await refreshBalance();
-      setMsg("Bet placed");
-    } catch (err: any) {
-      setMsg(err.message ?? "Couldn't place the bet");
+      setChanged(false);
+      const tickets = res.bets.map((b) => b.ticket).join(", ");
+      setMsg({
+        tone: "ok",
+        text: <>{res.bets.length > 1 ? `${res.bets.length} bets placed` : "Bet placed"} · Ticket {tickets} · <a href="/my-bets" onClick={(e) => { e.preventDefault(); navigate("/my-bets"); }}>View</a></>,
+      });
+    } catch (err) {
+      if (err instanceof ApiError && (err.code === "ODDS_CHANGED" || err.code === "SELECTIONS_UNAVAILABLE")) {
+        const changes: Record<string, { odds?: number; unavailable?: boolean }> = {};
+        for (const p of err.details?.problems ?? []) {
+          const id = `${p.matchId}|${p.market}|${p.selection}`;
+          changes[id] = p.reason === "ODDS_CHANGED" ? { odds: p.odds } : { unavailable: true };
+        }
+        updateSelections(changes);
+        setChanged(err.code === "ODDS_CHANGED");
+        setMsg({ tone: "warn", text: err.code === "ODDS_CHANGED" ? "Some odds have changed. Check the new prices, then accept to place." : "Some selections can't be bet on any more. Remove them to continue." });
+      } else if (err instanceof ApiError && err.code === "INSUFFICIENT_FUNDS") {
+        setMsg({ tone: "error", text: demo ? `${err.message} Add demo funds from your account.` : err.message });
+      } else {
+        setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't place the bet" });
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function book() {
+    if (!live.length || busy) return setMsg({ tone: "info", text: "Add selections to book a bet" });
+    setBusy(true);
+    try {
+      const res = await api.bookSlip(live.map((s) => legOf(s.outcomeId)));
+      setCode(res.code);
+      navigator.clipboard?.writeText(res.code).catch(() => {});
+      setMsg({ tone: "ok", text: <>Booking code <strong style={{ letterSpacing: 1 }}>{res.code}</strong> · share it or load it later</> });
+    } catch (err) {
+      setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't book this slip" });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function load() {
+    if (!code.trim() || busy) return setMsg({ tone: "info", text: "Enter a booking code to load a slip" });
+    setBusy(true);
+    try {
+      const res = await api.loadSlip(code.trim());
+      replaceAll(res.available.map((l) => ({
+        outcomeId: `${l.matchId}|${l.market}|${l.selection}`, label: l.selection, odds: l.odds, marketName: l.marketLabel, eventLabel: `${l.home} vs ${l.away}`,
+      })));
+      setChanged(false);
+      const gone = res.unavailable.length;
+      setMsg({
+        tone: res.available.length ? "ok" : "warn",
+        text: res.available.length
+          ? `Loaded ${res.available.length} selection${res.available.length === 1 ? "" : "s"}${gone ? ` · ${gone} no longer available` : ""}`
+          : "Those matches can't be bet on any more",
+      });
+    } catch (err) {
+      setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't load that code" });
     } finally {
       setBusy(false);
     }
@@ -289,9 +376,9 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
       <div style={{ display: "flex", gap: 8, padding: "0 16px 14px" }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Booking code</span>
-          <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter booking code" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14, letterSpacing: 0.5 }} />
+          <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Enter booking code" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14, letterSpacing: 0.5 }} />
         </label>
-        <button onClick={() => setMsg("Booking codes are coming soon")} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
+        <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
       <div style={{ display: count ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
       {selections.map((s) => (
@@ -299,16 +386,18 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
           <button aria-label={`Remove ${s.eventLabel} ${s.marketName} · ${s.label}`} onClick={() => removeSelection(s.outcomeId)} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CloseIcon size={12} width={2.6} />
           </button>
-          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2, opacity: s.unavailable ? 0.5 : 1 }}>
             <span style={{ fontSize: 14, fontWeight: 800 }}>{s.marketName} · {s.label}</span>
             <span style={{ fontSize: 12, color: "var(--tc-label)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{s.eventLabel}</span>
           </div>
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
+          {s.unavailable
+            ? <span style={{ fontSize: 12, fontWeight: 800, color: "#E5484D", paddingTop: 4 }}>Unavailable</span>
+            : <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>}
         </div>
       ))}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderTop: "1px solid var(--tc-line)", background: "var(--tc-panel-2)" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>Stake</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{mode === "single" && count > 1 ? "Stake per bet" : "Stake"}</span>
           <label style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)" }}>
             <span style={{ color: "var(--tc-label)", fontWeight: 700 }}>₦</span>
             <span style={hidden}>Stake</span>
@@ -324,20 +413,30 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
           <span>Total odds</span>
-          <span style={{ fontWeight: 800, color: "var(--tc-text)" }}>{count && mode === "multiple" ? total.toFixed(2) : "—"}</span>
+          <span style={{ fontWeight: 800, color: "var(--tc-text)" }}>{live.length && mode === "multiple" ? total.toFixed(2) : "—"}</span>
         </div>
+        {mode === "single" && count > 1 && (
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
+            <span>Total stake ({count} bets)</span>
+            <span style={{ fontWeight: 800, color: "var(--tc-text)" }}>{naira(totalStake)}</span>
+          </div>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <span style={{ fontSize: 14, color: "var(--tc-soft)" }}>Potential win</span>
-          <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{count ? naira(win) : "—"}</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{live.length ? naira(win) : "—"}</span>
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--tc-soft)", cursor: "pointer" }}>
+          <input type="checkbox" checked={anyOdds} onChange={(e) => toggleAnyOdds(e.target.checked)} style={{ width: 18, height: 18, accentColor: ACCENT, margin: 0 }} />
+          Accept any odds changes
+        </label>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setMsg("Booking codes are coming soon")} style={{ flex: 1, height: 52, borderRadius: 12, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>Book bet</button>
-          <button onClick={place} disabled={busy} style={{ flex: 2, height: 52, borderRadius: 12, border: "none", background: ACCENT, color: "#13171C", fontSize: 16, fontWeight: 800 }}>
-            {!isAuthenticated ? "Login to place bet" : busy ? "Placing…" : "Place bet"}
+          <button onClick={book} disabled={busy} style={{ flex: 1, height: 52, borderRadius: 12, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>Book bet</button>
+          <button onClick={place} disabled={busy} style={{ flex: 2, height: 52, borderRadius: 12, border: "none", background: ACCENT, color: "#13171C", fontSize: 16, fontWeight: 800, opacity: busy ? 0.7 : 1 }}>
+            {!isAuthenticated ? "Login to place bet" : busy ? "Placing…" : changed ? "Accept odds & place" : "Place bet"}
           </button>
         </div>
-        <span role="status" style={{ fontSize: 12, lineHeight: 1.4, color: msg ? "var(--tc-text)" : "var(--tc-label)", textAlign: "center" }}>
-          {msg ?? "Book bet gives you a code to share or load later"}
+        <span role="status" style={{ fontSize: 12, lineHeight: 1.4, color: msg ? TONE[msg.tone] : "var(--tc-label)", textAlign: "center" }}>
+          {msg?.text ?? (anyOdds ? "Odds changes are accepted automatically" : "Higher odds are accepted automatically; we'll ask about lower ones")}
         </span>
       </div>
     </>
@@ -345,20 +444,18 @@ export function BetSlipBody({ inSheet = false }: { inSheet?: boolean }) {
 }
 
 export function CheckBet() {
-  const { isAuthenticated } = useAuth();
   const [id, setId] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
 
   async function check() {
     const q = id.trim();
     if (!q) return;
-    if (!isAuthenticated) return setMsg("Log in to check your bets — public ticket lookup is coming soon");
     try {
-      const { bets } = await api.getMyBets();
-      const bet = bets.find((b: any) => String(b.id).startsWith(q));
-      setMsg(bet ? `${bet.status} · stake ₦${Number(bet.stake).toLocaleString("en-US")}` : "No bet found with that ID");
-    } catch (err: any) {
-      setMsg(err.message ?? "Couldn't check that bet");
+      const { bet } = await api.checkTicket(q);
+      const outcome = bet.status === "PENDING" ? "Open" : bet.status.charAt(0) + bet.status.slice(1).toLowerCase();
+      setMsg(`${bet.ticket} · ${outcome} · ${bet.type === "ACCUMULATOR" ? `${bet.selections.length}-fold` : "Single"} · stake ${naira(bet.stake)} · to win ${naira(bet.potentialPayout)}`);
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : "Couldn't check that bet");
     }
   }
 
@@ -368,8 +465,8 @@ export function CheckBet() {
       <span style={{ fontSize: 12, color: msg ? "var(--tc-text)" : "var(--tc-label)" }}>{msg ?? "See the status of any ticket, even without logging in"}</span>
       <div style={{ display: "flex", gap: 8 }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
-          <span style={hidden}>Bet ID</span>
-          <input type="text" value={id} onChange={(e) => setId(e.target.value)} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Enter bet ID" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
+          <span style={hidden}>Ticket ID</span>
+          <input type="text" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Ticket ID, e.g. PB4AGTNX" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
         </label>
         <button onClick={check} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--tc-track)", color: "var(--tc-text)", fontSize: 14, fontWeight: 800 }}>Check</button>
       </div>
@@ -378,16 +475,32 @@ export function CheckBet() {
 }
 
 export function AccountSheet({ onClose }: { onClose: () => void }) {
-  const { user, balance, logout } = useAuth();
+  const { user, balance, logout, demo, setBalance } = useAuth();
   const { setTheme } = useTheme();
+  const [note, setNote] = useState<string | null>(null);
+  async function topUp() {
+    try {
+      const res = await api.demoTopUp();
+      setBalance(res.balance);
+      setNote("₦10,000 demo funds added");
+    } catch (err) {
+      setNote(err instanceof Error ? err.message : "Couldn't add demo funds");
+    }
+  }
   return (
     <Sheet label="Account" onClose={onClose}>
       <SheetTitle title={user?.displayName ?? "Account"} onClose={onClose} />
       <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "4px 20px 24px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, color: "var(--tc-soft)" }}>
-          <span>Balance</span>
+          <span>Balance{demo ? " (demo)" : ""}</span>
           <span style={{ fontSize: 18, fontWeight: 800, color: ACCENT }}>{naira(balance)}</span>
         </div>
+        {demo && (
+          <>
+            <button onClick={topUp} style={{ height: 48, borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 15, fontWeight: 800 }}>Add ₦10,000 demo funds</button>
+            <span role="status" style={{ fontSize: 12, color: "var(--tc-label)", textAlign: "center" }}>{note ?? "Play money for testing. Real deposits come later."}</span>
+          </>
+        )}
         <button onClick={() => { logout(); onClose(); }} style={{ height: 48, borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 700 }}>Log out</button>
         <button onClick={() => { setTheme("d"); onClose(); }} style={{ height: 44, borderRadius: 10, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 700 }}>Switch to classic layout (Theme D)</button>
       </div>

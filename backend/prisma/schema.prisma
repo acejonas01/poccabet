@@ -18,23 +18,29 @@ model User {
   bets   Bet[]
 }
 
+// Money is stored in kobo (whole numbers, ₦1 = 100 kobo) so it never picks up rounding errors.
 model Wallet {
   id      String @id @default(cuid())
   userId  String @unique
   user    User   @relation(fields: [userId], references: [id])
-  balance Float  @default(0)
+  balance Int    @default(0) // kobo
 
   transactions Transaction[]
 }
 
+// The ledger: every change to a balance is one row (+ credit, − debit).
 model Transaction {
-  id        String   @id @default(cuid())
-  walletId  String
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
-  type      String // DEPOSIT | WITHDRAWAL | BET_STAKE | BET_PAYOUT | BONUS
-  amount    Float
-  status    String // PENDING | COMPLETED | FAILED
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  walletId     String
+  wallet       Wallet   @relation(fields: [walletId], references: [id])
+  type         String // DEPOSIT | WITHDRAWAL | BET_STAKE | BET_PAYOUT | BET_REFUND | BONUS | DEMO_TOPUP
+  amount       Int // kobo
+  balanceAfter Int? // kobo, wallet balance right after this row
+  reference    String? // what it belongs to: a bet id, a payment reference, …
+  status       String // PENDING | COMPLETED | FAILED
+  createdAt    DateTime @default(now())
+
+  @@index([walletId, createdAt])
 }
 
 model Sport {
@@ -78,27 +84,54 @@ model Outcome {
 }
 
 model Bet {
-  id               String    @id @default(cuid())
-  userId           String
-  user             User      @relation(fields: [userId], references: [id])
-  stake            Float
-  potentialPayout  Float
-  type             String // SINGLE | ACCUMULATOR
-  status           String // PENDING | WON | LOST | CASHED_OUT | VOID
-  createdAt        DateTime  @default(now())
-  settledAt        DateTime?
+  id              String    @id @default(cuid())
+  ticket          String    @unique // short public code for "Check a bet", e.g. "PB7K2M9Q"
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  stake           Int // kobo
+  totalOdds       Float     @default(1)
+  potentialPayout Int // kobo
+  type            String // SINGLE | ACCUMULATOR
+  status          String // PENDING | WON | LOST | CASHED_OUT | VOID
+  source          String    @default("legacy") // feed that priced it: simulation | live | legacy
+  idempotencyKey  String? // one per slip submission, so a double tap can't place it twice
+  createdAt       DateTime  @default(now())
+  settledAt       DateTime?
 
   selections BetSelection[]
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt])
 }
 
+// A copy of what was bet on, taken at placement, so settling never depends on the feed
+// still having the match. outcomeId is only set by the old (Theme D) database events.
 model BetSelection {
-  id              String  @id @default(cuid())
+  id              String    @id @default(cuid())
   betId           String
-  bet             Bet     @relation(fields: [betId], references: [id])
-  outcomeId       String
-  outcome         Outcome @relation(fields: [outcomeId], references: [id])
+  bet             Bet       @relation(fields: [betId], references: [id])
+  outcomeId       String?
+  outcome         Outcome?  @relation(fields: [outcomeId], references: [id], onDelete: SetNull)
+  matchId         String    @default("") // feed match id, e.g. "af-12345"
+  home            String    @default("")
+  away            String    @default("")
+  league          String    @default("")
+  country         String    @default("")
+  kickoff         DateTime?
+  market          String    @default("") // market id: 1x2, ou, gg, dc, …
+  marketLabel     String    @default("")
+  selection       String    @default("") // column label: "1", "X", "Over", "GG", …
   oddsAtPlacement Float
   result          String // PENDING | WON | LOST | VOID
+
+  @@index([matchId])
+}
+
+// "Book bet": a saved slip anyone can load with its code.
+model BookedSlip {
+  code       String   @id
+  selections Json // [{ matchId, market, selection }]
+  createdAt  DateTime @default(now())
 }
 
 // A bettor adding a selection to their bet slip — drives "Pick of the day" (most picked today).

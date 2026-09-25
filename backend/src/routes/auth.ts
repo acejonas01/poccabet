@@ -3,10 +3,11 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import { SIMULATE } from "../lib/feedMode";
+import { toNaira } from "../betting/money";
+import { RULES } from "../betting/rules";
 
 const router = Router();
-
-const STARTING_BALANCE = 10000; // virtual coins, not real money
 
 const signupSchema = z.object({
   email: z.string().email(),
@@ -33,7 +34,15 @@ router.post("/signup", async (req, res) => {
       email,
       passwordHash,
       displayName,
-      wallet: { create: { balance: STARTING_BALANCE } },
+      // Play money in simulation mode (logged in the ledger); real wallets start at zero.
+      wallet: {
+        create: {
+          balance: RULES.startingBalance,
+          ...(RULES.startingBalance
+            ? { transactions: { create: { type: "DEMO_TOPUP", amount: RULES.startingBalance, balanceAfter: RULES.startingBalance, status: "COMPLETED" } } }
+            : {}),
+        },
+      },
     },
     include: { wallet: true },
   });
@@ -43,7 +52,7 @@ router.post("/signup", async (req, res) => {
   res.status(201).json({
     token,
     user: { id: user.id, email: user.email, displayName: user.displayName },
-    wallet: { balance: user.wallet!.balance },
+    wallet: { balance: toNaira(user.wallet!.balance), demo: SIMULATE },
   });
 });
 
@@ -74,7 +83,7 @@ router.post("/login", async (req, res) => {
   res.json({
     token,
     user: { id: user.id, email: user.email, displayName: user.displayName },
-    wallet: { balance: user.wallet!.balance },
+    wallet: { balance: toNaira(user.wallet!.balance), demo: SIMULATE },
   });
 });
 
