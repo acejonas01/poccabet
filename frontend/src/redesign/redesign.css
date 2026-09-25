@@ -166,3 +166,10 @@
 /* Sign-up / log-in on desktop: the full-screen phone layout, shown as a centred card. */
 .tc-auth-desk { max-width: 440px; margin: 32px auto; border-radius: 20px; overflow: hidden; border: 1px solid var(--tc-line); }
 .tc-auth-desk > div { min-height: 0 !important; }
+
+/* Phones zoom in (and stay zoomed) when a text box with text under 16px is tapped. Keep every
+   text box at 16px or more on phones — set it inline on the input itself (inline beats this rule;
+   this only catches boxes that don't set a size). */
+@media (max-width: 899px) {
+  .tc-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), .tc-root select, .tc-root textarea { font-size: 16px; }
+}

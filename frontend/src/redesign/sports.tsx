@@ -275,7 +275,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
                   <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
                     {label}
                     <input type="date" value={value} min={ymd(Date.now())} onChange={(e) => e.target.value && set(e.target.value)} style={{
-                      height: 44, padding: "0 10px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-card)", color: "var(--tc-text)", fontSize: 14, fontFamily: "inherit",
+                      height: 44, padding: "0 10px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-card)", color: "var(--tc-text)", fontSize: 16, fontFamily: "inherit",
                     }} />
                   </label>
                 ))}
