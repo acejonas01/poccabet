@@ -3,6 +3,7 @@ import { getUpcomingMerged } from "../providers/aggregate";
 import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
 import { simLive, simResults, simUpcoming, simWinners } from "../providers/simulation";
 import { SIMULATE } from "../lib/feedMode";
+import { recentWins } from "../betting/winners";
 
 const router = Router();
 
@@ -49,11 +50,15 @@ router.get("/results", async (_req, res) => {
   }
 });
 
-// GET /api/live/winners — recent big wins. Demo mode: simulated. Live mode: real winning bets
-// only (none until bet settlement exists), so the section stays hidden rather than faking it.
-router.get("/winners", (_req, res) => {
+// GET /api/live/winners — recent wins. Demo mode: simulated. Live mode: real settled winning
+// bets only — the section stays hidden until there are some, never padded with fakes.
+router.get("/winners", async (_req, res) => {
   if (SIMULATE) return res.json({ simulated: true, winners: simWinners() });
-  res.json({ simulated: false, winners: [] });
+  try {
+    res.json({ simulated: false, winners: await recentWins() });
+  } catch {
+    res.json({ simulated: false, winners: [] });
+  }
 });
 
 // GET /api/live/usage — how many API-Football calls we've spent today

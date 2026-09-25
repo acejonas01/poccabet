@@ -6,6 +6,11 @@ import { bookSlip, loadSlip } from "../betting/booking";
 import { normaliseCode, newTicket } from "../betting/codes";
 import { toKobo, toNaira } from "../betting/money";
 import { BetError, betDto, betInclude, placeBets } from "../betting/placeBet";
+import { maybeSettle } from "../betting/settle";
+
+// Catch up on settlement before showing bets (a sleeping server may have missed some), but
+// never make the user wait more than a couple of seconds for it.
+const catchUp = () => Promise.race([maybeSettle(), new Promise((r) => setTimeout(r, 2500))]);
 
 const router = Router();
 
@@ -53,6 +58,7 @@ router.post("/", requireAuth, async (req: AuthedRequest, res) => {
 
 // GET /api/bets — my bets, newest first.
 router.get("/", requireAuth, async (req: AuthedRequest, res) => {
+  await catchUp();
   const bets = await prisma.bet.findMany({
     where: { userId: req.userId! },
     include: betInclude,

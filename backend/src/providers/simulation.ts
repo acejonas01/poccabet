@@ -423,3 +423,16 @@ export function simResults(now = Date.now()): FinishedFixture[] {
       };
     });
 }
+
+// ---------- results for settling bets ----------
+// The final (and half-time) score of a simulated match, once it has finished. Matches are
+// found through the day they kicked off, which every bet records.
+export function simResult(matchId: string, kickoff: Date, now = Date.now()) {
+  const id = Number(matchId.replace(/^af-/, ""));
+  const m = scheduleFor(isoDay(kickoff.getTime())).find((x) => x.id === id);
+  if (!m) return { status: "UNKNOWN" as const };
+  if (clock(m, now).status !== "FT") return { status: "NOT_FINISHED" as const };
+  const ft = scoreAt(m, 90);
+  const ht = scoreAt(m, 45);
+  return { status: "FINISHED" as const, home: ft.home, away: ft.away, htHome: ht.home, htAway: ht.away };
+}

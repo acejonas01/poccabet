@@ -91,6 +91,7 @@ model Bet {
   stake           Int // kobo
   totalOdds       Float     @default(1)
   potentialPayout Int // kobo
+  payout          Int? // kobo actually paid once settled (0 = lost; refunds count too)
   type            String // SINGLE | ACCUMULATOR
   status          String // PENDING | WON | LOST | CASHED_OUT | VOID
   source          String    @default("legacy") // feed that priced it: simulation | live | legacy
@@ -125,6 +126,7 @@ model BetSelection {
   result          String // PENDING | WON | LOST | VOID
 
   @@index([matchId])
+  @@index([result, kickoff]) // settlement: "still pending, match should be over"
 }
 
 // "Book bet": a saved slip anyone can load with its code.

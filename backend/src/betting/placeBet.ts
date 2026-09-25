@@ -35,6 +35,7 @@ export function betDto(b: BetRow) {
     stake: toNaira(b.stake),
     totalOdds: b.totalOdds,
     potentialPayout: toNaira(b.potentialPayout),
+    payout: b.payout === null ? null : toNaira(b.payout),
     source: b.source,
     createdAt: b.createdAt,
     settledAt: b.settledAt,

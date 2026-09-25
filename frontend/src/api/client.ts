@@ -93,7 +93,7 @@ export interface BetSelectionInfo {
 }
 export interface Bet {
   id: string; ticket: string; type: "SINGLE" | "ACCUMULATOR"; status: string; stake: number; totalOdds: number;
-  potentialPayout: number; source: string; createdAt: string; settledAt: string | null; selections: BetSelectionInfo[];
+  potentialPayout: number; payout: number | null; source: string; createdAt: string; settledAt: string | null; selections: BetSelectionInfo[];
 }
 export interface BookedLeg {
   matchId: string; market: string; selection: string; marketLabel: string; odds: number; home: string; away: string; league: string; kickoff: string; live: boolean;
