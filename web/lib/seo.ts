@@ -60,6 +60,7 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
     betslip: ["Bet slip", `Your ${BRAND} bet slip.`, false],
     "my-bets": ["My bets", `Your ${BRAND} bets.`, false],
     account: ["My account", `Your ${BRAND} account.`, false],
+    search: ["Search", `Search ${BRAND} for teams, leagues and live games.`, false],
   };
   const f = fixed[first];
   if (f) return base(`${f[0]} | ${BRAND}`, f[1], f[2], [f[0], f[1]]);

@@ -2,9 +2,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { leagueSlug } from "./data";
-import { ChevronRight, CloseIcon, HeadsetIcon, VirtualsIcon } from "./icons";
+import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
+import { ChevronRight, CloseIcon, HeadsetIcon, MoonIcon, VirtualsIcon } from "./icons";
 import { Flag, GAMES } from "./media";
-import { ACCENT, Sheet, SheetTitle } from "./shared";
+import { ACCENT, Sheet, SheetTitle, useThemeButton } from "./shared";
 import { SPORTS } from "./sports";
 
 const LEAGUES = [
@@ -93,9 +94,13 @@ export function ShortcutsPanel({ onClose }: { onClose: () => void }) {
         }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "calc(10px + env(safe-area-inset-top)) 8px 6px 20px" }}>
           <span style={{ fontSize: 20, fontWeight: 800 }}>Shortcuts</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {/* Theme switcher (on phones the header's spot is used by search). */}
+          {CAN_SWITCH_THEME && <ThemeSwitch />}
           <button ref={closeBtn} aria-label="Close" onClick={close} style={{ width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <CloseIcon size={20} />
           </button>
+          </span>
         </div>
         <nav aria-label="Shortcut sections" style={{ display: "flex", gap: 24, padding: "0 20px", borderBottom: "1px solid var(--tc-line)" }}>
           {TABS.map((t) => (
@@ -212,5 +217,17 @@ export function SupportSheet({ onClose }: { onClose: () => void }) {
         <ChevronRight />
       </a>
     </Sheet>
+  );
+}
+
+// Tap = next theme (A → B → C), hold = the classic layout (Theme D).
+function ThemeSwitch() {
+  const { theme } = useTheme();
+  const themeBtn = useThemeButton();
+  return (
+    <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <MoonIcon />
+      <span aria-hidden="true" style={{ position: "absolute", right: 4, bottom: 6, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
+    </button>
   );
 }

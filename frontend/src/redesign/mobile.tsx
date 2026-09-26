@@ -2,27 +2,27 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
-import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
+import { useTheme } from "../context/ThemeContext";
 import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
 } from "./data";
 import {
-  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
+  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, Loader, useMinLoading, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
+import type { SearchIndex } from "./search";
+import { MobileSearchButton } from "./searchui";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 // ---------- header ----------
-export function MobileHeader({ simulated }: { simulated: boolean }) {
+export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulated: boolean; searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void }) {
   const { isAuthenticated, balance, logout } = useAuth();
-  const themeBtn = useThemeButton();
-  const { theme } = useTheme();
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -44,20 +44,17 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
         {simulated && <DemoTag />}
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {CAN_SWITCH_THEME && <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <MoonIcon />
-          {/* Current theme letter */}
-          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
-        </button>}
+        {/* Search sits where the theme switcher was; switching themes is in the More panel. */}
+        <MobileSearchButton index={searchIndex} onOpenMatch={onOpenMatch} />
         {isAuthenticated ? (
           <>
-            <span style={{ height: 44, padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
-            <button onClick={logout} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Log out</button>
+            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
+            <button onClick={logout} style={{ height: 38, padding: "0 12px", borderRadius: 9, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
           </>
         ) : (
           <>
-            <button onClick={() => navigate("/signup")} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 15 }}>Join</button>
-            <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Login</button>
+            <button onClick={() => navigate("/signup")} style={{ height: 38, padding: "0 14px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14 }}>Join</button>
+            <button onClick={() => navigate("/login")} style={{ height: 38, padding: "0 16px", borderRadius: 9, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Login</button>
           </>
         )}
       </div>

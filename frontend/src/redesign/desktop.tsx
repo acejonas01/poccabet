@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchesDate } from "./data";
 import {
-  AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SearchIcon, SportsIcon, StarIcon, VirtualsIcon,
+  AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
@@ -13,6 +13,8 @@ import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS,
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import { ACCENT, Loader, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import type { SearchIndex } from "./search";
+import { DesktopSearch } from "./searchui";
 
 const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
@@ -27,7 +29,7 @@ const NAV = [
   { label: "Casino", Icon: CasinoIcon },
 ];
 
-export function DesktopHeader({ search, setSearch, simulated, onSupport }: { search: string; setSearch: (v: string) => void; simulated: boolean; onSupport: () => void }) {
+export function DesktopHeader({ searchIndex, onOpenMatch, simulated, onSupport }: { searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void; simulated: boolean; onSupport: () => void }) {
   const { isAuthenticated, balance, logout } = useAuth();
   const { theme } = useTheme();
   const themeBtn = useThemeButton();
@@ -49,10 +51,7 @@ export function DesktopHeader({ search, setSearch, simulated, onSupport }: { sea
           );
         })}
       </nav>
-      <label className="tc-dsearch" style={{ width: 240, height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 12px", borderRadius: 10, background: "var(--tc-raise)", color: "var(--tc-label)", boxSizing: "border-box" }}>
-        <SearchIcon />
-        <input suppressHydrationWarning type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search teams or leagues" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
-      </label>
+      <DesktopSearch index={searchIndex} onOpenMatch={onOpenMatch} />
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
         <button aria-label="Customer service" title="Customer service" onClick={onSupport} style={{ width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <HeadsetIcon size={18} />
@@ -286,13 +285,11 @@ export function Rail() {
   );
 }
 
-const matchSearch = (m: TCMatch, q: string) => !q || `${m.home} ${m.away} ${m.league} ${m.country}`.toLowerCase().includes(q.toLowerCase());
-
 // ---------- home ----------
 // Home keeps its top section fixed; the Live / Upcoming / Top leagues tabs only switch the table below.
 // The Live tab leads with the featured live match (score, stats, 1X2).
-export function DesktopHome({ upcoming, live, tab, setTab, search, loaded = true }: {
-  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; search: string; loaded?: boolean;
+export function DesktopHome({ upcoming, live, tab, setTab, loaded = true }: {
+  upcoming: TCMatch[]; live: TCMatch[]; tab: HomeTab; setTab: (t: HomeTab) => void; loaded?: boolean;
 }) {
   const navigate = useNavigate();
   const { isOn, pick } = usePicker();
@@ -312,7 +309,6 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, loaded = true
   const tabList = (isLive ? live : upcoming)
     .filter((m) => isLive || matchesDate(m, dateId))
     .filter((m) => isLive || tab === "upcoming" || TOP_LEAGUES.includes(m.league))
-    .filter((m) => matchSearch(m, search))
     .sort((a, b) => a.start - b.start);
   // Every tab leads with a featured match (one switch turns them all off).
   const featuredMatch = !SHOW_TAB_FEATURE ? undefined : isLive ? featuredLive(tabList) : featuredUpcoming(tabList, potd?.id);

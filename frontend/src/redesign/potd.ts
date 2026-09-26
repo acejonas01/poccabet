@@ -56,7 +56,7 @@ function build(m: TCMatch, marketId: string, col: string, note: string): PickOfD
 }
 
 // Crowd-pullers: the fallback pick is always a big-club match in a top league.
-const POPULAR_CLUBS = [
+export const POPULAR_CLUBS = [
   "Manchester City", "Arsenal", "Liverpool", "Manchester United", "Chelsea", "Real Madrid", "Barcelona",
   "Bayern Munich", "Paris Saint-Germain", "Juventus", "Inter", "AC Milan", "Tottenham", "Atletico Madrid",
   "Borussia Dortmund", "Newcastle", "Napoli",

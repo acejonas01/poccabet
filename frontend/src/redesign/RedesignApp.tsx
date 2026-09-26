@@ -15,6 +15,8 @@ import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
 import { RedesignAccount } from "./account";
 import { RedesignLogin, RedesignSignup } from "./auth";
+import { buildIndex } from "./search";
+import { SearchResultsPage } from "./searchui";
 import "./redesign.css";
 
 
@@ -38,7 +40,9 @@ export function RedesignApp() {
   // Match whose markets sheet is open — looked up live so its odds keep updating.
   const [matchId, setMatchId] = useState<string | null>(null);
   const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
-  const [search, setSearch] = useState("");
+  // Search index over today's feed: teams, leagues and matches (see search.ts).
+  const searchIndex = useMemo(() => buildIndex(data.live, data.upcoming), [data.live, data.upcoming]);
+  const openMatch = (m: TCMatch) => { setMatchId(m.id); setSheet("match"); };
 
   const goHome = () => { setTab("upcoming"); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
@@ -76,7 +80,7 @@ export function RedesignApp() {
     : location.pathname === "/my-bets" ? "mybets" : location.pathname === "/account" ? "account" : "home";
 
   const home = desk ? (
-    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
+    <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
       openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }}
@@ -104,7 +108,8 @@ export function RedesignApp() {
 
   return (
     <div className="tc-root">
-      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} /> : !onAuth && <MobileHeader simulated={data.simulated} />}
+      {desk ? <DesktopHeader searchIndex={searchIndex} onOpenMatch={openMatch} simulated={data.simulated} onSupport={() => setSheet("support")} />
+        : !onAuth && <MobileHeader searchIndex={searchIndex} onOpenMatch={openMatch} simulated={data.simulated} />}
       {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}
 
       <Routes>
@@ -120,6 +125,9 @@ export function RedesignApp() {
         <Route path="/sports/:sport/:view" element={desk
           ? deskShell(<SportListPage {...listProps} View={DesktopListPage} />)
           : <SportListPage {...listProps} View={MatchListPage} />} />
+        <Route path="/search" element={desk
+          ? deskShell(<SearchResultsPage {...listProps} index={searchIndex} View={DesktopListPage} />)
+          : <SearchResultsPage {...listProps} index={searchIndex} View={MatchListPage} />} />
         <Route path="/login" element={authPage(<RedesignLogin />)} />
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
