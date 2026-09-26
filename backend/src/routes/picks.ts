@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
 import { simTopPick } from "../providers/simulation";
+import { limit } from "../lib/rateLimit";
 
 // "Pick of the day" = the selection bettors add to their slips most today.
 // A pick is anonymous: one per device + match + UTC day; changing it moves the vote.
@@ -25,7 +26,7 @@ const pickSchema = z.object({
 });
 
 // POST /api/picks — record (or clear) this device's pick for a match
-router.post("/", async (req, res) => {
+router.post("/", limit("pick", 120, 10), async (req, res) => {
   const parsed = pickSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid pick" });
   // Simulated games aren't real bets — don't store picks for them.

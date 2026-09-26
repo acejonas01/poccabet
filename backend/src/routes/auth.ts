@@ -9,6 +9,7 @@ import { formatNgPhone, normaliseNgPhone } from "../lib/phone";
 import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
 import { OtpError, phoneFromToken, startOtp, verifyOtp } from "../auth/otp";
+import { everyone, limit } from "../lib/rateLimit";
 
 const router = Router();
 
@@ -43,11 +44,21 @@ const PHONE_TAKEN = { error: "This number already has an account. Log in instead
 const EMAIL_TAKEN = { error: "This email already has an account. Log in instead.", code: "EMAIL_TAKEN" };
 const normEmail = (v: unknown) => String(v ?? "").trim().toLowerCase();
 // Older accounts may have saved their email with capitals, so emails match ignoring case.
+// Limits on top of the per-number OTP rules: per IP, per login name, and a site-wide cap on
+// codes sent (SMS costs money; this stops mass sends to many numbers).
+const loginName = (req: { body?: any }) => normaliseNgPhone(String(req.body?.phone ?? "")) || normEmail(req.body?.email) || null;
+const OTP_HOURLY_CAP = Number(process.env.OTP_HOURLY_CAP ?? 300);
+const limits = {
+  otpStart: [limit("otp-start-ip", 10, 60), limit("otp-start-all", OTP_HOURLY_CAP, 60, everyone)],
+  otpVerify: limit("otp-verify-ip", 40, 15),
+  signup: limit("signup-ip", 10, 60),
+  login: [limit("login-ip", 30, 15), limit("login-name", 10, 15, loginName)],
+};
 const findByEmail = (email: string) => prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, include: { wallet: true } });
 
 // POST /api/auth/otp/start { phone, email?, purpose: "signup" } — the email (if sent) is checked
 // too, so nobody verifies their number only to be told the email is taken.
-router.post("/otp/start", async (req, res) => {
+router.post("/otp/start", ...limits.otpStart, async (req, res) => {
   const phone = normaliseNgPhone(String(req.body?.phone ?? ""));
   if (!phone) return res.status(400).json({ error: "Enter a valid Nigerian mobile number", code: "INVALID_PHONE" });
   const email = normEmail(req.body?.email);
@@ -61,7 +72,7 @@ router.post("/otp/start", async (req, res) => {
 });
 
 // POST /api/auth/otp/verify { phone, code } → { verificationToken }
-router.post("/otp/verify", async (req, res) => {
+router.post("/otp/verify", limits.otpVerify, async (req, res) => {
   const phone = normaliseNgPhone(String(req.body?.phone ?? ""));
   const code = String(req.body?.code ?? "");
   if (!phone || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the 6-digit code", code: "INVALID_CODE" });
@@ -95,7 +106,7 @@ const phoneSignupSchema = z.object({
 });
 
 // POST /api/auth/signup/phone — create the account for a verified number.
-router.post("/signup/phone", async (req, res) => {
+router.post("/signup/phone", limits.signup, async (req, res) => {
   const parsed = phoneSignupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid details", code: "INVALID_DETAILS" });
   const phone = phoneFromToken(parsed.data.verificationToken, "SIGNUP");
@@ -142,7 +153,7 @@ const signupSchema = z.object({
   displayName: z.string().min(2),
 });
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", limits.signup, async (req, res) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.flatten() });
@@ -169,7 +180,7 @@ const loginSchema = z.object({
   password: z.string(),
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", ...limits.login, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: "Enter your phone number and password", code: "INVALID_DETAILS" });

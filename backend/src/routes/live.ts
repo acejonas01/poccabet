@@ -4,6 +4,7 @@ import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../
 import { simLive, simResults, simUpcoming, simWinners } from "../providers/simulation";
 import { SIMULATE } from "../lib/feedMode";
 import { recentWins } from "../betting/winners";
+import { requireAdminKey } from "../middleware/admin";
 
 const router = Router();
 
@@ -61,8 +62,8 @@ router.get("/winners", async (_req, res) => {
   }
 });
 
-// GET /api/live/usage — how many API-Football calls we've spent today
-router.get("/usage", (_req, res) => {
+// GET /api/live/usage — how many API-Football calls we've spent today (admin only)
+router.get("/usage", requireAdminKey, (_req, res) => {
   res.json({ mode: SIMULATE ? "simulation" : "live", ...getApiFootballUsage() });
 });
 

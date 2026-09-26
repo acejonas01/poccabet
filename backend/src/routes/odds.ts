@@ -1,13 +1,24 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { getOddsProvider } from "../providers";
+import { requireAdminKey } from "../middleware/admin";
 
 const router = Router();
+
+// The provider's answers are reused for a while: every visitor asking can't spend API quota.
+const cache = new Map<string, { at: number; data: unknown }>();
+async function cached<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < ttlMs) return hit.data as T;
+  const data = await load();
+  cache.set(key, { at: Date.now(), data });
+  return data;
+}
 
 router.get("/sports", async (_req, res) => {
   try {
     const provider = getOddsProvider();
-    const sports = await provider.getSupportedSports();
+    const sports = await cached("sports", 60 * 60_000, () => provider.getSupportedSports());
     res.json({ provider: provider.name, sports });
   } catch (err: any) {
     res.status(502).json({ error: err.message });
@@ -17,14 +28,16 @@ router.get("/sports", async (_req, res) => {
 router.get("/live", async (req, res) => {
   try {
     const provider = getOddsProvider();
-    const events = await provider.fetchEvents(req.query.sport as string);
+    const sport = String(req.query.sport ?? "").slice(0, 60);
+    const events = await cached(`live:${sport}`, 60_000, () => provider.fetchEvents(sport || undefined));
     res.json({ provider: provider.name, count: events.length, events });
   } catch (err: any) {
     res.status(502).json({ error: err.message });
   }
 });
 
-router.post("/sync", async (req, res) => {
+// POST /api/odds/sync — pull odds into the database (admin only: it spends quota and writes data).
+router.post("/sync", requireAdminKey, async (req, res) => {
   try {
     const provider = getOddsProvider();
     const sportKey = (req.query.sport as string) || undefined;

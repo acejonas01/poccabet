@@ -10,6 +10,7 @@ import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { OtpError, consumeOtp, startOtp } from "../auth/otp";
 import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
+import { byUser, everyone, limit } from "../lib/rateLimit";
 
 const router = Router();
 router.use(requireAuth);
@@ -64,7 +65,7 @@ const editSchema = z.object({
 });
 
 // PATCH /api/me — name, surname, email. A new email has to be verified again.
-router.patch("/", async (req: AuthedRequest, res) => {
+router.patch("/", limit("profile", 30, 60, byUser), async (req: AuthedRequest, res) => {
   const parsed = editSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid details", code: "INVALID_DETAILS" });
   const { firstName, lastName, email } = parsed.data;
@@ -90,7 +91,7 @@ router.patch("/", async (req: AuthedRequest, res) => {
 });
 
 // POST /api/me/email/start — send a 6-digit code to the account's email.
-router.post("/email/start", async (req: AuthedRequest, res) => {
+router.post("/email/start", limit("email-code", 5, 60, byUser), limit("email-code-all", Number(process.env.EMAIL_HOURLY_CAP ?? 300), 60, everyone), async (req: AuthedRequest, res) => {
   try {
     const me = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
     if (!me.email) return res.status(400).json({ error: "Add an email first", code: "NO_EMAIL" });
@@ -102,7 +103,7 @@ router.post("/email/start", async (req: AuthedRequest, res) => {
 });
 
 // POST /api/me/email/verify { code }
-router.post("/email/verify", async (req: AuthedRequest, res) => {
+router.post("/email/verify", limit("email-verify", 20, 15, byUser), async (req: AuthedRequest, res) => {
   const code = String(req.body?.code ?? "");
   if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the 6-digit code", code: "INVALID_CODE" });
   try {
@@ -117,7 +118,7 @@ router.post("/email/verify", async (req: AuthedRequest, res) => {
 });
 
 // POST /api/me/bonus — claim the welcome bonus: once per account, only with a verified email.
-router.post("/bonus", async (req: AuthedRequest, res) => {
+router.post("/bonus", limit("bonus", 10, 15, byUser), async (req: AuthedRequest, res) => {
   if (!RULES.welcomeBonus) return res.status(404).json({ error: "There's no welcome bonus right now", code: "NO_BONUS" });
   try {
     const me = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! } });
@@ -143,7 +144,7 @@ router.post("/bonus", async (req: AuthedRequest, res) => {
 });
 
 // POST /api/me/password { currentPassword, newPassword }
-router.post("/password", async (req: AuthedRequest, res) => {
+router.post("/password", limit("password", 10, 15, byUser), async (req: AuthedRequest, res) => {
   const parsed = z.object({ currentPassword: z.string(), newPassword: z.string().min(8, "Use at least 8 characters").max(100) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0]?.message ?? "Invalid password", code: "INVALID_DETAILS" });
   try {
@@ -161,7 +162,7 @@ router.post("/password", async (req: AuthedRequest, res) => {
 // DELETE /api/me { password, confirm: "DELETE" }
 // Personal details are erased and login is blocked. Bets and the money ledger are kept, as a
 // betting operator must. With real money, the wallet must be empty and no bets open first.
-router.delete("/", async (req: AuthedRequest, res) => {
+router.delete("/", limit("delete-account", 10, 15, byUser), async (req: AuthedRequest, res) => {
   const parsed = z.object({ password: z.string(), confirm: z.literal("DELETE") }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Type DELETE and your password to confirm", code: "INVALID_DETAILS" });
   try {

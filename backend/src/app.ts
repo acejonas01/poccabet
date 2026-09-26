@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import authRoutes from "./routes/auth";
 import walletRoutes from "./routes/wallet";
 import eventsRoutes from "./routes/events";
@@ -13,8 +14,9 @@ const app = express();
 
 // Comma-separated list of allowed site origins; unset means allow all (local dev).
 const allowedOrigins = process.env.FRONTEND_ORIGIN?.split(",").map((o) => o.trim());
+app.use(helmet()); // security headers (no sniffing, no framing, HSTS…)
 app.use(cors(allowedOrigins ? { origin: allowedOrigins } : undefined));
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });

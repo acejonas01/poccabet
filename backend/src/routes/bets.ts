@@ -7,6 +7,7 @@ import { normaliseCode, newTicket } from "../betting/codes";
 import { toKobo, toNaira } from "../betting/money";
 import { BetError, betDto, betInclude, placeBets } from "../betting/placeBet";
 import { maybeSettle } from "../betting/settle";
+import { byUser, limit } from "../lib/rateLimit";
 
 // Catch up on settlement before showing bets (a sleeping server may have missed some), but
 // never make the user wait more than a couple of seconds for it.
@@ -43,7 +44,7 @@ const legacySchema = z.object({
 });
 
 // POST /api/bets — place bets from the slip. Singles = one bet per selection; multiple = one accumulator.
-router.post("/", requireAuth, async (req: AuthedRequest, res) => {
+router.post("/", requireAuth, limit("bet-place", 30, 1, byUser), async (req: AuthedRequest, res) => {
   if (Array.isArray(req.body?.outcomeIds)) return placeLegacy(req, res);
   const parsed = placeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid bet slip", code: "INVALID_SLIP", details: parsed.error.flatten() });
@@ -69,8 +70,8 @@ router.get("/", requireAuth, async (req: AuthedRequest, res) => {
 });
 
 // GET /api/bets/ticket/:ticket — "Check a bet": any ticket's status, no login, no personal details.
-router.get("/ticket/:ticket", async (req, res) => {
-  const ticket = normaliseCode(req.params.ticket);
+router.get("/ticket/:ticket", limit("ticket-lookup", 60, 10), async (req, res) => {
+  const ticket = normaliseCode(String(req.params.ticket));
   const bet = ticket ? await prisma.bet.findUnique({ where: { ticket }, include: betInclude }) : null;
   if (!bet) return res.status(404).json({ error: "No bet found with that ticket ID", code: "TICKET_NOT_FOUND" });
   const { id: _id, source: _source, ...pub } = betDto(bet);
@@ -78,7 +79,7 @@ router.get("/ticket/:ticket", async (req, res) => {
 });
 
 // POST /api/bets/book — save a slip under a booking code (no login needed).
-router.post("/book", async (req, res) => {
+router.post("/book", limit("book", 30, 10), async (req, res) => {
   const parsed = z.object({ selections: z.array(legSchema).min(1).max(100) }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Invalid bet slip", code: "INVALID_SLIP" });
   try {
@@ -89,9 +90,9 @@ router.post("/book", async (req, res) => {
 });
 
 // GET /api/bets/book/:code — load a booked slip with today's prices.
-router.get("/book/:code", async (req, res) => {
+router.get("/book/:code", limit("book-lookup", 120, 10), async (req, res) => {
   try {
-    res.json(await loadSlip(req.params.code));
+    res.json(await loadSlip(String(req.params.code)));
   } catch (err) {
     sendError(res, err);
   }
