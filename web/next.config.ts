@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
     config.plugins.push(
       new webpack.DefinePlugin({
         "import.meta.env.VITE_API_URL": JSON.stringify(""), // same origin, via the rewrite above
-        "import.meta.env.VITE_THEMES": JSON.stringify("a"), // Theme A only
+        "import.meta.env.VITE_THEMES": JSON.stringify("a,bento,poster,daylight"), // Theme A + the three light themes
         "import.meta.env.VITE_PUBLIC_URL": JSON.stringify(SITE),
         "import.meta.env.DEV": JSON.stringify(dev),
       }),

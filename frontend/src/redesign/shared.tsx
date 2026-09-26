@@ -778,6 +778,6 @@ export function useThemeButton() {
     onPointerLeave: cancel,
     onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
     onClick: () => { if (!held.current) cycleTheme(); },
-    title: "Tap to switch theme A/B/C — hold for the classic layout",
+    title: THEMES.includes("d") ? "Tap to switch theme — hold for the classic layout" : "Tap to switch theme",
   };
 }

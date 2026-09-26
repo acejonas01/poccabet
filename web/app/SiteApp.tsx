@@ -10,12 +10,12 @@ import { ThemeProvider } from "../../frontend/src/context/ThemeContext";
 import { InitialFeedContext, type InitialFeed } from "../../frontend/src/redesign/data";
 import { RedesignApp } from "../../frontend/src/redesign/RedesignApp";
 
-export function SiteApp({ feed }: { feed: InitialFeed | null }) {
+export function SiteApp({ feed, theme }: { feed: InitialFeed | null; theme: string }) {
   // First render uses Nigerian time like the server; then show the visitor's own clock.
   const [, setClock] = useState(0);
   useEffect(() => { switchToVisitorClock(); setClock(1); }, []);
   return (
-    <ThemeProvider>
+    <ThemeProvider initial={theme}>
       <AuthProvider>
         <BetSlipProvider>
           <InitialFeedContext.Provider value={feed}>
