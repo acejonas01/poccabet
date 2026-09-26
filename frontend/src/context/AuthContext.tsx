@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api, type SignupDetails } from "../api/client";
+import { useDeviceState } from "../lib/browser";
 
 interface User {
   id: string;
@@ -25,10 +26,10 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() => {
+  const [user, setUser] = useDeviceState<User | null>(() => {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
-  });
+  }, null);
   const [balance, setBalance] = useState<number>(0);
   const [demo, setDemo] = useState(false);
 

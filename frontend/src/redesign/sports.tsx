@@ -2,6 +2,7 @@
 // match lists they open (/sports/football/today | live | all | soon | 2026-09-25).
 import { useEffect, useMemo, useState, type ComponentType, type ReactElement } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { zoned } from "../lib/browser";
 import { type TCMatch, dayHeading, leagueRank, leagueSlug } from "./data";
 import {
   AmFootballIcon, BaseballIcon, BasketballIcon, BoxingIcon, CheckIcon, ChevronRight, CricketIcon, DartsIcon,
@@ -32,7 +33,7 @@ export const SPORTS: { slug: string; name: string; Icon: Icon; ready?: boolean }
 const HOUR = 3600000;
 // Local calendar date as yyyy-mm-dd (used in date URLs).
 const ymd = (t: number) => {
-  const d = new Date(t);
+  const d = zoned(t);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const isToday = (m: TCMatch) => ymd(m.start) === ymd(Date.now());
@@ -174,7 +175,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const t = Date.now() + i * 24 * HOUR;
     const id = ymd(t);
-    return { id, label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : new Date(t).toLocaleDateString("en-GB", { weekday: "long" }), count: upcoming.filter((m) => ymd(m.start) === id).length };
+    return { id, label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : zoned(t).toLocaleDateString("en-GB", { weekday: "long" }), count: upcoming.filter((m) => ymd(m.start) === id).length };
   }), [upcoming]);
 
   // Leagues (and countries) that have matches in the chosen time window.

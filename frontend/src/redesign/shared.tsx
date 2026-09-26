@@ -4,6 +4,7 @@ import { ApiError, api, type BookedLeg } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { useBetSlip } from "../context/BetSlipContext";
+import { useDeviceState } from "../lib/browser";
 import type { Dir, TCMatch } from "./data";
 import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
@@ -17,7 +18,7 @@ export const SHOW_TAB_FEATURE = true;
 
 export function useIsDesktop() {
   const query = "(min-width: 900px)";
-  const [desk, setDesk] = useState(() => window.matchMedia(query).matches);
+  const [desk, setDesk] = useDeviceState(() => window.matchMedia(query).matches, false);
   useEffect(() => {
     const mq = window.matchMedia(query);
     const on = () => setDesk(mq.matches);
@@ -275,14 +276,10 @@ export function Loader({ label, compact = false }: { label?: string; compact?: b
 // is closed (where you were on the page), so a new visit starts fresh.
 export function useStoredState<T>(key: string, initial: T, where: "local" | "session" = "local") {
   const store = () => (where === "local" ? window.localStorage : window.sessionStorage);
-  const [value, setValue] = useState<T>(() => {
-    try {
-      const raw = store().getItem(key);
-      return raw === null ? initial : (JSON.parse(raw) as T);
-    } catch {
-      return initial;
-    }
-  });
+  const [value, setValue] = useDeviceState<T>(() => {
+    const raw = store().getItem(key);
+    return raw === null ? initial : (JSON.parse(raw) as T);
+  }, initial);
   useEffect(() => {
     try { store().setItem(key, JSON.stringify(value)); } catch { /* storage blocked: just not remembered */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -467,7 +464,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
   const showCodeLoader = useMinLoading(loadingCode);
   const [busy, setBusy] = useState(false);
   const [changed, setChanged] = useState(false); // prices moved: the button asks to accept them
-  const [anyOdds, setAnyOdds] = useState(() => { try { return localStorage.getItem(ANY_ODDS_KEY) === "1"; } catch { return false; } });
+  const [anyOdds, setAnyOdds] = useDeviceState(() => localStorage.getItem(ANY_ODDS_KEY) === "1", false);
 
   // Same slip + stake + mode = same key; anything changes = a new submission.
   const signature = `${mode}|${stake}|${selections.map((s) => `${s.outcomeId}@${s.odds}`).join(",")}`;

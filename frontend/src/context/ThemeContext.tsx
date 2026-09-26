@@ -31,6 +31,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function initialTheme() {
+  if (typeof window === "undefined") return THEMES[0]; // server render (Next.js site)
   const fromUrl = new URLSearchParams(window.location.search).get("theme")?.toLowerCase();
   if (fromUrl && THEMES.includes(fromUrl)) return fromUrl;
   try {

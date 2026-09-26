@@ -4,6 +4,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { zoned } from "../lib/browser";
 import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
@@ -53,10 +54,10 @@ export function RedesignApp() {
     }
     if (key === "live") return goLive();
     setTab("upcoming");
-    setDateId(key === "today" ? new Date().toDateString() : "all");
+    setDateId(key === "today" ? zoned().toDateString() : "all");
     scrollToList();
   };
-  const activeSection: SectionKey = tab === "live" ? "live" : dateId === new Date().toDateString() ? "today" : "sports";
+  const activeSection: SectionKey = tab === "live" ? "live" : dateId === zoned().toDateString() ? "today" : "sports";
   // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
   const goLive = () => {
     setTab("live");

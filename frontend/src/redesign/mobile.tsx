@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { zoned } from "../lib/browser";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
@@ -596,7 +597,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
   const days: { key: string; title: string; matches: TCMatch[] }[] = [];
   if (group === "day") {
     for (const m of shown) {
-      const key = new Date(m.start).toDateString();
+      const key = zoned(m.start).toDateString();
       const last = days[days.length - 1];
       if (last?.key === key) last.matches.push(m);
       else days.push({ key, title: dayHeading(m.start), matches: [m] });

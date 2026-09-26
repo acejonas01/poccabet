@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { api } from "../api/client";
+import { zoned } from "../lib/browser";
 
 export type Dir = "up" | "down" | "";
 
@@ -129,14 +130,22 @@ function withDirs(next: TCMatch[], prev: Map<string, TCMatch>) {
   });
 }
 
+// The Next.js site fetches the feed on the server, so pages arrive with the matches already
+// in them (for search engines). Given here, it's the starting data instead of the device cache.
+// topPick: the Pick of the day line (undefined = not fetched).
+export interface InitialFeed { live: any[]; upcoming: any[]; simulated?: boolean; topPick?: any | null }
+export const InitialFeedContext = createContext<InitialFeed | null>(null);
+
 export function useTCData() {
-  const [live, setLive] = useState<TCMatch[]>(() => readCache("pocca-c-live", 5 * 60000));
-  const [upcoming, setUpcoming] = useState<TCMatch[]>(() => readCache("pocca-c-upcoming", 3 * 3600000));
-  const [liveLoaded, setLiveLoaded] = useState(false);
-  const [upcomingLoaded, setUpcomingLoaded] = useState(false);
-  const [simulated, setSimulated] = useState(false);
-  const liveRef = useRef(new Map<string, TCMatch>());
-  const upcomingRef = useRef(new Map<string, TCMatch>());
+  const initial = useContext(InitialFeedContext);
+  const [live, setLive] = useState<TCMatch[]>(() => (initial ? initial.live.map(fromLive) : readCache("pocca-c-live", 5 * 60000)));
+  const [upcoming, setUpcoming] = useState<TCMatch[]>(() =>
+    initial ? initial.upcoming.map(fromUpcoming).filter((m: TCMatch) => m.o[0] > 0) : readCache("pocca-c-upcoming", 3 * 3600000));
+  const [liveLoaded, setLiveLoaded] = useState(!!initial);
+  const [upcomingLoaded, setUpcomingLoaded] = useState(!!initial);
+  const [simulated, setSimulated] = useState(!!initial?.simulated);
+  const liveRef = useRef(new Map<string, TCMatch>(live.map((m) => [m.id, m])));
+  const upcomingRef = useRef(new Map<string, TCMatch>(upcoming.map((m) => [m.id, m])));
 
   useEffect(() => {
     const load = () =>
@@ -188,12 +197,12 @@ export function useTCData() {
 // ---------- formatting ----------
 const pad = (n: number) => String(n).padStart(2, "0");
 export const hhmm = (t: number) => {
-  const d = new Date(t);
+  const d = zoned(t);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 export function dayLabel(t: number) {
-  const d = new Date(t);
-  const today = new Date();
+  const d = zoned(t);
+  const today = zoned();
   if (d.toDateString() === today.toDateString()) return "Today";
   return d.toLocaleDateString("en-GB", { weekday: "short" });
 }
@@ -225,7 +234,7 @@ export function groupByLeague(matches: TCMatch[]) {
 // Date filter options: All dates, Today, Tomorrow, then the next two days ("Sat 26").
 export function dateOptions() {
   const opts = [{ id: "all", label: "All dates" }];
-  const base = new Date();
+  const base = zoned();
   base.setHours(0, 0, 0, 0);
   for (let i = 0; i < 4; i++) {
     const d = new Date(base.getTime() + i * 86400000);
@@ -234,7 +243,7 @@ export function dateOptions() {
   }
   return opts;
 }
-export const matchesDate = (m: TCMatch, dateId: string) => dateId === "all" || new Date(m.start).toDateString() === dateId;
+export const matchesDate = (m: TCMatch, dateId: string) => dateId === "all" || zoned(m.start).toDateString() === dateId;
 
 // URL slug for a league page, e.g. "England", "Premier League" → "england-premier-league".
 // Country is included because different countries reuse names like "Premier League".
@@ -243,8 +252,8 @@ export const leagueSlug = (country: string, name: string) =>
 
 // Day heading for grouped lists: "Today", "Tomorrow", "Saturday 26 Sep".
 export function dayHeading(t: number) {
-  const d = new Date(t);
-  const today = new Date();
+  const d = zoned(t);
+  const today = zoned();
   if (d.toDateString() === today.toDateString()) return "Today";
   if (d.toDateString() === new Date(today.getTime() + 86400000).toDateString()) return "Tomorrow";
   return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });

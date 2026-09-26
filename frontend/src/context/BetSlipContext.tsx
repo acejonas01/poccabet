@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, type ReactNode } from "react";
+import { useDeviceState } from "../lib/browser";
 
 export interface Selection {
   outcomeId: string; // redesign: "<matchId>|<market>|<selection>"; Theme D: a database outcome id
@@ -38,7 +39,7 @@ function savedSelections(): Selection[] {
 }
 
 export function BetSlipProvider({ children }: { children: ReactNode }) {
-  const [selections, setSelections] = useState<Selection[]>(savedSelections);
+  const [selections, setSelections] = useDeviceState<Selection[]>(savedSelections, []);
 
   useEffect(() => {
     try {

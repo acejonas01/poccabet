@@ -1,8 +1,9 @@
 // Pick of the day = today's most-picked selection (from bettors' slips) on a match that
 // hasn't kicked off. Until anyone has picked, it falls back to the top match's favourite.
-import { useEffect, useState } from "react";
+import { useContext, useEffect } from "react";
 import { api } from "../api/client";
-import { type TCMatch, kickoff, leagueRank } from "./data";
+import { useDeviceState } from "../lib/browser";
+import { InitialFeedContext, type TCMatch, kickoff, leagueRank } from "./data";
 import { deriveOdds, marketDef } from "./markets";
 
 export interface PickOfDay {
@@ -84,9 +85,12 @@ function saveTop(top: any) {
 }
 
 export function usePickOfTheDay(upcoming: TCMatch[], ranked: TCMatch | undefined): PickOfDay | null {
-  const [top, setTop] = useState<any | null>(readTop);
+  // Next.js site: the server already fetched the pick, so the card is in the page's HTML.
+  const initial = useContext(InitialFeedContext)?.topPick;
+  const fromServer = initial !== undefined;
+  const [top, setTop] = useDeviceState<any | null>(fromServer ? () => initial : readTop, fromServer ? initial : null);
   // Until the server answers (and nothing is cached) show a placeholder, not the backup line.
-  const [settled, setSettled] = useState(() => readTop() !== null);
+  const [settled, setSettled] = useDeviceState(() => fromServer || readTop() !== null, fromServer);
 
   useEffect(() => {
     const load = () =>
