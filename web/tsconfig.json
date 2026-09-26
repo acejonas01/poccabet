@@ -34,6 +34,9 @@
       ],
       "react-dom/*": [
         "./node_modules/@types/react-dom/*"
+      ],
+      "react-router-dom": [
+        "./lib/router-shim.tsx"
       ]
     }
   },
