@@ -9,6 +9,7 @@ import oddsRoutes from "./routes/odds";
 import liveRoutes from "./routes/live";
 import picksRoutes from "./routes/picks";
 import meRoutes from "./routes/me";
+import adminRoutes from "./routes/admin";
 
 const app = express();
 
@@ -30,5 +31,6 @@ app.use("/api/odds", oddsRoutes);
 app.use("/api/live", liveRoutes);
 app.use("/api/picks", picksRoutes);
 app.use("/api/me", meRoutes);
+app.use("/api/admin", adminRoutes);
 
 export default app;

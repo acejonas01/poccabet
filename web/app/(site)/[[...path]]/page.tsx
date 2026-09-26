@@ -2,9 +2,9 @@
 // 404s and redirects for unknown URLs, and adds structured data for search engines.
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { getFeed, leaguesIn } from "../../lib/feed";
-import { SPORT_NAMES, checkPath } from "../../lib/routes";
-import { SITE, metadataFor } from "../../lib/seo";
+import { getFeed, leaguesIn } from "../../../lib/feed";
+import { SPORT_NAMES, checkPath } from "../../../lib/routes";
+import { SITE, metadataFor } from "../../../lib/seo";
 
 type Props = { params: Promise<{ path?: string[] }> };
 

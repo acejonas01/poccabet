@@ -7,6 +7,7 @@ import { getLiveFixtures, type LiveFixture } from "../providers/apifootball";
 import { simLive, simUpcoming } from "../providers/simulation";
 import type { OddsEvent, OddsMarket } from "../providers/types";
 import { deriveOdds } from "./markets";
+import { suspendedIds } from "./suspensions";
 
 export interface BettableMatch {
   matchId: string; // same id the site uses, e.g. "af-12345"
@@ -70,7 +71,16 @@ function fromUpcoming(e: OddsEvent, now: number): BettableMatch {
   };
 }
 
-async function currentMatches(): Promise<BettableMatch[]> {
+// Everything on the board right now (live + upcoming), with admin-suspended matches at 0.
+export async function currentMatches(): Promise<BettableMatch[]> {
+  const [list, suspended] = await Promise.all([feedMatches(), suspendedIds()]);
+  if (!suspended.size) return list;
+  return list.map((m) => (suspended.has(m.matchId)
+    ? { ...m, prices: Object.fromEntries(Object.entries(m.prices).map(([k, v]) => [k, v.map(() => 0)])) }
+    : m));
+}
+
+async function feedMatches(): Promise<BettableMatch[]> {
   const now = Date.now();
   if (SIMULATE) {
     return [...simLive(now).map((f) => fromLive(f, false)), ...simUpcoming(now).map((e) => fromUpcoming(e, now))];

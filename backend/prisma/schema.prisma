@@ -22,6 +22,9 @@ model User {
   dateOfBirth     DateTime? @db.Date
   passwordHash    String
   displayName     String
+  role            String    @default("USER") // USER | ADMIN (admin panel access)
+  suspendedAt     DateTime? // set by an admin: can't log in or bet until lifted
+  suspendedReason String?
   createdAt       DateTime  @default(now())
 
   wallet Wallet?
@@ -182,4 +185,29 @@ model OtpCode {
   createdAt  DateTime  @default(now())
 
   @@index([phone, purpose, createdAt])
+}
+
+// Admin panel: every change an admin makes (who, what, to what, and the details), newest first.
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  action     String // e.g. USER_SUSPEND, BALANCE_ADJUST, BET_VOID, BET_SETTLE, MATCH_SUSPEND
+  targetType String // USER | BET | MATCH
+  targetId   String
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+// Matches an admin has taken off the board: no new bets, odds shown locked.
+model SuspendedMatch {
+  matchId   String   @id // feed match id, e.g. "af-12345"
+  home      String   @default("")
+  away      String   @default("")
+  league    String   @default("")
+  reason    String
+  createdBy String
+  createdAt DateTime @default(now())
 }

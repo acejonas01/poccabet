@@ -1,13 +1,9 @@
-// Root layout: fonts, icons, the shared styles and the app. Every URL is rendered on the server
-// with its matches, so search engines read real content; the browser then takes over.
+// Root layout: fonts, icons and the shared styles. The betting site is in (site)/layout.tsx,
+// the admin panel in admin/layout.tsx.
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "../../frontend/src/index.css";
-import { getFeed } from "../lib/feed";
 import { SITE } from "../lib/seo";
-import { SiteApp } from "./SiteApp";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -25,8 +21,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#131E24" };
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const feed = await getFeed();
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // Browsers and extensions add their own attributes to <html>/<body> before React starts;
     // that's expected here, so React doesn't warn about those two tags.
@@ -37,7 +32,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&family=Manrope:wght@400;600;700;800&display=swap" />
       </head>
       <body suppressHydrationWarning>
-        <SiteApp feed={feed} />
         {children}
       </body>
     </html>

@@ -10,6 +10,7 @@ import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
 import { OtpError, phoneFromToken, startOtp, verifyOtp } from "../auth/otp";
 import { everyone, limit } from "../lib/rateLimit";
+import { SUSPENDED_MESSAGE } from "../middleware/auth";
 
 const router = Router();
 
@@ -194,6 +195,7 @@ router.post("/login", ...limits.login, async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
     return res.status(401).json({ error: phone ? "Wrong phone number or password" : "Wrong email or password", code: "INVALID_CREDENTIALS" });
   }
+  if (user.suspendedAt) return res.status(403).json({ error: SUSPENDED_MESSAGE, code: "ACCOUNT_SUSPENDED" });
   sendSession(res, user);
 });
 
