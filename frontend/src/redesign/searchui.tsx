@@ -4,17 +4,54 @@ import { useEffect, useId, useMemo, useRef, useState, type ComponentType, type C
 import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { type TCMatch, TOP_LEAGUES, kickoff } from "./data";
-import { ChevronLeft, ChevronRight, CloseIcon, SearchIcon } from "./icons";
-import { Crest, Flag } from "./media";
+import { AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, CloseIcon, JackpotIcon, SearchIcon, VirtualsIcon } from "./icons";
+import { Crest, Flag, GAMES } from "./media";
 import { type ListViewProps, MatchListPage } from "./mobile";
 import {
-  type SearchIndex, clearRecentSearches, highlightParts, normalize, recentSearches, rememberSearch, search, searchMatches,
+  type SearchIndex, clearRecentSearches, highlightParts, normalize, recentSearches, rememberSearch, scoreText, search, searchMatches,
 } from "./search";
 import { POPULAR_CLUBS } from "./potd";
 import { ACCENT } from "./shared";
+import { VIRTUALS } from "./shortcuts";
+import { SPORTS } from "./sports";
 
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 export const searchHref = (q: string) => `/search?q=${encodeURIComponent(q.trim())}`;
+
+// Sports, games and virtuals: found by name or a common other name ("soccer", "nba", "slots"…).
+type CatalogEntry = { key: string; name: string; section: "Sports" | "Games"; words: string[]; sub: string; icon: ReactNode; href?: string; football?: boolean };
+const SPORT_WORDS: Record<string, string[]> = {
+  football: ["soccer"], basketball: ["nba", "hoops"], tennis: ["atp", "wta"], "table-tennis": ["ping pong"],
+  "ice-hockey": ["hockey", "nhl"], baseball: ["mlb"], "american-football": ["nfl"], boxing: ["fight", "ufc", "mma"],
+  efootball: ["fifa", "ea fc", "esports", "virtual football"],
+};
+const iconBox = (icon: ReactNode) => <span style={{ width: 30, height: 30, borderRadius: 15, background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</span>;
+const thumb = (src: string) => <img src={src} alt="" width={30} height={30} loading="lazy" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover" }} />;
+// Built on first use: sports.tsx imports this file indirectly, so SPORTS isn't ready at load time.
+let CATALOG: CatalogEntry[] | null = null;
+const catalog = (): CatalogEntry[] => CATALOG ??= [
+  ...SPORTS.map(({ slug, name, Icon, ready }) => ({
+    key: `sport-${slug}`, name, section: "Sports" as const, words: [name, ...(SPORT_WORDS[slug] ?? [])],
+    sub: ready ? "" : "No matches yet", icon: iconBox(<Icon size={18} />), href: `/sports/${slug}`, football: slug === "football",
+  })),
+  { key: "aviator", name: "Aviator", section: "Games", words: ["Aviator", "crash game", "plane"], sub: "Crash game · ₦1,000,000 free bet", icon: iconBox(<AviatorIcon size={18} />) },
+  { key: "virtuals", name: "Virtuals", section: "Games", words: ["Virtuals", "virtual sports"], sub: "Virtual football, basketball & horse racing", icon: iconBox(<VirtualsIcon size={18} />) },
+  { key: "jackpot", name: "Jackpot", section: "Games", words: ["Jackpot"], sub: "Predict the matches, win the pot", icon: iconBox(<JackpotIcon size={18} />) },
+  { key: "casino", name: "Casino", section: "Games", words: ["Casino", "slots", "games"], sub: "Slots and table games", icon: iconBox(<CasinoIcon size={18} />) },
+  ...GAMES.filter((g) => g.name !== "Aviator").map((g) => ({ key: `game-${g.name}`, name: g.name, section: "Games" as const, words: [g.name, "slots", "casino"], sub: g.tag, icon: thumb(g.img) })),
+  ...VIRTUALS.map((v) => ({ key: `virtual-${v}`, name: v, section: "Games" as const, words: [v, "virtuals"], sub: "Virtuals", icon: iconBox(<VirtualsIcon size={18} />) })),
+];
+function searchCatalog(q: string) {
+  if (normalize(q).length < 2) return [];
+  return catalog().map((c) => ({ c, score: Math.max(0, ...c.words.map((w) => scoreText(w, q))) + (normalize(c.name) === normalize(q) ? 20 : 0) }))
+    .filter((h) => h.score > 1)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((h) => h.c)
+    .sort((a, b) => (a.section === b.section ? 0 : a.section === "Sports" ? -1 : 1));
+}
+// Typing a sport's name and pressing search opens that sport.
+const sportFor = (q: string) => catalog().find((c) => c.href && c.words.some((w) => normalize(w) === normalize(q)));
 
 function Hl({ text, query }: { text: string; query: string }) {
   return <>{highlightParts(text, query).map((p, i) => p.hit ? <strong key={i} style={{ color: "var(--tc-text)", fontWeight: 800 }}>{p.text}</strong> : <span key={i}>{p.text}</span>)}</>;
@@ -33,7 +70,11 @@ function useSearchUI(index: SearchIndex, onOpenMatch: (m: TCMatch) => void, onDo
   const results = useMemo(() => search(index, q), [index, q]);
 
   const go = (label: string, fn: () => void) => { rememberSearch(label); setRecent(recentSearches()); fn(); onDone(); };
-  const submit = (text = q) => { if (normalize(text)) go(text, () => navigate(searchHref(text))); };
+  const submit = (text = q) => {
+    if (!normalize(text)) return;
+    const sport = sportFor(text);
+    go(text, () => navigate(sport?.href ?? searchHref(text)));
+  };
 
   const row = (icon: ReactNode, title: ReactNode, sub: ReactNode, right?: ReactNode) => (active: boolean) => (
     <span style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 52, padding: "6px 14px", background: active ? "var(--tc-raise)" : "transparent", borderRadius: 10 }}>
@@ -48,7 +89,17 @@ function useSearchUI(index: SearchIndex, onOpenMatch: (m: TCMatch) => void, onDo
   const liveTag = (m: TCMatch) => <span style={{ fontSize: 12, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D", flexShrink: 0 }}>{m.clock}</span>;
 
   const items: Item[] = [];
+  const soon = <span style={{ padding: "2px 8px", borderRadius: 8, background: "var(--tc-raise)", color: "var(--tc-label)", fontSize: 10, fontWeight: 800, flexShrink: 0 }}>SOON</span>;
+  const footballCount = index.live.length + index.upcoming.length;
   if (q) {
+    for (const c of searchCatalog(q)) items.push({
+      key: c.key, section: c.section,
+      // Games have no pages yet: they're listed (marked SOON) but picking one does nothing.
+      run: c.href ? () => go(c.name, () => navigate(c.href!)) : () => {},
+      render: row(c.icon, <Hl text={c.name} query={q} />,
+        c.football ? <>{footballCount} match{footballCount === 1 ? "" : "es"}{index.live.length ? <span style={{ color: "#E5484D", fontWeight: 700 }}> · {index.live.length} live</span> : ""}</> : c.sub,
+        c.href && !c.sub ? <span style={{ color: "var(--tc-faint)", display: "flex" }}><ChevronRight /></span> : soon),
+    });
     for (const { m } of results.live) items.push({
       key: `live-${m.id}`, section: "Live now", run: () => go(q, () => onOpenMatch(m)),
       render: row(<Crest name={m.home} url={m.homeLogo} size={26} />,
@@ -130,7 +181,7 @@ function Suggestions({ ui, listId }: { ui: ReturnType<typeof useSearchUI>; listI
   let last = "";
   return (
     <div id={listId} role="listbox" aria-label="Suggestions" style={{ padding: "6px 6px 8px" }}>
-      {ui.resultsEmpty && <p style={{ margin: 0, padding: "14px 14px 6px", fontSize: 13, color: "var(--tc-label)" }}>No teams, leagues or matches match “{ui.query.trim()}”.</p>}
+      {ui.resultsEmpty && <p style={{ margin: 0, padding: "14px 14px 6px", fontSize: 13, color: "var(--tc-label)" }}>No sports, games, teams, leagues or matches match “{ui.query.trim()}”.</p>}
       {ui.items.map((it, i) => {
         const head = it.section && it.section !== last ? it.section : "";
         last = it.section || last;
@@ -168,7 +219,7 @@ export function DesktopSearch({ index, onOpenMatch }: { index: SearchIndex; onOp
     <div className="tc-dsearch" style={{ position: "relative", width: 320 }}>
       <form role="search" onSubmit={(e) => { e.preventDefault(); ui.submit(); }} style={{ height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 6px 0 12px", borderRadius: 10, background: "var(--tc-raise)", color: "var(--tc-label)", boxSizing: "border-box", border: `1px solid ${open ? "var(--tc-outline-strong)" : "transparent"}` }}>
         <SearchIcon />
-        <input suppressHydrationWarning ref={input} type="search" value={ui.query} placeholder="Search teams, leagues, live games"
+        <input suppressHydrationWarning ref={input} type="search" value={ui.query} placeholder="Search teams, leagues, sports, games"
           role="combobox" aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-activedescendant={ui.active >= 0 ? `${listId}-${ui.active}` : undefined}
           onChange={(e) => { ui.setQuery(e.target.value); setOpen(true); }} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)} onKeyDown={ui.onKeyDown}
           style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 14 }} />
@@ -218,7 +269,7 @@ function MobileSearch({ index, onOpenMatch, onClose }: { index: SearchIndex; onO
         </button>
         <label style={{ flex: 1, minWidth: 0, height: 46, display: "flex", alignItems: "center", gap: 8, padding: "0 6px 0 12px", borderRadius: 12, background: "var(--tc-raise)", color: "var(--tc-label)" }}>
           <SearchIcon size={18} />
-          <input suppressHydrationWarning ref={input} type="text" inputMode="search" enterKeyHint="search" autoComplete="off" autoCorrect="off" spellCheck={false} value={ui.query} placeholder="Teams, leagues, live games"
+          <input suppressHydrationWarning ref={input} type="text" inputMode="search" enterKeyHint="search" autoComplete="off" autoCorrect="off" spellCheck={false} value={ui.query} placeholder="Teams, leagues, sports, games"
             role="combobox" aria-expanded={!!ui.query} aria-controls={listId} aria-autocomplete="list"
             onChange={(e) => ui.setQuery(e.target.value)} onKeyDown={ui.onKeyDown}
             style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16 }} />

@@ -16,7 +16,7 @@ const LEAGUES = [
   { country: "France", name: "Ligue 1" },
   { country: "Nigeria", name: "NPFL" },
 ];
-const VIRTUALS = ["Virtual Football League", "Virtual Nations Cup", "Virtual Basketball", "Virtual Horse Racing"];
+export const VIRTUALS = ["Virtual Football League", "Virtual Nations Cup", "Virtual Basketball", "Virtual Horse Racing"];
 const TABS = ["Sports", "Games", "Virtuals"] as const;
 
 const sectionTitle = { margin: "0 0 12px", fontSize: 13, fontWeight: 800, letterSpacing: 1, color: "var(--tc-label)" } as const;
