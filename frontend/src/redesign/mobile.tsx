@@ -432,7 +432,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
   return (
     <div className="tc-mobile-page">
       {layout !== "classic" ? (
-        <ThemedHero layout={layout} potd={potd} live={live} upcoming={ranked} loaded={loaded} onOpenMatch={onOpenMatch}
+        <ThemedHero potd={potd} live={live} upcoming={ranked} loaded={loaded} onOpenMatch={onOpenMatch}
           onLive={() => { setTab("live"); setLimit(12); requestAnimationFrame(() => listRef.current?.scrollIntoView({ behavior: "smooth" })); }} />
       ) : <>
       <PromoSlider />

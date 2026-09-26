@@ -15,7 +15,7 @@ import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
 import { RedesignAccount } from "./account";
 import { RedesignLogin, RedesignSignup } from "./auth";
-import { LiveTicker, ThemedBottomNav, ThemedHeader, ThemedSections, useLayout } from "./themed";
+import { ThemedBottomNav, ThemedHeader, ThemedSections, useLayout } from "./themed";
 import "./redesign.css";
 
 
@@ -107,11 +107,10 @@ export function RedesignApp() {
   return (
     <div className="tc-root">
       {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} />
-        : !onAuth && (layout === "classic" ? <MobileHeader simulated={data.simulated} /> : <ThemedHeader layout={layout} />)}
-      {!desk && onRoot && (layout === "classic" ? <SectionsNav active={activeSection} onSelect={onSection} /> : <>
-        <ThemedSections layout={layout} active={activeSection} liveCount={data.live.length} onSelect={onSection} />
-        {layout === "poster" && <LiveTicker live={data.live} onLive={goLive} />}
-      </>)}
+        : !onAuth && (layout === "classic" ? <MobileHeader simulated={data.simulated} /> : <ThemedHeader />)}
+      {!desk && onRoot && (layout === "classic"
+        ? <SectionsNav active={activeSection} onSelect={onSection} />
+        : <ThemedSections active={activeSection} liveCount={data.live.length} onSelect={onSection} />)}
 
       <Routes>
         <Route path="/" element={desk ? deskShell(home) : home} />
@@ -148,7 +147,7 @@ export function RedesignApp() {
           onAccount={() => navigate(isAuthenticated ? "/account" : "/login")}
         />
       ) : (
-        <ThemedBottomNav layout={layout}
+        <ThemedBottomNav
           active={navActive as "home" | "live" | "mybets" | "account"}
           liveCount={data.live.length}
           onHome={() => goHome()}

@@ -3,12 +3,11 @@
 //   B           — redesign, deep charcoal (#222C32)
 //   C           — redesign, lighter/softer charcoal
 //   D           — the original layout, kept out of the everyday toggle
-//   Bento Pop, Matchday Poster, Daylight — light themes with their own phone layout
-//     (ids "bento", "poster", "daylight"), offered on the Next.js site only.
+//   Daylight    — light theme with its own phone layout (id "daylight"), Next.js site only
 //
 // Build switch: VITE_THEMES lists the themes a deployment offers (the Next.js site sets
-// "a,bento,poster,daylight"). Unset = A, B, C and D (the Vite site).
-export const KNOWN_THEMES = ["a", "b", "c", "d", "bento", "poster", "daylight"];
+// "a,daylight"). Unset = A, B, C and D (the Vite site).
+export const KNOWN_THEMES = ["a", "b", "c", "d", "daylight"];
 const DEFAULT_THEMES = ["a", "b", "c", "d"];
 const ENABLED = String(import.meta.env.VITE_THEMES ?? "")
   .split(",")
@@ -18,16 +17,14 @@ export const THEMES = ENABLED.length ? ENABLED : DEFAULT_THEMES;
 
 export const THEME_NAMES: Record<string, string> = {
   a: "Theme A", b: "Theme B", c: "Theme C", d: "Theme D",
-  bento: "Theme Bento Pop", poster: "Theme Matchday Poster", daylight: "Theme Daylight",
+  daylight: "Theme Daylight",
 };
 // Short label on the theme button's badge.
-export const THEME_BADGE: Record<string, string> = { a: "A", b: "B", c: "C", d: "D", bento: "BP", poster: "MP", daylight: "DL" };
+export const THEME_BADGE: Record<string, string> = { a: "A", b: "B", c: "C", d: "D", daylight: "DL" };
 // Themes with a light page (and their own phone layout).
-export const LIGHT_THEMES = ["bento", "poster", "daylight"];
+export const LIGHT_THEMES = ["daylight"];
 // Google Fonts a theme needs beyond the site's defaults (css2 query), loaded only for that theme.
 export const THEME_FONTS: Record<string, string> = {
-  bento: "family=Unbounded:wght@600;700;800&family=DM+Sans:wght@500;600;700;800",
-  poster: "family=Anton&family=Archivo:wght@500;600;700;800;900",
   daylight: "family=Sora:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800",
 };
 export const themeFontsUrl = (theme: string) =>

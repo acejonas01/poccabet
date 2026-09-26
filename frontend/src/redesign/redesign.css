@@ -108,96 +108,6 @@
   --tc-bar-low: #56636E;
 }
 
-/* Theme Bento Pop: cream page, candy tiles, thick black outlines with a hard shadow. */
-:root[data-theme="bento"] {
-  --tc-text: #141414;
-  --tc-label: #6A6358;
-  --tc-muted: #4E4840;
-  --tc-soft: #2E2A25;
-  --tc-soft-2: #2E2A25;
-  --tc-faint: #968C80;
-  --tc-page: #FFF6E9;
-  --tc-header: #FFF6E9;
-  --tc-dheader: #FFF6E9;
-  --tc-panel: #FFFFFF;
-  --tc-panel-2: #FFF1DE;
-  --tc-card: #FFFFFF;
-  --tc-card-line: #141414;
-  --tc-league: #F6E8D4;
-  --tc-raise: #F5E9D8;
-  --tc-crest-bg: #F0E4D2;
-  --tc-odd: #FFF6E9;
-  --tc-line: #EADBC6;
-  --tc-divider: #EADBC6;
-  --tc-btn-line: #141414;
-  --tc-outline: #141414;
-  --tc-outline-2: #141414;
-  --tc-outline-strong: #141414;
-  --tc-track: #EADBC6;
-  --tc-bar-mid: #B8AC9C;
-  --tc-bar-low: #D8CCBA;
-  --tc-accent: #141414;
-  --tc-accent-hover: #2E2A25;
-  --tc-accent-text: #C8175A;
-  --tc-on-accent: #FFF1A8;
-  --tc-sel: #FF3D7F;
-  --tc-sel-text: #FFFFFF;
-  --tc-odd-border: 2px solid #141414;
-  --tc-odd-radius: 12px;
-  --tc-font: 'DM Sans', system-ui, sans-serif;
-  --tc-display: 'Unbounded', 'DM Sans', sans-serif;
-  --tc-num: 'Unbounded', 'DM Sans', sans-serif;
-  --bento-lilac: #D9CCFF;
-  --bento-mint: #C9F2DC;
-  --bento-peach: #FFD6C2;
-  --bento-lemon: #FFF1A8;
-  --tc-hero-hi: #FFF1A8;
-  --tc-hero-shade: 0.45;
-}
-/* Theme Matchday Poster: paper white, electric blue and blaze orange, big condensed type. */
-:root[data-theme="poster"] {
-  --tc-text: #0D0D0D;
-  --tc-label: #6E6A62;
-  --tc-muted: #4A4740;
-  --tc-soft: #2A2825;
-  --tc-soft-2: #2A2825;
-  --tc-faint: #9C978D;
-  --tc-page: #F2EFE8;
-  --tc-header: #1740FF;
-  --tc-dheader: #1740FF;
-  --tc-panel: #FFFFFF;
-  --tc-panel-2: #EAE6DC;
-  --tc-card: #FFFFFF;
-  --tc-card-line: #0D0D0D;
-  --tc-league: #E6E1D6;
-  --tc-raise: #E9E5DB;
-  --tc-crest-bg: #E6E1D6;
-  --tc-odd: #FFFFFF;
-  --tc-line: #D5CFC2;
-  --tc-divider: #0D0D0D;
-  --tc-btn-line: #0D0D0D;
-  --tc-outline: #0D0D0D;
-  --tc-outline-2: #0D0D0D;
-  --tc-outline-strong: #0D0D0D;
-  --tc-track: #DDD7CA;
-  --tc-bar-mid: #A39E93;
-  --tc-bar-low: #C9C3B6;
-  --tc-accent: #FF5B14;
-  --tc-accent-hover: #FF7A3D;
-  --tc-accent-text: #1740FF;
-  --tc-on-accent: #0D0D0D;
-  --tc-sel: #1740FF;
-  --tc-sel-text: #FFFFFF;
-  --tc-odd-border: 2px solid #0D0D0D;
-  --tc-odd-radius: 0;
-  --tc-font: 'Archivo', system-ui, sans-serif;
-  --tc-display: 'Anton', 'Archivo', sans-serif;
-  --tc-num: 'Anton', 'Archivo', sans-serif;
-  --poster-blue: #1740FF;
-  --poster-orange: #FF5B14;
-  --tc-hero-hi: #FF5B14;
-  --tc-hero-shade: 0.45;
-}
 /* Theme Daylight: soft white, rounded cards, deep navy and tangerine. */
 :root[data-theme="daylight"] {
   --tc-text: #0B1B3F;
@@ -362,27 +272,18 @@
 }
 
 /* Light themes: white bonus box on the sign-up header. */
-:root:is([data-theme="bento"], [data-theme="poster"], [data-theme="daylight"]) { --tc-hero-box: #FFFFFF; }
+:root[data-theme="daylight"] { --tc-hero-box: #FFFFFF; }
 /* Light themes: the page behind the app (overscroll, safe areas) and the browser's own controls. */
-:root:is([data-theme="bento"], [data-theme="poster"], [data-theme="daylight"]) {
+:root[data-theme="daylight"] {
   --bg: var(--tc-page);
   --text: var(--tc-text);
   color-scheme: light;
 }
 
-/* Match lists in the light themes (rows and league blocks are shared; these restyle them). */
-[data-theme="bento"] .tc-league-head { background: transparent !important; padding-top: 20px !important; }
-[data-theme="bento"] .tc-league-name { font-family: var(--tc-display); font-size: 16px !important; font-weight: 700 !important; }
-[data-theme="bento"] .tc-row { margin: 10px 16px 0; background: #FFFFFF; border: 2px solid #141414 !important; border-radius: 20px; padding-left: 14px !important; padding-right: 12px !important; }
-[data-theme="poster"] .tc-league-head { background: transparent !important; padding-top: 18px !important; }
-[data-theme="poster"] .tc-league-name { font-family: var(--tc-display); font-weight: 400 !important; font-size: 22px !important; text-transform: uppercase; letter-spacing: 0.5px; }
-[data-theme="poster"] .tc-row { margin: 0 16px; padding-left: 0 !important; padding-right: 0 !important; border-top: 2px solid #0D0D0D !important; }
+/* Match lists in Theme Daylight (rows and league blocks are shared; these restyle them). */
 [data-theme="daylight"] .tc-league-sec { margin: 12px 16px 0; background: #FFFFFF; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 24px rgba(11, 27, 63, 0.05); }
 [data-theme="daylight"] .tc-league-head { background: transparent !important; }
 [data-theme="daylight"] .tc-league-name { font-family: var(--tc-display); letter-spacing: -0.3px; }
 [data-theme="daylight"] .tc-row { border-top: 1px solid #EDF0F6 !important; }
 /* Room for the floating bottom bars. */
-[data-theme="bento"] .tc-mobile-page { padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
 [data-theme="daylight"] .tc-mobile-page { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }
-/* Bento Pop's odds font is wide: smaller numbers so prices fit their buttons. */
-[data-theme="bento"] .tc-odd-btn { font-size: 15px !important; letter-spacing: -0.3px; }
