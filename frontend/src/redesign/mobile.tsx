@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
-import { CAN_SWITCH_THEME, THEME_BADGE, THEME_NAMES, useTheme } from "../context/ThemeContext";
+import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
 } from "./data";
@@ -10,13 +10,12 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, MoonIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { NUM_FONT, ON_ACCENT, ACCENT_TEXT, ACCENT, Loader, useMinLoading, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader, useMinLoading, useThemeButton, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
-import { ThemedHero, useLayout } from "./themed";
 
-const barlow = NUM_FONT;
+const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 
 // ---------- header ----------
@@ -40,25 +39,25 @@ export function MobileHeader({ simulated }: { simulated: boolean }) {
     <header ref={ref} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30, background: "var(--tc-header)" }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", color: "var(--tc-text)" }}>
         <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 32, letterSpacing: -0.5, lineHeight: 1 }}>
-          Pocca<span style={{ color: ACCENT_TEXT }}>bet</span>
+          Pocca<span style={{ color: ACCENT }}>bet</span>
         </span>
         {simulated && <DemoTag />}
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {CAN_SWITCH_THEME && <button aria-label={`Switch theme (now ${THEME_NAMES[theme]})`} {...themeBtn} style={{ position: "relative", width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {CAN_SWITCH_THEME && <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 44, height: 44, borderRadius: 22, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MoonIcon />
           {/* Current theme letter */}
-          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: ON_ACCENT, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{THEME_BADGE[theme]}</span>
+          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
         </button>}
         {isAuthenticated ? (
           <>
             <span style={{ height: 44, padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 15, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
-            <button onClick={logout} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontWeight: 800, fontSize: 15 }}>Log out</button>
+            <button onClick={logout} style={{ height: 44, padding: "0 14px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Log out</button>
           </>
         ) : (
           <>
             <button onClick={() => navigate("/signup")} style={{ height: 44, padding: "0 16px", borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 15 }}>Join</button>
-            <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontWeight: 800, fontSize: 15 }}>Login</button>
+            <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 15 }}>Login</button>
           </>
         )}
       </div>
@@ -153,7 +152,7 @@ export function BottomNav({ active, liveCount, onHome, onLive, onSlip, onMyBets,
       }}>
         <span style={{ position: "relative", width: 68, height: 46, marginTop: -26, filter: "drop-shadow(0 6px 12px rgba(0,0,0,0.45))" }}>
           <TicketShape accent={ACCENT} />
-          <span style={{ position: "absolute", left: 20, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 26, fontWeight: 700, color: ON_ACCENT }}>{count}</span>
+          <span style={{ position: "absolute", left: 20, right: 0, top: 0, bottom: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: barlow, fontSize: 26, fontWeight: 700, color: "#13171C" }}>{count}</span>
         </span>
         <span style={{ whiteSpace: "nowrap" }}>{count ? `Odds ${total.toFixed(2)}` : "Betslip"}</span>
       </a>
@@ -201,7 +200,7 @@ function MarketTabs({ market, setMarket, openSheet }: { market: string; setMarke
           }}>{marketDef(id).label}</button>
         );
       })}
-      <button aria-haspopup="dialog" onClick={openSheet} style={{ flexShrink: 0, marginLeft: "auto", padding: 0, background: "transparent", border: "none", color: ACCENT_TEXT, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 5 }}>
+      <button aria-haspopup="dialog" onClick={openSheet} style={{ flexShrink: 0, marginLeft: "auto", padding: 0, background: "transparent", border: "none", color: ACCENT, fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", gap: 5 }}>
         <GridIcon />More
       </button>
     </div>
@@ -241,7 +240,7 @@ function useOdds(m: TCMatch, market: string, variant: "home" | "live", flashBase
 function UpcomingRow({ m, market, onMore, timeOnly }: { m: TCMatch; market: string; onMore: () => void; timeOnly?: boolean }) {
   const odds = useOdds(m, market, "home", 0);
   return (
-    <div className="tc-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
         <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{timeOnly ? hhmm(m.start) : kickoff(m.start)}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
@@ -267,11 +266,11 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
         <span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{name}</span>
         <RedCard show={red} />
       </span>
-      <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT_TEXT }}>{score}</span>
+      <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT }}>{score}</span>
     </div>
   );
   return (
-    <div className="tc-row" style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 16px", borderTop: "1px solid var(--tc-line)" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0, padding: "8px 16px", borderTop: "1px solid var(--tc-line)" }}>
       {/* League/country is already in the section header above — not repeated per match. */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, height: 48 }}>
         <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-start", height: 48 }}>
@@ -292,10 +291,10 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
 function LeagueHeader({ country, name, market }: { country: string; name: string; market: string }) {
   const light = useTheme().theme === "c";
   return (
-    <div className="tc-league-head" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: "var(--tc-league)" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", padding: light ? "8px 16px 6px" : "12px 16px 8px", background: "var(--tc-league)" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, letterSpacing: 1, color: "var(--tc-label)" }}><Flag country={country} />{country}</span>
-        <span className="tc-league-name" style={{ fontSize: 15, fontWeight: 800 }}>{name}</span>
+        <span style={{ fontSize: 15, fontWeight: 800 }}>{name}</span>
       </div>
       <div style={{ display: "flex", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{colLabels(market)}</div>
     </div>
@@ -365,7 +364,7 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
   const id = `${m.id}|${p.marketId}|${p.col}`;
   return (
     <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT_TEXT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         {/* Title with small crests: [crest] Home vs [crest] Away */}
         {/* Each team is one unbreakable unit (crest + name), so a long title can only wrap
@@ -396,7 +395,6 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
   market: string; setMarket: (id: string) => void;
 }) {
   const navigate = useNavigate();
-  const layout = useLayout();
   const [limit, setLimit] = useState(12);
   const listRef = useRef<HTMLDivElement>(null);
   // Publish the tabs-row height (--tc-tabs-h) so the market tabs can stick right under it.
@@ -431,10 +429,6 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
 
   return (
     <div className="tc-mobile-page">
-      {layout !== "classic" ? (
-        <ThemedHero potd={potd} live={live} upcoming={ranked} loaded={loaded} onOpenMatch={onOpenMatch}
-          onLive={() => { setTab("live"); setLimit(12); requestAnimationFrame(() => listRef.current?.scrollIntoView({ behavior: "smooth" })); }} />
-      ) : <>
       <PromoSlider />
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 16px 10px" }}>
         <h2 style={{ margin: 0, fontSize: 17, fontWeight: 800 }}>Featured matches</h2>
@@ -451,10 +445,9 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
 
       <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ margin: "12px 16px 0", padding: 14, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--tc-card)", border: "1px dashed var(--tc-outline-2)", borderRadius: 12, textDecoration: "none", color: "var(--tc-text)" }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>Welcome bonus up to <strong style={{ color: ACCENT_TEXT }}>{WELCOME_BONUS_AMOUNT}</strong> on your first deposit</span>
-        <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT_TEXT, whiteSpace: "nowrap" }}>Claim →</span>
+        <span style={{ fontSize: 14, fontWeight: 600 }}>Welcome bonus up to <strong style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</strong> on your first deposit</span>
+        <span style={{ fontSize: 14, fontWeight: 800, color: ACCENT, whiteSpace: "nowrap" }}>Claim →</span>
       </a>
-      </>}
 
       <QuickLinks upcoming={upcoming} live={live} />
 
@@ -481,7 +474,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
 
       {!listLoading && leagues.map((lg) => (
-        <section className="tc-league-sec" key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
+        <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
@@ -552,7 +545,7 @@ function QuickLinks({ upcoming, live }: { upcoming: TCMatch[]; live: TCMatch[] }
 // A section heading inside the league page: "LIVE NOW" / "Today" / "Saturday 26 Sep", with the market's column labels.
 function GroupHeader({ title, live, market }: { title: string; live?: boolean; market: string }) {
   return (
-    <div className="tc-league-head" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px", background: "var(--tc-league)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 16px 8px", background: "var(--tc-league)" }}>
       <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, color: live ? "#E5484D" : "var(--tc-text)" }}>
         {live && <span style={{ width: 7, height: 7, borderRadius: 4, background: "#E5484D" }} />}{title}
       </span>
@@ -622,23 +615,23 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
 
       {busy ? <Loader label="Loading matches…" /> : <>
       {liveList.length > 0 && (group === "day" ? (
-        <section className="tc-league-sec">
+        <section>
           <GroupHeader title="Live now" live market={market} />
           {liveList.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       ) : groupByLeague(liveList).map((lg) => (
-        <section className="tc-league-sec" key={`live-${lg.key}`}>
+        <section key={`live-${lg.key}`}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       )))}
       {group === "day" ? days.map((d) => (
-        <section className="tc-league-sec" key={d.key}>
+        <section key={d.key}>
           <GroupHeader title={d.title} market={market} />
           {d.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} timeOnly />)}
         </section>
       )) : groupByLeague(shown).map((lg) => (
-        <section className="tc-league-sec" key={lg.key}>
+        <section key={lg.key}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
@@ -764,7 +757,7 @@ function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TC
         <button style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <TrackerIcon />{f.live ? "Match tracker" : "Match preview"}
         </button>
-        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT_TEXT, fontSize: 14, fontWeight: 700 }}>
+        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>
           +{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}
         </button>
       </div>

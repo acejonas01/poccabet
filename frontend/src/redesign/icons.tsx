@@ -51,8 +51,8 @@ export const LiveIcon = ({ size = 24 }: P) => (
 );
 export const TicketShape = ({ accent }: { accent: string }) => (
   <svg width="68" height="46" viewBox="0 0 68 46" aria-hidden="true" style={{ position: "absolute", inset: 0 }}>
-    <path d="M9 1H59a8 8 0 0 1 8 8V17a6 6 0 0 0 0 12V37a8 8 0 0 1-8 8H9a8 8 0 0 1-8-8V29a6 6 0 0 0 0-12V9a8 8 0 0 1 8-8Z" style={{ fill: accent }} />
-    <path d="M20 8V38" style={{ stroke: "var(--tc-on-accent)" }} strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 3" />
+    <path d="M9 1H59a8 8 0 0 1 8 8V17a6 6 0 0 0 0 12V37a8 8 0 0 1-8 8H9a8 8 0 0 1-8-8V29a6 6 0 0 0 0-12V9a8 8 0 0 1 8-8Z" fill={accent} />
+    <path d="M20 8V38" stroke="#13171C" strokeOpacity="0.35" strokeWidth="1.5" strokeDasharray="3 3" />
   </svg>
 );
 export const ReceiptIcon = ({ size = 24 }: P) => (

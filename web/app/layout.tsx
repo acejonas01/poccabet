@@ -3,8 +3,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "../../frontend/src/index.css";
-import { cookies } from "next/headers";
-import { THEMES, THEME_COOKIE, themeFontsUrl } from "../../frontend/src/context/themes";
 import { getFeed } from "../lib/feed";
 import { SITE } from "../lib/seo";
 import { SiteApp } from "./SiteApp";
@@ -29,22 +27,17 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const feed = await getFeed();
-  // The visitor's theme (saved in a cookie by the theme button), so the page arrives in it.
-  const saved = (await cookies()).get(THEME_COOKIE)?.value ?? "";
-  const theme = THEMES.includes(saved) ? saved : THEMES[0];
-  const themeFonts = themeFontsUrl(theme);
   return (
     // Browsers and extensions add their own attributes to <html>/<body> before React starts;
     // that's expected here, so React doesn't warn about those two tags.
-    <html lang="en" data-theme={theme} suppressHydrationWarning>
+    <html lang="en" data-theme="a" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {themeFonts && <link id={`pocca-fonts-${theme}`} rel="stylesheet" href={themeFonts} />}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&family=Manrope:wght@400;600;700;800&display=swap" />
       </head>
       <body suppressHydrationWarning>
-        <SiteApp feed={feed} theme={theme} />
+        <SiteApp feed={feed} />
         {children}
       </body>
     </html>

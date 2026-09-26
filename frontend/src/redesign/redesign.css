@@ -3,26 +3,6 @@
    Theme B: deep charcoal #222C32 (the earlier Theme A).
    Theme C: lighter, softer charcoal — cards sit lighter than the page (the earlier Theme B).
    Theme D is the original layout and doesn't use these. */
-/* Shared defaults (Themes A, B, C): accent, selected odds, fonts and shapes. Each new theme
-   below sets its own. */
-:root {
-  --tc-accent: #F5C518;
-  --tc-accent-hover: #FFD84D;
-  --tc-accent-text: #F5C518;
-  --tc-on-accent: #13171C;
-  --tc-sel: #F5C518;
-  --tc-sel-text: #13171C;
-  --tc-odd-text: var(--tc-text);
-  --tc-odd-border: none;
-  --tc-odd-radius: 8px;
-  --tc-font: 'Manrope', system-ui, sans-serif;
-  --tc-display: 'Manrope', system-ui, sans-serif;
-  --tc-num: 'Barlow Condensed', 'Arial Narrow', sans-serif;
-  --tc-live: #E5484D;
-  --tc-hero-hi: #F5C518; /* highlighted word on photo heroes */
-  --tc-hero-shade: 0.15; /* how dark the photo hero stays mid-way */
-  --tc-hero-box: rgba(0, 0, 0, 0.25); /* bonus box on the sign-up header */
-}
 :root, :root[data-theme="a"] {
   --tc-text: #F2F4F6;
   --tc-label: #8B95A1;
@@ -108,60 +88,16 @@
   --tc-bar-low: #56636E;
 }
 
-/* Theme Daylight: soft white, rounded cards, deep navy and tangerine. */
-:root[data-theme="daylight"] {
-  --tc-text: #0B1B3F;
-  --tc-label: #5B6785;
-  --tc-muted: #46557A;
-  --tc-soft: #2A3A62;
-  --tc-soft-2: #2A3A62;
-  --tc-faint: #8C97B2;
-  --tc-page: #F3F5FA;
-  --tc-header: #FFFFFF;
-  --tc-dheader: #FFFFFF;
-  --tc-panel: #FFFFFF;
-  --tc-panel-2: #F3F5FA;
-  --tc-card: #FFFFFF;
-  --tc-card-line: #E6EAF2;
-  --tc-league: #EAEFF7;
-  --tc-raise: #EEF2F8;
-  --tc-crest-bg: #E6EAF2;
-  --tc-odd: #E9EEF6;
-  --tc-line: #EDF0F6;
-  --tc-divider: #E6EAF2;
-  --tc-btn-line: #D8DEEA;
-  --tc-outline: #D1D8E6;
-  --tc-outline-2: #D1D8E6;
-  --tc-outline-strong: #B8C1D4;
-  --tc-track: #E1E6EF;
-  --tc-bar-mid: #9AA6BF;
-  --tc-bar-low: #C3CBDB;
-  --tc-accent: #FF6A1A;
-  --tc-accent-hover: #FF8240;
-  --tc-accent-text: #C24A06;
-  --tc-on-accent: #0B1B3F;
-  --tc-sel: #FF6A1A;
-  --tc-sel-text: #0B1B3F;
-  --tc-odd-radius: 13px;
-  --tc-font: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --tc-display: 'Sora', 'Plus Jakarta Sans', sans-serif;
-  --tc-num: 'Sora', 'Plus Jakarta Sans', sans-serif;
-  --day-navy: #0B1B3F;
-  --day-navy-2: #1D2E57;
-  --tc-hero-hi: #FF8A4C;
-  --tc-hero-shade: 0.45;
-}
-
 /* Redesign (Themes A, B, C) — page-level styles from the "Poccabet Homepage Redesign" design (its <helmet> CSS). */
 .tc-root {
   min-height: 100vh;
   min-height: 100dvh; /* the visible height with the phone's toolbars, like the screens inside it */
   background: var(--tc-page);
   color: var(--tc-text);
-  font-family: var(--tc-font);
+  font-family: 'Manrope', system-ui, sans-serif;
 }
-.tc-root a { color: var(--tc-accent-text); }
-.tc-root a:hover { color: var(--tc-accent-hover); }
+.tc-root a { color: #F5C518; }
+.tc-root a:hover { color: #FFD84D; }
 .tc-root button { font-family: inherit; cursor: pointer; }
 .tc-root button:disabled { cursor: not-allowed; }
 .tc-root input::placeholder { color: var(--tc-label); }
@@ -250,18 +186,18 @@
 .tc-loader { display: flex; gap: 5px; }
 .tc-loader i {
   width: 28px; height: 22px; border-radius: 6px; background: var(--tc-odd); color: var(--tc-label);
-  font: normal 700 12px var(--tc-num); display: flex; align-items: center; justify-content: center;
+  font: normal 700 12px 'Barlow Condensed', 'Arial Narrow', sans-serif; display: flex; align-items: center; justify-content: center;
   animation: tc-loader-pick 1.8s infinite;
 }
 .tc-loader i:nth-child(2) { animation-delay: 0.6s; }
 .tc-loader i:nth-child(3) { animation-delay: 1.2s; }
 @keyframes tc-loader-pick {
   0%, 30%, 100% { background: var(--tc-odd); color: var(--tc-label); }
-  8%, 22% { background: var(--tc-sel); color: var(--tc-sel-text); }
+  8%, 22% { background: #F5C518; color: #13171C; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tc-loader i { animation: none; }
-  .tc-loader i:nth-child(2) { background: var(--tc-sel); color: var(--tc-sel-text); }
+  .tc-loader i:nth-child(2) { background: #F5C518; color: #13171C; }
 }
 
 /* Bet slip page (phones): fills the screen under the sticky header; everything scrolls together. */
@@ -270,20 +206,3 @@
   min-height: calc(100dvh - var(--tc-header-h, 69px));
   display: flex; flex-direction: column; background: var(--tc-panel);
 }
-
-/* Light themes: white bonus box on the sign-up header. */
-:root[data-theme="daylight"] { --tc-hero-box: #FFFFFF; }
-/* Light themes: the page behind the app (overscroll, safe areas) and the browser's own controls. */
-:root[data-theme="daylight"] {
-  --bg: var(--tc-page);
-  --text: var(--tc-text);
-  color-scheme: light;
-}
-
-/* Match lists in Theme Daylight (rows and league blocks are shared; these restyle them). */
-[data-theme="daylight"] .tc-league-sec { margin: 12px 16px 0; background: #FFFFFF; border-radius: 22px; overflow: hidden; box-shadow: 0 6px 24px rgba(11, 27, 63, 0.05); }
-[data-theme="daylight"] .tc-league-head { background: transparent !important; }
-[data-theme="daylight"] .tc-league-name { font-family: var(--tc-display); letter-spacing: -0.3px; }
-[data-theme="daylight"] .tc-row { border-top: 1px solid #EDF0F6 !important; }
-/* Room for the floating bottom bars. */
-[data-theme="daylight"] .tc-mobile-page { padding-bottom: calc(160px + env(safe-area-inset-bottom)); }

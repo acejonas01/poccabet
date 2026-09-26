@@ -4,13 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
-import { NUM_FONT, ON_ACCENT, ACCENT_TEXT, ACCENT, CodeRow, Loader, Sheet, SheetTitle, ticketShare, useMinLoading } from "./shared";
+import { ACCENT, CodeRow, Loader, Sheet, SheetTitle, ticketShare, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 const STATUS: Record<string, { label: string; color: string }> = {
-  PENDING: { label: "Open", color: ACCENT_TEXT },
+  PENDING: { label: "Open", color: ACCENT },
   WON: { label: "Won", color: "#2AB572" },
   LOST: { label: "Lost", color: "#E5484D" },
   VOID: { label: "Void", color: "var(--tc-label)" },
@@ -79,7 +79,7 @@ function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
               </span>
             </div>
             <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-              <span style={{ fontFamily: NUM_FONT, fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
+              <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
               <span style={{ fontSize: 11, fontWeight: 700, color: RESULT_DOT[s.result] === RESULT_DOT.PENDING ? "var(--tc-label)" : RESULT_DOT[s.result] }}>{RESULT_TEXT[s.result] ?? s.result}</span>
             </div>
           </div>
@@ -124,7 +124,7 @@ function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
                 {s.home} vs {s.away}{kickoff ? ` · ${dayLabel(kickoff)} ${hhmm(kickoff)}` : ""}
               </span>
             </div>
-            <span style={{ flexShrink: 0, fontFamily: NUM_FONT, fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
+            <span style={{ flexShrink: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
           </div>
         );
       })}
@@ -168,7 +168,7 @@ export function RedesignMyBets() {
       {!isAuthenticated ? (
         <div style={{ padding: "32px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)" }}>Log in to see your bets.</p>
-          <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 24px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontSize: 15, fontWeight: 800 }}>Login</button>
+          <button onClick={() => navigate("/login")} style={{ height: 44, padding: "0 24px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 15, fontWeight: 800 }}>Login</button>
         </div>
       ) : (
         <>

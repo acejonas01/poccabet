@@ -12,10 +12,9 @@ import { SPORTS } from "./sports";
 import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
-import { NUM_FONT, ON_ACCENT, ACCENT_TEXT, ACCENT, Loader, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
-import { Logo } from "./themed";
+import { ACCENT, Loader, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 
-const barlow = NUM_FONT;
+const barlow = "'Barlow Condensed', sans-serif";
 const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" };
 const card: CSSProperties = { background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14 };
 
@@ -36,7 +35,7 @@ export function DesktopHeader({ search, setSearch, simulated, onSupport }: { sea
   return (
     <header className="tc-dheader" style={{ height: 72, display: "flex", alignItems: "center", gap: 32, padding: "0 24px", background: "var(--tc-dheader)", borderBottom: "1px solid var(--tc-line)", position: "sticky", top: 0, zIndex: 30 }}>
       <a href="/" onClick={(e) => { e.preventDefault(); navigate("/"); }} style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, textDecoration: "none", color: "var(--tc-text)" }}>
-        <Logo size={34} />
+        <span style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, letterSpacing: -0.5, lineHeight: 1 }}>Pocca<span style={{ color: ACCENT }}>bet</span></span>
         {simulated && <DemoTag />}
       </a>
       <nav aria-label="Sections" style={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
@@ -61,17 +60,17 @@ export function DesktopHeader({ search, setSearch, simulated, onSupport }: { sea
         {CAN_SWITCH_THEME && <button aria-label={`Switch theme (now ${theme.toUpperCase()})`} {...themeBtn} style={{ position: "relative", width: 40, height: 40, borderRadius: 20, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <MoonIcon />
           {/* Current theme letter */}
-          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: ON_ACCENT, fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
+          <span aria-hidden="true" style={{ position: "absolute", right: -3, bottom: -3, minWidth: 16, height: 16, padding: "0 3px", borderRadius: 8, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, lineHeight: "16px", textAlign: "center" }}>{theme.toUpperCase()}</span>
         </button>}
         {isAuthenticated ? (
           <>
             <button onClick={() => navigate("/account")} title="My account" style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</button>
-            <button onClick={logout} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontWeight: 800, fontSize: 14 }}>Log out</button>
+            <button onClick={logout} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
           </>
         ) : (
           <>
             <button onClick={() => navigate("/signup")} style={{ height: 40, padding: "0 18px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14 }}>Join</button>
-            <button onClick={() => navigate("/login")} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontWeight: 800, fontSize: 14 }}>Login</button>
+            <button onClick={() => navigate("/login")} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Login</button>
           </>
         )}
       </div>
@@ -144,7 +143,7 @@ function Chip({ on, children, onClick }: { on: boolean; children: ReactNode; onC
   return (
     <button onClick={onClick} style={{
       height: 34, padding: "0 14px", borderRadius: 17, border: on ? "none" : "1px solid var(--tc-outline)",
-      background: on ? "var(--tc-text)" : "transparent", color: on ? "var(--tc-page)" : "var(--tc-text)", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+      background: on ? "var(--tc-text)" : "transparent", color: on ? "#13171C" : "var(--tc-text)", fontSize: 13, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
     }}>{children}</button>
   );
 }
@@ -249,7 +248,7 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
                         <span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{name}</span>
                         <span aria-label="Red card" style={{ display: red ? "inline-block" : "none", flexShrink: 0, width: 9, height: 12, borderRadius: 2, background: "#E5484D" }} />
                       </span>
-                      <span style={{ fontSize: 15, fontWeight: 800, color: ACCENT_TEXT }}>{score}</span>
+                      <span style={{ fontSize: 15, fontWeight: 800, color: ACCENT }}>{score}</span>
                     </div>
                   ))
                 ) : (
@@ -331,7 +330,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, loaded = true
       <div style={{ display: "flex", gap: 16 }}>
         {potd && p && (
           <section aria-label="Pick of the day" style={{ flex: 2, padding: 20, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT_TEXT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <span style={{ fontSize: 22, fontWeight: 800 }}>{p.title}</span>
               <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{p.sub}</span>
@@ -347,8 +346,8 @@ export function DesktopHome({ upcoming, live, tab, setTab, search, loaded = true
         )}
         <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup"); }} style={{ flex: 1, padding: 20, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 12, background: "var(--tc-card)", border: "1px dashed var(--tc-outline-strong)", borderRadius: 14, textDecoration: "none", color: "var(--tc-text)" }}>
           <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1.2, color: "var(--tc-label)" }}>NEW CUSTOMERS</span>
-          <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>Welcome bonus up to <span style={{ color: ACCENT_TEXT }}>{WELCOME_BONUS_AMOUNT}</span> on your first deposit</span>
-          <span style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: ACCENT, color: ON_ACCENT, fontSize: 15, fontWeight: 800 }}>Join and claim</span>
+          <span style={{ fontSize: 20, fontWeight: 800, lineHeight: 1.3 }}>Welcome bonus up to <span style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</span> on your first deposit</span>
+          <span style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 10, background: ACCENT, color: "#13171C", fontSize: 15, fontWeight: 800 }}>Join and claim</span>
         </a>
       </div>
 
@@ -472,7 +471,7 @@ function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: ()
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
-          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT_TEXT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
+          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
         </div>
       </div>
     </section>
