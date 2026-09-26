@@ -10,7 +10,7 @@ import {
 } from "./icons";
 import { Flag } from "./media";
 import { type ListViewProps, MatchListPage, PageHeader, QUICK_LINKS } from "./mobile";
-import { ACCENT } from "./shared";
+import { ON_ACCENT, ACCENT_TEXT, ACCENT } from "./shared";
 
 type Icon = (p: { size?: number }) => ReactElement;
 
@@ -126,10 +126,10 @@ export function SportPage({ upcoming, live, loaded, desktop = false }: Props & {
 
       {!current.ready ? (
         <div style={{ padding: "56px 24px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
-          <span style={{ width: 64, height: 64, borderRadius: 32, background: "var(--tc-card)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}><current.Icon size={32} /></span>
+          <span style={{ width: 64, height: 64, borderRadius: 32, background: "var(--tc-card)", color: ACCENT_TEXT, display: "flex", alignItems: "center", justifyContent: "center" }}><current.Icon size={32} /></span>
           <h2 style={{ margin: "4px 0 0", fontSize: 18, fontWeight: 800 }}>{current.name} is coming soon</h2>
           <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", maxWidth: 280 }}>We're adding {current.name.toLowerCase()} markets. Meanwhile, there's plenty of football to bet on.</p>
-          <button onClick={() => navigate("/sports/football", { replace: true })} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>Go to football</button>
+          <button onClick={() => navigate("/sports/football", { replace: true })} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontSize: 14, fontWeight: 800 }}>Go to football</button>
         </div>
       ) : (
         <>
@@ -210,7 +210,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
     color: on ? "var(--tc-text)" : "var(--tc-muted)", fontSize: size, fontWeight: on ? 800 : 700, whiteSpace: "nowrap" as const,
   });
   const box = (on: boolean) => (
-    <span aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? ACCENT : "var(--tc-outline-strong)"}`, background: on ? ACCENT : "transparent", color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <span aria-hidden="true" style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 5, border: `1.5px solid ${on ? ACCENT : "var(--tc-outline-strong)"}`, background: on ? ACCENT : "transparent", color: ON_ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
       {on && <CheckIcon size={14} />}
     </span>
   );
@@ -310,7 +310,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
                   width: "100%", minHeight: 52, padding: 0, display: "flex", alignItems: "center", gap: 12, border: "none",
                   borderBottom: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", textAlign: "left",
                 }}>
-                  <span aria-hidden="true" style={{ color: ACCENT, display: "flex", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}><ChevronRight /></span>
+                  <span aria-hidden="true" style={{ color: ACCENT_TEXT, display: "flex", transform: isOpen ? "rotate(90deg)" : "none", transition: "transform 0.15s" }}><ChevronRight /></span>
                   <Flag country={c.country} size={20} />
                   <span style={{ flex: 1, fontSize: 14, fontWeight: 700 }}>{c.country}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--tc-label)" }}>{c.count}</span>
@@ -335,7 +335,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
         {dirty && <button onClick={reset} style={{ height: 46, padding: "0 16px", borderRadius: 10, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700 }}>Reset</button>}
         <button onClick={show} disabled={!resultCount} style={{
           flex: 1, height: 46, borderRadius: 10, border: "none", background: resultCount ? ACCENT : "var(--tc-raise)",
-          color: resultCount ? "#13171C" : "var(--tc-faint)", fontSize: 15, fontWeight: 800,
+          color: resultCount ? ON_ACCENT : "var(--tc-faint)", fontSize: 15, fontWeight: 800,
         }}>{loaded ? `Show ${resultCount} match${resultCount === 1 ? "" : "es"}` : "Loading…"}</button>
       </div>
     </>

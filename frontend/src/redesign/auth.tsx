@@ -7,9 +7,10 @@ import { useAuth } from "../context/AuthContext";
 import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
 import { Flag } from "./media";
 import { PlayResponsibly } from "./footer";
-import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
+import { NUM_FONT, ON_ACCENT, ACCENT_TEXT, ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
+import { Logo } from "./themed";
 
-const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
+const barlow = NUM_FONT;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
 
 // "08030999969" / "+2348030999969" → the 10 digits after +234, grouped "803 099 9969".
@@ -47,14 +48,21 @@ function Shell({ children, onClose, banner, image }: { children: ReactNode; onCl
     <div className="tc-auth-shell" style={{ display: "flex", flexDirection: "column", background: "var(--tc-panel)" }}>
       <div style={{
         position: "relative", padding: `calc(16px + env(safe-area-inset-top)) 20px ${image ? 48 : 44}px`, textAlign: "center",
+        // Over the photo, text stays light in every theme; without one it follows the theme.
+        color: image ? "#F2F4F6" : undefined,
+        ...({
+          "--hero-hi": image ? "var(--tc-hero-hi)" : "var(--tc-accent-text)",
+          "--hero-sub": image ? "#C3CBD3" : "var(--tc-soft)",
+          "--hero-box": image ? "rgba(0, 0, 0, 0.25)" : "var(--tc-hero-box)",
+        } as CSSProperties),
         background: image
-          ? `linear-gradient(180deg, rgba(8, 12, 15, 0.35) 0%, rgba(8, 12, 15, 0.15) 35%, var(--tc-panel) 100%), url(${image}) center 20% / cover`
+          ? `linear-gradient(180deg, rgba(8, 12, 15, 0.35) 0%, rgba(8, 12, 15, var(--tc-hero-shade)) 35%, var(--tc-panel) 100%), url(${image}) center 20% / cover`
           : "radial-gradient(120% 90% at 50% 0%, rgba(245, 197, 24, 0.18), transparent 65%), var(--tc-league)",
       }}>
-        <button aria-label="Close" onClick={onClose} style={{ position: "absolute", top: "calc(10px + env(safe-area-inset-top))", right: 10, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button aria-label="Close" onClick={onClose} style={{ position: "absolute", top: "calc(10px + env(safe-area-inset-top))", right: 10, width: 44, height: 44, border: "none", background: "transparent", color: "inherit", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <CloseIcon size={20} />
         </button>
-        <div style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 30, lineHeight: 1 }}>Pocca<span style={{ color: ACCENT }}>bet</span></div>
+        <div><Logo size={30} /></div>
         {banner}
       </div>
       <div style={{ flex: 1, marginTop: -24, padding: "28px 20px calc(28px + env(safe-area-inset-bottom))", borderRadius: "22px 22px 0 0", background: "var(--tc-panel)", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -68,13 +76,13 @@ function WelcomeBanner() {
   return (
     <div style={{ marginTop: 14, display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
       <div style={{ fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 34, lineHeight: 1, letterSpacing: 0.5 }}>
-        WELCOME <span style={{ color: ACCENT }}>OFFER</span>
+        WELCOME <span style={{ color: "var(--hero-hi)" }}>OFFER</span>
       </div>
-      <div style={{ width: "100%", maxWidth: 340, padding: "14px 16px", borderRadius: 14, background: "rgba(0, 0, 0, 0.25)", border: "1px solid rgba(245, 197, 24, 0.3)", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ width: "100%", maxWidth: 340, padding: "14px 16px", borderRadius: 14, background: "var(--hero-box)", border: "1px solid rgba(245, 197, 24, 0.3)", display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontFamily: barlow, fontWeight: 700, fontSize: 22, lineHeight: 1.1 }}>
-          UP TO <span style={{ color: ACCENT }}>{WELCOME_BONUS_AMOUNT}</span> BONUS
+          UP TO <span style={{ color: "var(--hero-hi)" }}>{WELCOME_BONUS_AMOUNT}</span> BONUS
         </span>
-        <span style={{ fontSize: 13, color: "var(--tc-soft)" }}>on your first deposit · football, Aviator & more</span>
+        <span style={{ fontSize: 13, color: "var(--hero-sub)" }}>on your first deposit · football, Aviator & more</span>
       </div>
     </div>
   );
@@ -104,7 +112,7 @@ export function CodeBoxes({ value, onChange, error, inputRef }: {
 
 export const primaryBtn = (enabled: boolean): CSSProperties => ({
   height: 54, borderRadius: 27, border: "none", background: enabled ? ACCENT : "var(--tc-raise)",
-  color: enabled ? "#13171C" : "var(--tc-faint)", fontSize: 16, fontWeight: 800, letterSpacing: 0.6,
+  color: enabled ? ON_ACCENT : "var(--tc-faint)", fontSize: 16, fontWeight: 800, letterSpacing: 0.6,
 });
 const errorLine = (msg: string | null) => msg && <p role="alert" style={{ margin: 0, fontSize: 13, color: "#E5484D", textAlign: "center" }}>{msg}</p>;
 const fieldBox: CSSProperties = { display: "flex", alignItems: "stretch", borderRadius: "12px 12px 0 0", background: "var(--tc-page)", borderBottom: "2px solid var(--tc-outline-strong)" };
@@ -138,7 +146,7 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
         <span style={smallLabel}>{label}</span>
         <input type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...textInput, fontSize: 18, ...(show ? {} : hiddenPw) }} />
       </span>
-      <button type="button" onClick={() => setShow((s) => !s)} style={{ height: 44, padding: "0 14px", border: "none", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 800 }}>
+      <button type="button" onClick={() => setShow((s) => !s)} style={{ height: 44, padding: "0 14px", border: "none", background: "transparent", color: ACCENT_TEXT, fontSize: 13, fontWeight: 800 }}>
         {show ? "Hide" : "Show"}
       </button>
     </label>
@@ -325,7 +333,7 @@ export function RedesignSignup() {
         </div>
         {sent.demoCode && (
           <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: "rgba(245, 197, 24, 0.12)", border: "1px solid rgba(245, 197, 24, 0.35)", fontSize: 13, color: "var(--tc-soft)" }}>
-            Demo mode — no SMS is sent. Your code is <strong style={{ color: ACCENT, letterSpacing: 2 }}>{sent.demoCode}</strong>
+            Demo mode — no SMS is sent. Your code is <strong style={{ color: ACCENT_TEXT, letterSpacing: 2 }}>{sent.demoCode}</strong>
           </p>
         )}
         <CodeBoxes value={code} error={!!error} inputRef={codeInput} onChange={(v) => { setCode(v); setError(null); if (v.length === 6) checkCode(v); }} />
@@ -335,7 +343,7 @@ export function RedesignSignup() {
           Didn't get it?{" "}
           {wait > 0
             ? <span>Resend in 0:{String(wait).padStart(2, "0")}</span>
-            : <button type="button" onClick={() => sendCode()} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Resend code</button>}
+            : <button type="button" onClick={() => sendCode()} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT_TEXT, fontSize: 14, fontWeight: 800 }}>Resend code</button>}
         </p>
       </Shell>
     );
@@ -432,7 +440,7 @@ export function RedesignSignup() {
         <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Your account is ready and your number {sent?.display} is verified.</p>
         {bonus > 0 && (
           <p style={{ margin: 0, padding: "12px 16px", borderRadius: 12, background: "var(--tc-page)", border: "1px solid rgba(245, 197, 24, 0.35)", fontSize: 14, color: "var(--tc-soft)" }}>
-            Verify your email to claim your <strong style={{ color: ACCENT }}>{`₦${bonus.toLocaleString("en-US")}`}</strong> welcome bonus.
+            Verify your email to claim your <strong style={{ color: ACCENT_TEXT }}>{`₦${bonus.toLocaleString("en-US")}`}</strong> welcome bonus.
           </p>
         )}
       </div>
@@ -451,7 +459,7 @@ function LoginHero() {
   return (
     <div style={{ marginTop: 88, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
       <h2 style={{ margin: 0, fontFamily: barlow, fontStyle: "italic", fontWeight: 700, fontSize: 46, lineHeight: 0.95, letterSpacing: 0.5, textShadow: "0 2px 12px rgba(0, 0, 0, 0.6)" }}>
-        WELCOME <span style={{ color: ACCENT }}>BACK</span>
+        WELCOME <span style={{ color: "var(--hero-hi)" }}>BACK</span>
       </h2>
       <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "#F2F4F6", textShadow: "0 1px 8px rgba(0, 0, 0, 0.7)" }}>Your next big win is one tap away</p>
       {!!live && (

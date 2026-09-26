@@ -9,17 +9,19 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { ACCENT, BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { ON_ACCENT, ACCENT, BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
 import { RedesignAccount } from "./account";
 import { RedesignLogin, RedesignSignup } from "./auth";
+import { LiveTicker, ThemedBottomNav, ThemedHeader, ThemedSections, useLayout } from "./themed";
 import "./redesign.css";
 
 
 export function RedesignApp() {
   const desk = useIsDesktop();
+  const layout = useLayout();
   const data = useTCData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,8 +106,12 @@ export function RedesignApp() {
 
   return (
     <div className="tc-root">
-      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} /> : !onAuth && <MobileHeader simulated={data.simulated} />}
-      {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}
+      {desk ? <DesktopHeader search={search} setSearch={setSearch} simulated={data.simulated} onSupport={() => setSheet("support")} />
+        : !onAuth && (layout === "classic" ? <MobileHeader simulated={data.simulated} /> : <ThemedHeader layout={layout} />)}
+      {!desk && onRoot && (layout === "classic" ? <SectionsNav active={activeSection} onSelect={onSection} /> : <>
+        <ThemedSections layout={layout} active={activeSection} liveCount={data.live.length} onSelect={onSection} />
+        {layout === "poster" && <LiveTicker live={data.live} onLive={goLive} />}
+      </>)}
 
       <Routes>
         <Route path="/" element={desk ? deskShell(home) : home} />
@@ -131,7 +137,7 @@ export function RedesignApp() {
       </Routes>
       {desk && <SiteFooter desktop />}
 
-      {!desk && !onAuth && !onSlipPage && (
+      {!desk && !onAuth && !onSlipPage && (layout === "classic" ? (
         <BottomNav
           active={navActive as "home" | "live" | "mybets" | "account"}
           liveCount={data.live.length}
@@ -141,7 +147,17 @@ export function RedesignApp() {
           onMyBets={() => navigate("/my-bets")}
           onAccount={() => navigate(isAuthenticated ? "/account" : "/login")}
         />
-      )}
+      ) : (
+        <ThemedBottomNav layout={layout}
+          active={navActive as "home" | "live" | "mybets" | "account"}
+          liveCount={data.live.length}
+          onHome={() => goHome()}
+          onLive={goLive}
+          onSlip={() => navigate("/betslip")}
+          onMyBets={() => navigate("/my-bets")}
+          onAccount={() => navigate(isAuthenticated ? "/account" : "/login")}
+        />
+      ))}
 
       {sheet === "markets" && (
         <MarketsSheet active={market} onPick={(id) => { setMarket(id); setSheet(null); }} onClose={() => setSheet(null)} />
@@ -158,7 +174,7 @@ function NotFound({ onHome }: { onHome: () => void }) {
     <div style={{ padding: "48px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Page not found</h1>
       <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)" }}>This page doesn't exist or has moved.</p>
-      <button onClick={onHome} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>Go to home</button>
+      <button onClick={onHome} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontSize: 14, fontWeight: 800 }}>Go to home</button>
     </div>
   );
 }

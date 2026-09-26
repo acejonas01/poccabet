@@ -1,7 +1,8 @@
 // Recent Winners + site footer for the redesign (Themes A, B and C).
 import { useEffect, useState, type ReactElement } from "react";
 import { api } from "../api/client";
-import { ACCENT } from "./shared";
+import { NUM_FONT, ACCENT_TEXT } from "./shared";
+import { Logo } from "./themed";
 import { AviatorIcon, CasinoIcon, JackpotIcon, SportsIcon, VirtualsIcon } from "./icons";
 
 // ---------- Recent Winners ----------
@@ -14,7 +15,7 @@ const WIN_GREEN = "#5BD679";
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const multLabel = (m: number) => `${m >= 100 ? Math.round(m) : m.toFixed(1)}x`;
 const PRODUCT_ICON: Record<string, (p: { size?: number }) => ReactElement> = { Sports: SportsIcon, Aviator: AviatorIcon, Virtuals: VirtualsIcon, Casino: CasinoIcon };
-const display = { fontFamily: "'Barlow Condensed', sans-serif", fontStyle: "italic", fontWeight: 700 } as const;
+const display = { fontFamily: NUM_FONT, fontStyle: "italic", fontWeight: 700 } as const;
 
 function ago(at: string, now: number) {
   const mins = Math.max(1, Math.round((now - new Date(at).getTime()) / 60000));
@@ -26,7 +27,7 @@ function ago(at: string, now: number) {
 function ProductBadge({ product, size }: { product: string; size: number }) {
   const Icon = PRODUCT_ICON[product] ?? JackpotIcon;
   return (
-    <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: size / 2, background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: size / 2, background: "var(--tc-raise)", color: ACCENT_TEXT, display: "flex", alignItems: "center", justifyContent: "center" }}>
       <Icon size={Math.round(size * 0.52)} />
     </span>
   );
@@ -99,9 +100,7 @@ export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
   return (
     <footer style={{ marginTop: desktop ? 8 : 28, background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ maxWidth: desktop ? 1440 : undefined, margin: "0 auto", boxSizing: "border-box", padding: desktop ? "32px 24px 24px" : "24px 16px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
-        <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontStyle: "italic", fontWeight: 700, fontSize: 28, lineHeight: 1 }}>
-          Pocca<span style={{ color: ACCENT }}>bet</span>
-        </span>
+        <Logo size={28} />
         <nav aria-label="Footer" style={desktop ? { display: "flex", flexWrap: "wrap", gap: "10px 28px" } : { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 16px" }}>
           {LINKS.map((l) => (
             <a key={l} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 14, fontWeight: 600, color: "var(--tc-muted)", textDecoration: "none" }}>{l}</a>

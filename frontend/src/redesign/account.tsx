@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
 import { CheckIcon, ChevronRight, DepositIcon, GiftIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
-import { ACCENT, Loader, Sheet, SheetTitle, useMinLoading } from "./shared";
+import { ON_ACCENT, ACCENT_TEXT, ACCENT, Loader, Sheet, SheetTitle, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -132,7 +132,7 @@ function VerifyEmailSheet({ me, onClose, onVerified }: { me: Profile; onClose: (
         <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Enter the 6-digit code we sent to <strong style={{ color: "var(--tc-text)" }}>{me.email}</strong></p>
         {sent?.demoCode && (
           <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: "rgba(245, 197, 24, 0.12)", border: "1px solid rgba(245, 197, 24, 0.35)", fontSize: 13, color: "var(--tc-soft)" }}>
-            Demo mode — no email is sent. Your code is <strong style={{ color: ACCENT, letterSpacing: 2 }}>{sent.demoCode}</strong>
+            Demo mode — no email is sent. Your code is <strong style={{ color: ACCENT_TEXT, letterSpacing: 2 }}>{sent.demoCode}</strong>
           </p>
         )}
         <CodeBoxes value={code} error={!!error} onChange={(v) => { setCode(v); setError(null); if (v.length === 6) check(v); }} />
@@ -141,7 +141,7 @@ function VerifyEmailSheet({ me, onClose, onVerified }: { me: Profile; onClose: (
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
           Didn't get it?{" "}
           {wait > 0 ? <span>Resend in 0:{String(wait).padStart(2, "0")}</span>
-            : <button type="button" onClick={send} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Resend code</button>}
+            : <button type="button" onClick={send} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT_TEXT, fontSize: 14, fontWeight: 800 }}>Resend code</button>}
         </p>
       </div>
     </Sheet>
@@ -248,7 +248,7 @@ function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose:
         {row("Surname", me.lastName ?? "—")}
         {row("Email", me.email ?? "—", me.email && (me.emailVerified
           ? <Badge ok>Verified</Badge>
-          : <button type="button" onClick={onVerify} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 12, fontWeight: 800 }}>Verify</button>))}
+          : <button type="button" onClick={onVerify} style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT_TEXT, fontSize: 12, fontWeight: 800 }}>Verify</button>))}
         {row("Phone number", me.phoneDisplay ?? "—", me.phone && <Badge ok={me.phoneVerified}>{me.phoneVerified ? "Verified" : "Not verified"}</Badge>)}
         {row("Date of birth", dob)}
       </div>
@@ -366,7 +366,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
       {/* Who you are + your money */}
       <section style={{ ...card, overflow: "hidden" }}>
         <button type="button" onClick={() => setSheet("details")} style={{ width: "100%", padding: "16px", display: "flex", alignItems: "center", gap: 12, border: "none", background: "transparent", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
-          <span aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 24, border: `1.5px solid ${ACCENT}`, color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>{initials}</span>
+          <span aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 24, border: `1.5px solid ${ACCENT}`, color: ACCENT_TEXT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>{initials}</span>
           <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 17, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</span>
             <span style={{ fontSize: 13, color: "var(--tc-label)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.phoneDisplay ?? me.email ?? ""}</span>
@@ -402,12 +402,12 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
       {/* Welcome bonus: one claim, unlocked by verifying the email. */}
       {me.bonus.amount > 0 && !me.bonus.claimed && (
         <section style={{ ...card, padding: 16, display: "flex", alignItems: "center", gap: 14, border: "1px solid rgba(245, 197, 24, 0.45)", background: "linear-gradient(135deg, rgba(245, 197, 24, 0.14), transparent 70%), var(--tc-card)" }}>
-          <span aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 22, background: "rgba(245, 197, 24, 0.16)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}><GiftIcon /></span>
+          <span aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 22, background: "rgba(245, 197, 24, 0.16)", color: ACCENT_TEXT, display: "flex", alignItems: "center", justifyContent: "center" }}><GiftIcon /></span>
           <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
             <span style={{ fontSize: 15, fontWeight: 800 }}>{naira(me.bonus.amount).replace(".00", "")} welcome bonus</span>
             <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{me.emailVerified ? "Ready to claim. One per account." : "Verify your email to unlock it."}</span>
           </span>
-          <button type="button" onClick={() => (me.emailVerified ? claimBonus() : setSheet("email"))} style={{ flexShrink: 0, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>
+          <button type="button" onClick={() => (me.emailVerified ? claimBonus() : setSheet("email"))} style={{ flexShrink: 0, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: ON_ACCENT, fontSize: 14, fontWeight: 800 }}>
             {me.emailVerified ? "Claim" : "Verify"}
           </button>
         </section>

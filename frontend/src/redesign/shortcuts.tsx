@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { leagueSlug } from "./data";
 import { ChevronRight, CloseIcon, HeadsetIcon, VirtualsIcon } from "./icons";
 import { Flag, GAMES } from "./media";
-import { ACCENT, Sheet, SheetTitle } from "./shared";
+import { ACCENT_TEXT, ACCENT, Sheet, SheetTitle } from "./shared";
 import { SPORTS } from "./sports";
 
 const LEAGUES = [
@@ -178,7 +178,7 @@ const SUPPORT_EMAIL = "support@poccabet.com";
 
 export function SupportSheet({ onClose }: { onClose: () => void }) {
   const row = { minHeight: 64, display: "flex", alignItems: "center", gap: 14, padding: "0 20px", borderTop: "1px solid var(--tc-line)", color: "var(--tc-text)", textDecoration: "none" } as const;
-  const iconBox = { width: 40, height: 40, flexShrink: 0, borderRadius: 20, background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" } as const;
+  const iconBox = { width: 40, height: 40, flexShrink: 0, borderRadius: 20, background: "var(--tc-raise)", color: ACCENT_TEXT, display: "flex", alignItems: "center", justifyContent: "center" } as const;
   return (
     <Sheet label="Customer service" onClose={onClose}>
       <SheetTitle title="Customer service" onClose={onClose} />

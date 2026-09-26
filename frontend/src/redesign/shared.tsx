@@ -11,7 +11,13 @@ import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
 import { dayLabel, hhmm } from "./data";
 import { Crest, Flag } from "./media";
 
-export const ACCENT = "#F5C518";
+// Theme colours and fonts (set per theme in redesign.css). ACCENT fills buttons and selections;
+// ACCENT_TEXT is the accent as text (a darker shade on light themes, so it stays readable);
+// ON_ACCENT is text on an ACCENT fill; NUM_FONT is for odds, scores and big numbers.
+export const ACCENT = "var(--tc-accent)";
+export const ACCENT_TEXT = "var(--tc-accent-text)";
+export const ON_ACCENT = "var(--tc-on-accent)";
+export const NUM_FONT = "var(--tc-num)";
 export const WELCOME_BONUS_AMOUNT = "₦50,000";
 // One switch for the featured-match card at the top of the Live, Upcoming and Top leagues tabs.
 export const SHOW_TAB_FEATURE = true;
@@ -91,11 +97,11 @@ export function OddButton({
       onClick={locked ? undefined : onPick}
       disabled={locked}
       style={{
-        position: "relative", padding: 0, borderRadius: 8, border: "none",
-        background: locked ? lockedBg : on ? ACCENT : idle,
-        color: locked ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
+        position: "relative", padding: 0, borderRadius: "var(--tc-odd-radius)", border: locked ? "none" : "var(--tc-odd-border)", boxSizing: "border-box",
+        background: locked ? lockedBg : on ? "var(--tc-sel)" : idle,
+        color: locked ? "var(--tc-faint)" : on ? "var(--tc-sel-text)" : "var(--tc-odd-text)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700,
+        fontFamily: NUM_FONT, fontWeight: 700,
         ...style,
       }}
     >
@@ -108,7 +114,7 @@ export function OddButton({
           style={{
             top: dir === "down" ? "auto" : 4, right: dir === "down" ? "auto" : 4,
             bottom: dir === "down" ? 4 : "auto", left: dir === "down" ? 4 : "auto",
-            background: on ? "#13171C" : dir === "up" ? "#2AB572" : "#E5484D",
+            background: on ? "var(--tc-sel-text)" : dir === "up" ? "#2AB572" : "#E5484D",
             transform: dir === "down" ? "rotate(180deg)" : "none",
             animation: `odds-flash 7s linear ${((flash * 0.15) % 0.9).toFixed(2)}s 1 both`,
           }}
@@ -219,7 +225,7 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
                   <button key={m.id} aria-pressed={on} onClick={() => onPick(m.id)} style={{
                     height: 40, padding: "0 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 6,
                     border: `1px solid ${on ? ACCENT : "var(--tc-outline)"}`, background: on ? ACCENT : "transparent",
-                    color: on ? "#13171C" : "var(--tc-text)", fontSize: 14, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
+                    color: on ? ON_ACCENT : "var(--tc-text)", fontSize: 14, fontWeight: on ? 800 : 600, whiteSpace: "nowrap",
                   }}>
                     {on && <CheckIcon size={14} />}
                     {m.label}
@@ -397,11 +403,11 @@ export function CodeRow({ code, share }: { code: string; share: { text: string; 
   const flash = (what: "copy" | "share") => { setDone(what); setTimeout(() => setDone(null), 1600); };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, letterSpacing: 2, lineHeight: 1, userSelect: "all" }}>{code}</span>
+      <span style={{ flex: 1, minWidth: 0, fontFamily: NUM_FONT, fontSize: 30, fontWeight: 700, letterSpacing: 2, lineHeight: 1, userSelect: "all" }}>{code}</span>
       <button aria-label={`Copy ${code}`} title="Copy" onClick={async () => { if (await copyText(code)) flash("copy"); }} style={iconBtn}>
         {done === "copy" ? <CheckIcon size={18} style={{ color: "#2AB572" }} /> : <CopyIcon />}
       </button>
-      <button aria-label={`Share ${code}`} title="Share" onClick={async () => { if ((await shareText(share.text, share.url)) !== "failed") flash("share"); }} style={{ ...iconBtn, background: ACCENT, border: "none", color: "#13171C" }}>
+      <button aria-label={`Share ${code}`} title="Share" onClick={async () => { if ((await shareText(share.text, share.url)) !== "failed") flash("share"); }} style={{ ...iconBtn, background: ACCENT, border: "none", color: ON_ACCENT }}>
         {done === "share" ? <CheckIcon size={18} /> : <ShareIcon />}
       </button>
     </div>
@@ -573,7 +579,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
             </button>
           )}
           Bet slip{" "}
-          <span style={{ minWidth: 24, height: 24, padding: "0 6px", boxSizing: "border-box", borderRadius: 12, background: ACCENT, color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{count}</span>
+          <span style={{ minWidth: 24, height: 24, padding: "0 6px", boxSizing: "border-box", borderRadius: 12, background: ACCENT, color: ON_ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>{count}</span>
         </span>
         <div style={{ display: "flex", padding: 3, background: "var(--tc-page)", borderRadius: 8 }}>
           <button onClick={() => setMode("multiple")} style={segBtn(mode === "multiple")}>Multiple</button>
@@ -586,7 +592,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           <span style={hidden}>Booking code</span>
           <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Enter booking code" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, letterSpacing: 0.5 }} />
         </label>
-        <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
+        <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT_TEXT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
       {/* Loading a booking code: the 1 X 2 loader (one full pass) in place of the selections. */}
       {showCodeLoader && <div style={{ borderTop: "1px solid var(--tc-line)" }}><Loader label="Loading slip…" compact /></div>}
@@ -602,7 +608,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           </div>
           {s.unavailable
             ? <span style={{ fontSize: 12, fontWeight: 800, color: "#E5484D", paddingTop: 4 }}>Unavailable</span>
-            : <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>}
+            : <span style={{ fontFamily: NUM_FONT, fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>}
         </div>
       ))}
       <div style={{
@@ -618,7 +624,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           </label>
           <div style={{ display: "flex", gap: 6 }}>
             {[100, 500, 1000, 5000].map((v) => (
-              <button key={v} onClick={() => setStake(v)} style={{ flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--tc-outline)", background: v === stake ? "var(--tc-text)" : "transparent", color: v === stake ? "#13171C" : "var(--tc-text)", fontSize: 12, fontWeight: 700 }}>
+              <button key={v} onClick={() => setStake(v)} style={{ flex: 1, height: 32, borderRadius: 8, border: "1px solid var(--tc-outline)", background: v === stake ? "var(--tc-text)" : "transparent", color: v === stake ? ON_ACCENT : "var(--tc-text)", fontSize: 12, fontWeight: 700 }}>
                 ₦{v.toLocaleString("en-US")}
               </button>
             ))}
@@ -636,7 +642,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
         )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
           <span style={{ fontSize: 14, color: "var(--tc-soft)" }}>Potential win</span>
-          <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{live.length ? naira(win) : "—"}</span>
+          <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT_TEXT }}>{live.length ? naira(win) : "—"}</span>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--tc-soft)", cursor: "pointer" }}>
           <input type="checkbox" checked={anyOdds} onChange={(e) => toggleAnyOdds(e.target.checked)} style={{ width: 18, height: 18, accentColor: ACCENT, margin: 0 }} />
@@ -644,7 +650,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
         </label>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={book} disabled={busy} style={{ flex: 1, height: 52, borderRadius: 12, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>Book bet</button>
-          <button onClick={place} disabled={busy} style={{ flex: 2, height: 52, borderRadius: 12, border: "none", background: ACCENT, color: "#13171C", fontSize: 16, fontWeight: 800, opacity: busy ? 0.7 : 1 }}>
+          <button onClick={place} disabled={busy} style={{ flex: 2, height: 52, borderRadius: 12, border: "none", background: ACCENT, color: ON_ACCENT, fontSize: 16, fontWeight: 800, opacity: busy ? 0.7 : 1 }}>
             {!isAuthenticated ? "Login to place bet" : busy ? "Placing…" : changed ? "Accept odds & place" : "Place bet"}
           </button>
         </div>
@@ -693,7 +699,7 @@ export function CheckBet() {
 export function DemoTag() {
   return null;
   // return (
-  //   <span style={{ padding: "1px 6px", borderRadius: 4, background: ACCENT, color: "#13171C", fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>DEMO</span>
+  //   <span style={{ padding: "1px 6px", borderRadius: 4, background: ACCENT, color: ON_ACCENT, fontSize: 10, fontWeight: 800, letterSpacing: 0.5 }}>DEMO</span>
   // );
 }
 
@@ -721,7 +727,7 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {team(m.home, m.homeLogo)}
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "var(--tc-text)" : "var(--tc-faint)" }}>
+          <span style={{ fontFamily: NUM_FONT, fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "var(--tc-text)" : "var(--tc-faint)" }}>
             {m.live ? `${m.hs} – ${m.as}` : "VS"}
           </span>
           {team(m.away, m.awayLogo)}
@@ -739,11 +745,11 @@ export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => v
                 return (
                   <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
                     onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
-                      height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
+                      height: 48, borderRadius: "var(--tc-odd-radius)", border: v ? "var(--tc-odd-border)" : "none", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? "var(--tc-sel)" : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "var(--tc-sel-text)" : "var(--tc-odd-text)",
                     }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
-                    {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "var(--tc-sel-text)" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
+                    {v ? <span style={{ fontFamily: NUM_FONT, fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
                   </button>
                 );
               })}
