@@ -9,7 +9,7 @@ import { type TCMatch, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { ACCENT, BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
@@ -72,8 +72,8 @@ export function RedesignApp() {
   const onSlipPage = location.pathname === "/betslip";
   const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
   const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
-  const onLeague = location.pathname.startsWith("/league/") || location.pathname.startsWith("/sports");
-  const navActive = onLeague ? "home" : !onRoot ? (location.pathname === "/my-bets" ? "mybets" : "account") : tab === "live" ? "live" : "home";
+  const navActive = onRoot ? (tab === "live" ? "live" : "home")
+    : location.pathname === "/my-bets" ? "mybets" : location.pathname === "/account" ? "account" : "home";
 
   const home = desk ? (
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} search={search} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
@@ -127,6 +127,7 @@ export function RedesignApp() {
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
         <Route path="/account" element={page(<RedesignAccount onSupport={() => setSheet("support")} />)} />
+        <Route path="*" element={page(<NotFound onHome={goHome} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}
 
@@ -148,6 +149,16 @@ export function RedesignApp() {
       {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
       {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
       {sheet === "support" && <SupportSheet onClose={() => setSheet(null)} />}
+    </div>
+  );
+}
+
+function NotFound({ onHome }: { onHome: () => void }) {
+  return (
+    <div style={{ padding: "48px 0", display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }}>
+      <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Page not found</h1>
+      <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)" }}>This page doesn't exist or has moved.</p>
+      <button onClick={onHome} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>Go to home</button>
     </div>
   );
 }

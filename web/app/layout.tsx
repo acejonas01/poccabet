@@ -17,6 +17,8 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
+  // Google Search Console: set GOOGLE_SITE_VERIFICATION on Vercel to the code it gives you.
+  ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#131E24" };

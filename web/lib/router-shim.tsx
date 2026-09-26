@@ -34,6 +34,7 @@ const ParamsContext = createContext<Record<string, string>>({});
 export const useParams = <T extends Record<string, string | undefined> = Record<string, string | undefined>>() => useContext(ParamsContext) as T;
 
 function match(pattern: string, pathname: string): Record<string, string> | null {
+  if (pattern === "*") return {};
   const a = pattern.split("/").filter(Boolean);
   const b = pathname.split("/").filter(Boolean);
   if (a.length !== b.length) return null;
