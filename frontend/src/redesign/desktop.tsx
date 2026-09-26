@@ -241,9 +241,10 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
               )}
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                 {live ? (
-                  [[m.home, m.hs, m.red === "home"], [m.away, m.as, m.red === "away"]].map(([name, score, red]) => (
-                    <div key={String(name)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, lineHeight: "22px" }}>
+                  ([[m.home, m.homeLogo, m.hs, m.red === "home"], [m.away, m.awayLogo, m.as, m.red === "away"]] as const).map(([name, logo, score, red]) => (
+                    <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, lineHeight: "22px" }}>
                       <span style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Crest name={name} url={logo} size={18} />
                         <span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{name}</span>
                         <span aria-label="Red card" style={{ display: red ? "inline-block" : "none", flexShrink: 0, width: 9, height: 12, borderRadius: 2, background: "#E5484D" }} />
                       </span>
@@ -252,8 +253,12 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
                   ))
                 ) : (
                   <>
-                    <span style={{ fontSize: 14, fontWeight: 700, lineHeight: "22px", ...ellipsis }}>{m.home}</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, lineHeight: "22px", ...ellipsis }}>{m.away}</span>
+                    {([[m.home, m.homeLogo], [m.away, m.awayLogo]] as const).map(([name, logo]) => (
+                      <span key={name} style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 6, lineHeight: "22px" }}>
+                        <Crest name={name} url={logo} size={18} />
+                        <span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{name}</span>
+                      </span>
+                    ))}
                   </>
                 )}
               </div>

@@ -283,6 +283,7 @@ function Dashboard() {
     <>
       <Head title="Dashboard" sub={<>Updated {when(new Date())} · {s.mode === "live" ? "live feed" : "simulation (play money)"}</>}>
         <button className="adm-btn" onClick={reload}>Refresh</button>
+        <Link href="/office/reports" className="adm-btn primary">Full reports →</Link>
       </Head>
       <div className="adm-grid">
         <Stat k="GGR today" v={naira(s.ggr.today)} tone={green(s.ggr.today)} s={<>7 days {naira(s.ggr.week)} · all time {naira(s.ggr.all)}</>} />
@@ -293,7 +294,7 @@ function Dashboard() {
         <Stat k="Player balances" v={naira(s.playerBalances)} s={<>Bonuses paid {naira(s.bonusesPaid)}</>} />
       </div>
       <div className="adm-section adm-card">
-        <h2>Staked per day (last 14 days)</h2>
+        <h2 className="adm-h2row">Staked per day (last 14 days)<Link href="/office/reports" className="adm-more">See reports →</Link></h2>
         {s.byDay.length ? (
           <div className="adm-bars">
             {s.byDay.map((d) => (

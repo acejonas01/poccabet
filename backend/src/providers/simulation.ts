@@ -28,7 +28,7 @@ const LEAGUES: { id: number; name: string; country: string; teams: string[] }[] 
 ];
 
 // API-Football team ids → crest images on its public media server (no API key or quota needed).
-// NPFL clubs aren't mapped, so they fall back to the 3-letter badge.
+// NPFL clubs aren't on it, so theirs come from TheSportsDB (250px "small" size).
 const TEAM_IDS: Record<string, number> = {
   "Manchester United": 33, Newcastle: 34, Bournemouth: 35, Fulham: 36, Wolves: 39, Liverpool: 40, Arsenal: 42,
   Burnley: 44, Everton: 45, Tottenham: 47, "West Ham": 48, Chelsea: 49, "Manchester City": 50, Brighton: 51,
@@ -42,7 +42,16 @@ const TEAM_IDS: Record<string, number> = {
   Hoffenheim: 167, "Bayer Leverkusen": 168, "Eintracht Frankfurt": 169, Stuttgart: 172, "RB Leipzig": 173, "Union Berlin": 182,
   Lille: 79, Lyon: 80, Marseille: 81, Nice: 84, "Paris Saint-Germain": 85, Monaco: 91, Rennes: 94, Lens: 116,
 };
-const crest = (team: string) => (TEAM_IDS[team] ? `https://media.api-sports.io/football/teams/${TEAM_IDS[team]}.png` : "");
+const NPFL_BADGES: Record<string, string> = {
+  Enyimba: "uiz3l01786855143", "Rivers United": "4atnuh1720155248", "Remo Stars": "lktj1y1720155062",
+  "Enugu Rangers": "j6uqt31720154917", "Shooting Stars": "uk3c7q1720155122", "Kano Pillars": "bgleh01589375519",
+  "Plateau United": "6otzjg1786856754", "Kwara United": "p94hx51590183404", "Bendel Insurance": "p5th3c1714520172",
+  "Lobi Stars": "mv3ey81590183410", "Abia Warriors": "getpvo1590183315", "Sunshine Stars": "9s5g3t1590183469",
+};
+const crest = (team: string) =>
+  TEAM_IDS[team] ? `https://media.api-sports.io/football/teams/${TEAM_IDS[team]}.png`
+  : NPFL_BADGES[team] ? `https://r2.thesportsdb.com/images/media/team/badge/${NPFL_BADGES[team]}.png/small`
+  : "";
 
 interface SimMatch {
   id: number;
