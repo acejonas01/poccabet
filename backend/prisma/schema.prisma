@@ -20,7 +20,8 @@ model User {
   referralCode    String? // promotion / referral code entered at sign-up
   ageConfirmedAt  DateTime? // when they confirmed they're over 18 (sign-up)
   dateOfBirth     DateTime? @db.Date
-  passwordHash    String
+  passwordHash      String
+  passwordChangedAt DateTime? // sessions from before this are logged out (password reset / change)
   displayName     String
   role            String    @default("USER") // USER | ADMIN (admin panel access)
   suspendedAt     DateTime? // set by an admin: can't log in or bet until lifted

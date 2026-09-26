@@ -179,7 +179,7 @@ export function ShortcutsPanel({ onClose }: { onClose: () => void }) {
 
 // ---------- customer service ----------
 // TODO: replace with the real support channels before launch.
-const SUPPORT_EMAIL = "support@poccabet.com";
+export const SUPPORT_EMAIL = "support@poccabet.com";
 
 export function SupportSheet({ onClose }: { onClose: () => void }) {
   const row = { minHeight: 64, display: "flex", alignItems: "center", gap: 14, padding: "0 20px", borderTop: "1px solid var(--tc-line)", color: "var(--tc-text)", textDecoration: "none" } as const;

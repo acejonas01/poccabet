@@ -18,10 +18,16 @@ interface AuthContextValue {
   signupWithPhone: (data: SignupDetails & { verificationToken: string }) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => void;
+  resetPassword: (resetToken: string, password: string) => Promise<void>;
   refreshBalance: () => Promise<void>;
   setBalance: (naira: number) => void;
   updateUser: (changes: Partial<User>) => void;
+  // Why the session ended on its own (account suspended or closed); shown once, then cleared.
+  notice: SessionNotice | null;
+  clearNotice: () => void;
 }
+
+export interface SessionNotice { code: string; message: string }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -32,11 +38,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, null);
   const [balance, setBalance] = useState<number>(0);
   const [demo, setDemo] = useState(false);
+  const [notice, setNotice] = useState<SessionNotice | null>(null);
 
   // A phone number, or an email for older accounts.
   const login = useCallback(async (phoneOrEmail: string, password: string) => {
     const id = phoneOrEmail.trim();
     const res = await api.login(id.includes("@") ? { email: id, password } : { phone: id, password });
+    localStorage.setItem("token", res.token);
+    localStorage.setItem("user", JSON.stringify(res.user));
+    setUser(res.user);
+    setBalance(res.wallet.balance);
+    setDemo(!!res.wallet.demo);
+  }, []);
+
+  const resetPassword = useCallback(async (resetToken: string, password: string) => {
+    const res = await api.resetComplete(resetToken, password);
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -91,9 +107,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) refreshBalance().catch(() => {});
   }, [user, refreshBalance]);
 
+  // The server ended the session (suspended / closed account): log out and explain.
+  useEffect(() => {
+    const onEnded = (e: Event) => {
+      const d = (e as CustomEvent<SessionNotice>).detail;
+      logout();
+      setNotice(d);
+    };
+    window.addEventListener("pocca:session-ended", onEnded);
+    return () => window.removeEventListener("pocca:session-ended", onEnded);
+  }, [logout]);
+
   return (
     <AuthContext.Provider
-      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, refreshBalance, setBalance, updateUser }}
+      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, resetPassword, refreshBalance, setBalance, updateUser, notice, clearNotice: () => setNotice(null) }}
     >
       {children}
     </AuthContext.Provider>

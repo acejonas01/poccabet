@@ -32,6 +32,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const message = typeof body.error === "string" ? body.error : body.error ? JSON.stringify(body.error) : `Request failed: ${res.status}`;
+    // The account was suspended or closed while logged in: the app logs out and says why.
+    if (token && (body.code === "ACCOUNT_SUSPENDED" || body.code === "ACCOUNT_DELETED" || body.code === "SESSION_EXPIRED")) {
+      window.dispatchEvent(new CustomEvent("pocca:session-ended", { detail: { code: body.code, message } }));
+    }
     throw new ApiError(message, res.status, body.code, body.details);
   }
 
@@ -51,6 +55,13 @@ export const api = {
     }),
   otpVerify: (phone: string, code: string) =>
     request<{ verificationToken: string }>("/api/auth/otp/verify", { method: "POST", body: JSON.stringify({ phone, code }) }),
+  // Forgotten password: code by SMS (or email for older accounts) → reset token → new password (logs in).
+  resetStart: (to: { phone: string } | { email: string }) =>
+    request<{ sentTo: string; resendIn: number; expiresIn: number; demoCode?: string }>("/api/auth/reset/start", { method: "POST", body: JSON.stringify(to) }),
+  resetVerify: (to: { phone: string } | { email: string }, code: string) =>
+    request<{ resetToken: string }>("/api/auth/reset/verify", { method: "POST", body: JSON.stringify({ ...to, code }) }),
+  resetComplete: (resetToken: string, password: string) =>
+    request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/reset/complete", { method: "POST", body: JSON.stringify({ resetToken, password }) }),
   signupPhone: (data: SignupDetails & { verificationToken: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/signup/phone", {
       method: "POST", body: JSON.stringify(data),
@@ -92,7 +103,7 @@ export const api = {
   emailCodeStart: () => request<{ sentTo: string; resendIn: number; demoCode?: string }>("/api/me/email/start", { method: "POST" }),
   emailCodeVerify: (code: string) => request<Profile>("/api/me/email/verify", { method: "POST", body: JSON.stringify({ code }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
-    request<{ ok: boolean }>("/api/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
+    request<{ ok: boolean; token?: string }>("/api/me/password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) }),
   deleteAccount: (password: string) =>
     request<{ ok: boolean }>("/api/me", { method: "DELETE", body: JSON.stringify({ password, confirm: "DELETE" }) }),
   getMyBets: () => request<{ bets: Bet[] }>("/api/bets"),

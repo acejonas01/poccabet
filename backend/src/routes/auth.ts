@@ -1,6 +1,5 @@
 import { Router, type Response } from "express";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { Prisma, type User, type Wallet } from "@prisma/client";
 import { prisma } from "../lib/prisma";
@@ -10,7 +9,7 @@ import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
 import { OtpError, phoneFromToken, startOtp, verifyOtp } from "../auth/otp";
 import { everyone, limit } from "../lib/rateLimit";
-import { SUSPENDED_MESSAGE } from "../middleware/auth";
+import { SUSPENDED_MESSAGE, signSession } from "../middleware/auth";
 
 const router = Router();
 
@@ -25,7 +24,7 @@ const newWallet = () => ({
 });
 
 function sendSession(res: Response, user: User & { wallet: Wallet | null }, status = 200) {
-  const token = jwt.sign({ sub: user.id }, process.env.JWT_SECRET!, { expiresIn: "7d" });
+  const token = signSession(user.id);
   res.status(status).json({
     token,
     user: { id: user.id, email: user.email, phone: user.phone, displayName: user.displayName },
@@ -52,6 +51,7 @@ const OTP_HOURLY_CAP = Number(process.env.OTP_HOURLY_CAP ?? 300);
 const limits = {
   otpStart: [limit("otp-start-ip", 10, 60), limit("otp-start-all", OTP_HOURLY_CAP, 60, everyone)],
   otpVerify: limit("otp-verify-ip", 40, 15),
+  resetStart: [limit("reset-start-ip", 10, 60), limit("otp-start-all", OTP_HOURLY_CAP, 60, everyone)],
   signup: limit("signup-ip", 10, 60),
   login: [limit("login-ip", 30, 15), limit("login-name", 10, 15, loginName)],
 };
@@ -79,6 +79,68 @@ router.post("/otp/verify", limits.otpVerify, async (req, res) => {
   if (!phone || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the 6-digit code", code: "INVALID_CODE" });
   try {
     res.json({ verificationToken: await verifyOtp(phone, "SIGNUP", code) });
+  } catch (err) {
+    otpFail(res, err);
+  }
+});
+
+// ---------- forgotten password: 1) send a code  2) check it  3) set a new password ----------
+// The code goes by SMS to the phone number, or by email for older accounts that log in with an email.
+// The answer is the same whether or not an account exists, so this can't be used to find out who has one.
+type ResetTarget = { purpose: "PASSWORD_RESET" | "PASSWORD_RESET_EMAIL"; to: string; display: string };
+function resetTarget(body: any): ResetTarget | null {
+  const phone = normaliseNgPhone(String(body?.phone ?? ""));
+  if (phone) return { purpose: "PASSWORD_RESET", to: phone, display: formatNgPhone(phone) };
+  const email = normEmail(body?.email);
+  if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { purpose: "PASSWORD_RESET_EMAIL", to: email, display: email };
+  return null;
+}
+const accountFor = (t: { purpose: string; to: string }) =>
+  t.purpose === "PASSWORD_RESET" ? prisma.user.findUnique({ where: { phone: t.to }, include: { wallet: true } }) : findByEmail(t.to);
+
+// POST /api/auth/reset/start { phone } | { email }
+router.post("/reset/start", ...limits.resetStart, async (req, res) => {
+  const t = resetTarget(req.body);
+  if (!t) return res.status(400).json({ error: "Enter your phone number or email", code: "INVALID_DETAILS" });
+  try {
+    const user = await accountFor(t);
+    const sent = user && !user.deletedAt ? await startOtp(t.to, t.purpose) : { resendIn: 60, expiresIn: 300 };
+    res.json({ sentTo: t.display, ...sent });
+  } catch (err) {
+    otpFail(res, err);
+  }
+});
+
+// POST /api/auth/reset/verify { phone | email, code } → { resetToken }
+router.post("/reset/verify", limits.otpVerify, async (req, res) => {
+  const t = resetTarget(req.body);
+  const code = String(req.body?.code ?? "");
+  if (!t || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the 6-digit code", code: "INVALID_CODE" });
+  try {
+    res.json({ resetToken: await verifyOtp(t.to, t.purpose, code) });
+  } catch (err) {
+    otpFail(res, err);
+  }
+});
+
+// POST /api/auth/reset/complete { resetToken, password } → logged in (other devices are logged out)
+router.post("/reset/complete", limits.otpVerify, async (req, res) => {
+  const password = String(req.body?.password ?? "");
+  if (password.length < 8) return res.status(400).json({ error: "Use at least 8 characters", code: "WEAK_PASSWORD" });
+  const token = String(req.body?.resetToken ?? "");
+  const phone = phoneFromToken(token, "PASSWORD_RESET");
+  const email = phone ? null : phoneFromToken(token, "PASSWORD_RESET_EMAIL");
+  if (!phone && !email) return res.status(400).json({ error: "This reset link has expired. Start again.", code: "RESET_EXPIRED" });
+  try {
+    const user = await accountFor(phone ? { purpose: "PASSWORD_RESET", to: phone } : { purpose: "PASSWORD_RESET_EMAIL", to: email! });
+    if (!user || user.deletedAt) return res.status(404).json({ error: "No account found. Create one instead.", code: "NOT_FOUND" });
+    if (user.suspendedAt) return res.status(403).json({ error: SUSPENDED_MESSAGE, code: "ACCOUNT_SUSPENDED" });
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await bcrypt.hash(password, 10), passwordChangedAt: new Date() },
+      include: { wallet: true },
+    });
+    sendSession(res, updated);
   } catch (err) {
     otpFail(res, err);
   }

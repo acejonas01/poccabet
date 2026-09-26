@@ -6,7 +6,9 @@ import { prisma } from "../lib/prisma";
 import { smsSender } from "../lib/sms";
 import { emailSender } from "../lib/email";
 
-export type OtpPurpose = "SIGNUP" | "EMAIL_VERIFY";
+// PASSWORD_RESET goes by SMS; PASSWORD_RESET_EMAIL to the email of an older (email) account.
+export type OtpPurpose = "SIGNUP" | "EMAIL_VERIFY" | "PASSWORD_RESET" | "PASSWORD_RESET_EMAIL";
+const BY_EMAIL: OtpPurpose[] = ["EMAIL_VERIFY", "PASSWORD_RESET_EMAIL"];
 
 export const OTP_RULES = {
   length: 6,
@@ -28,7 +30,7 @@ const hashCode = (phone: string, code: string) => createHash("sha256").update(`$
 
 // `phone` is where the code goes: a phone number (SMS), or an email address for EMAIL_VERIFY.
 export async function startOtp(phone: string, purpose: OtpPurpose, now = Date.now()) {
-  const byEmail = purpose === "EMAIL_VERIFY";
+  const byEmail = BY_EMAIL.includes(purpose);
   const sender = byEmail ? emailSender() : smsSender();
   if (!sender) throw new OtpError(byEmail ? "EMAIL_UNAVAILABLE" : "SMS_UNAVAILABLE", "We can't send codes right now. Please try again later.", 503);
 
@@ -49,7 +51,7 @@ export async function startOtp(phone: string, purpose: OtpPurpose, now = Date.no
     data: { phone, purpose, codeHash: hashCode(phone, code), expiresAt: new Date(now + OTP_RULES.ttlMs) },
   });
   const text = `Your Poccabet code is ${code}. It expires in 5 minutes. Never share it with anyone.`;
-  if (byEmail) await emailSender()!.send(phone, "Verify your email", text);
+  if (byEmail) await emailSender()!.send(phone, purpose === "EMAIL_VERIFY" ? "Verify your email" : "Reset your password", text);
   else await smsSender()!.send(phone, text);
   return {
     resendIn: OTP_RULES.resendAfterMs / 1000,

@@ -6,7 +6,7 @@ export const SPORT_NAMES: Record<string, string> = {
   boxing: "Boxing", darts: "Darts", cricket: "Cricket", efootball: "eFootball",
 };
 export const FOOTBALL_VIEWS = ["today", "live", "all", "soon", "filter"];
-const PAGES = ["login", "signup", "betslip", "my-bets", "account", "search"];
+const PAGES = ["login", "signup", "forgot-password", "betslip", "my-bets", "account", "search"];
 
 export type RouteCheck = { ok: true } | { redirect: string } | { notFound: true };
 

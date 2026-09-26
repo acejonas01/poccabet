@@ -6,7 +6,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
 import { formatNgPhone } from "../lib/phone";
-import { requireAuth, type AuthedRequest } from "../middleware/auth";
+import { requireAuth, signSession, type AuthedRequest } from "../middleware/auth";
 import { OtpError, consumeOtp, startOtp } from "../auth/otp";
 import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
@@ -152,8 +152,9 @@ router.post("/password", limit("password", 10, 15, byUser), async (req: AuthedRe
     if (!(await bcrypt.compare(parsed.data.currentPassword, me.passwordHash))) {
       return res.status(401).json({ error: "Your current password is wrong", code: "WRONG_PASSWORD" });
     }
-    await prisma.user.update({ where: { id: me.id }, data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, 10) } });
-    res.json({ ok: true });
+    await prisma.user.update({ where: { id: me.id }, data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, 10), passwordChangedAt: new Date() } });
+    // Other devices are logged out; this one gets a fresh session.
+    res.json({ ok: true, token: signSession(me.id) });
   } catch (err) {
     fail(res, err);
   }

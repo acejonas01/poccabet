@@ -10,11 +10,11 @@ import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./de
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
 import { ACCENT, BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
-import { ShortcutsPanel, SupportSheet } from "./shortcuts";
+import { SUPPORT_EMAIL, ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
 import { RedesignAccount } from "./account";
-import { RedesignLogin, RedesignSignup } from "./auth";
+import { RedesignForgot, RedesignLogin, RedesignSignup } from "./auth";
 import { buildIndex } from "./search";
 import { SearchResultsPage } from "./searchui";
 import "./redesign.css";
@@ -25,7 +25,7 @@ export function RedesignApp() {
   const data = useTCData();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, notice, clearNotice } = useAuth();
 
   // Remembered until the browser tab is closed, so a reload lands where you were.
   const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
@@ -71,7 +71,7 @@ export function RedesignApp() {
 
   const onRoot = location.pathname === "/";
   // Sign-up and log-in are full-screen on phones (no header or bottom nav).
-  const onAuth = location.pathname === "/login" || location.pathname === "/signup";
+  const onAuth = ["/login", "/signup", "/forgot-password"].includes(location.pathname);
   // The bet slip is its own page on phones: full screen under the header, no bottom nav.
   const onSlipPage = location.pathname === "/betslip";
   const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
@@ -130,6 +130,7 @@ export function RedesignApp() {
           : <SearchResultsPage {...listProps} index={searchIndex} View={MatchListPage} />} />
         <Route path="/login" element={authPage(<RedesignLogin />)} />
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
+        <Route path="/forgot-password" element={authPage(<RedesignForgot />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
         <Route path="/betslip" element={desk
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
@@ -157,6 +158,7 @@ export function RedesignApp() {
       {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
       {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
       {sheet === "support" && <SupportSheet onClose={() => setSheet(null)} />}
+      {notice && <SessionEndedDialog code={notice.code} message={notice.message} onClose={() => { clearNotice(); navigate(notice.code === "SESSION_EXPIRED" ? "/login" : "/"); }} />}
     </div>
   );
 }
@@ -167,6 +169,25 @@ function NotFound({ onHome }: { onHome: () => void }) {
       <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Page not found</h1>
       <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)" }}>This page doesn't exist or has moved.</p>
       <button onClick={onHome} style={{ marginTop: 8, height: 44, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>Go to home</button>
+    </div>
+  );
+}
+
+// Shown when the server ends a session: the account was suspended (or closed) while logged in.
+function SessionEndedDialog({ code, message, onClose }: { code: string; message: string; onClose: () => void }) {
+  const suspended = code === "ACCOUNT_SUSPENDED";
+  const expired = code === "SESSION_EXPIRED";
+  return (
+    <div role="presentation" onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(8,12,15,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div role="alertdialog" aria-modal="true" aria-labelledby="tc-ended-title" onClick={(e) => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: 380, background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 16, padding: 20, display: "flex", flexDirection: "column", gap: 12, textAlign: "center" }}>
+        <h2 id="tc-ended-title" style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>{suspended ? "Account suspended" : expired ? "Please log in again" : "Account closed"}</h2>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "var(--tc-muted)" }}>{expired ? message : `${message} You've been logged out.`}</p>
+        <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+          {suspended && <a href={`mailto:${SUPPORT_EMAIL}`} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, textDecoration: "none" }}>Contact support</a>}
+          <button onClick={onClose} style={{ flex: 1, height: 44, borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>{expired ? "Log in" : "OK"}</button>
+        </div>
+      </div>
     </div>
   );
 }

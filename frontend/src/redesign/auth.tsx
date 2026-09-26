@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
 import { Flag } from "./media";
 import { PlayResponsibly } from "./footer";
+import { SUPPORT_EMAIL } from "./shortcuts";
 import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
 
 const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
@@ -472,6 +473,7 @@ export function RedesignLogin() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suspended, setSuspended] = useState(false);
   const close = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
   const ready = (useEmail ? email.includes("@") : validLocal(digits)) && password.length > 0;
 
@@ -485,6 +487,7 @@ export function RedesignLogin() {
       navigate("/", { replace: true });
     } catch (err) {
       setError(errText(err));
+      setSuspended(err instanceof ApiError && err.code === "ACCOUNT_SUSPENDED");
     } finally {
       setBusy(false);
     }
@@ -517,10 +520,166 @@ export function RedesignLogin() {
           <PhoneField digits={digits} onChange={(d) => { setDigits(d); setError(null); }} autoFocus />
         )}
         <PasswordField value={password} onChange={(v) => { setPassword(v); setError(null); }} label="Password" autoComplete="current-password" />
+        <a href="/forgot-password" onClick={(e) => { e.preventDefault(); navigate("/forgot-password", { replace: true }); }} style={{ alignSelf: "flex-end", marginTop: -6, fontSize: 14, fontWeight: 700 }}>Forgot password?</a>
         {errorLine(error)}
+        {suspended && error && (
+          <a href={`mailto:${SUPPORT_EMAIL}`} style={{ alignSelf: "center", fontSize: 14, fontWeight: 800 }}>Contact support ({SUPPORT_EMAIL})</a>
+        )}
         <button type="submit" disabled={busy} style={primaryBtn(ready && !busy)}>{busy ? "LOGGING IN…" : "LOG IN"}</button>
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
           New to Poccabet? <a href="/signup" onClick={(e) => { e.preventDefault(); navigate("/signup", { replace: true }); }} style={{ fontWeight: 800 }}>Create an account</a>
+        </p>
+      </form>
+    </Shell>
+  );
+}
+
+// Forgotten password: 1) phone number (or email for older accounts)  2) the code  3) a new password.
+// Finishing logs you in; any other device still logged in is logged out.
+export function RedesignForgot() {
+  const navigate = useNavigate();
+  const { resetPassword } = useAuth();
+  const [step, setStep] = useState<"who" | "code" | "password">("who");
+  const [useEmail, setUseEmail] = useState(false);
+  const [digits, setDigits] = useState("");
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState<{ sentTo: string; demoCode?: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [token, setToken] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [wait, setWait] = useState(0);
+  const codeInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (wait <= 0) return;
+    const t = setTimeout(() => setWait((w) => w - 1), 1000);
+    return () => clearTimeout(t);
+  }, [wait]);
+
+  const target = useEmail ? { email: email.trim() } : { phone: `+234${digits}` };
+  const whoOk = useEmail ? EMAIL_RE.test(email.trim()) : validLocal(digits);
+  const toLogin = () => navigate("/login", { replace: true });
+  const run = async (fn: () => Promise<void>) => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try { await fn(); } catch (err) { setError(errText(err)); } finally { setBusy(false); }
+  };
+
+  const sendCode = (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!whoOk) return setError(useEmail ? "Enter a valid email" : "Enter a valid Nigerian mobile number");
+    run(async () => {
+      const res = await api.resetStart(target);
+      setSent(res);
+      setWait(res.resendIn);
+      setCode("");
+      setStep("code");
+      setTimeout(() => codeInput.current?.focus(), 50);
+    });
+  };
+  const checkCode = (value = code) => {
+    if (value.length !== 6) return;
+    run(async () => {
+      try {
+        setToken((await api.resetVerify(target, value)).resetToken);
+        setStep("password");
+      } catch (err) {
+        setCode("");
+        codeInput.current?.focus();
+        throw err;
+      }
+    });
+  };
+  const save = (e: FormEvent) => {
+    e.preventDefault();
+    if (password.length < 8) return setError("Use at least 8 characters");
+    run(async () => {
+      await resetPassword(token, password);
+      navigate("/", { replace: true });
+    });
+  };
+  const back = (to: "who" | "code", label: string) => (
+    <button type="button" onClick={() => { setStep(to); setError(null); }} style={{ alignSelf: "flex-start", display: "flex", alignItems: "center", gap: 4, height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>
+      <ChevronLeft size={16} />{label}
+    </button>
+  );
+
+  if (step === "code" && sent) {
+    return (
+      <Shell onClose={toLogin}>
+        {back("who", useEmail ? "Change email" : "Change number")}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Enter your code</h1>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>If <strong style={{ color: "var(--tc-text)" }}>{sent.sentTo}</strong> has a Poccabet account, we've sent it a 6-digit code.</p>
+        </div>
+        {sent.demoCode && (
+          <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: "rgba(245, 197, 24, 0.12)", border: "1px solid rgba(245, 197, 24, 0.35)", fontSize: 13, color: "var(--tc-soft)" }}>
+            Demo mode — nothing is sent. Your code is <strong style={{ color: ACCENT, letterSpacing: 2 }}>{sent.demoCode}</strong>
+          </p>
+        )}
+        <CodeBoxes value={code} error={!!error} inputRef={codeInput} onChange={(v) => { setCode(v); setError(null); if (v.length === 6) checkCode(v); }} />
+        {errorLine(error)}
+        <button type="button" onClick={() => checkCode()} disabled={busy || code.length !== 6} style={primaryBtn(code.length === 6 && !busy)}>{busy ? "CHECKING…" : "CONTINUE"}</button>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
+          Didn't get it?{" "}
+          {wait > 0
+            ? <span>Resend in 0:{String(wait).padStart(2, "0")}</span>
+            : <button type="button" onClick={() => sendCode()} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Resend code</button>}
+        </p>
+      </Shell>
+    );
+  }
+
+  if (step === "password") {
+    return (
+      <Shell onClose={toLogin}>
+        <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Choose a new password</h1>
+            <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>At least 8 characters. You'll be logged in, and logged out everywhere else.</p>
+          </div>
+          <PasswordField value={password} onChange={(v) => { setPassword(v); setError(null); }} label="New password" autoComplete="new-password" />
+          {errorLine(error)}
+          <button type="submit" disabled={busy} style={primaryBtn(password.length >= 8 && !busy)}>{busy ? "SAVING…" : "SAVE AND LOG IN"}</button>
+        </form>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell onClose={toLogin}>
+      <form onSubmit={sendCode} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Forgot your password?</h1>
+          <p style={{ margin: 0, fontSize: 15, color: "var(--tc-muted)" }}>Enter the phone number (or email) on your account and we'll send you a code to set a new one.</p>
+        </div>
+        <div role="tablist" aria-label="Reset with" style={{ display: "flex", padding: 4, borderRadius: 12, background: "var(--tc-page)" }}>
+          {([["phone", "Phone number"], ["email", "Email"]] as const).map(([id, label]) => {
+            const on = (id === "email") === useEmail;
+            return (
+              <button key={id} type="button" role="tab" aria-selected={on} onClick={() => { setUseEmail(id === "email"); setError(null); }} style={{
+                flex: 1, height: 40, borderRadius: 9, border: "none", background: on ? "var(--tc-raise)" : "transparent",
+                color: on ? "var(--tc-text)" : "var(--tc-muted)", fontSize: 14, fontWeight: on ? 800 : 700,
+              }}>{label}</button>
+            );
+          })}
+        </div>
+        {useEmail ? (
+          <label style={fieldBox}>
+            <span style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
+              <span style={smallLabel}>Email</span>
+              <input suppressHydrationWarning type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(null); }} style={{ ...textInput, fontSize: 18 }} />
+            </span>
+          </label>
+        ) : (
+          <PhoneField digits={digits} onChange={(d) => { setDigits(d); setError(null); }} autoFocus />
+        )}
+        {errorLine(error)}
+        <button type="submit" disabled={busy} style={primaryBtn(whoOk && !busy)}>{busy ? "SENDING CODE…" : "SEND CODE"}</button>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)", textAlign: "center" }}>
+          Remembered it? <a href="/login" onClick={(e) => { e.preventDefault(); toLogin(); }} style={{ fontWeight: 800 }}>Log in</a>
         </p>
       </form>
     </Shell>

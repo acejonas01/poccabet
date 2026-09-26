@@ -160,7 +160,8 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await api.changePassword(current, next);
+      const r = await api.changePassword(current, next);
+      if (r.token) localStorage.setItem("token", r.token); // other devices are logged out, not this one
       setDone(true);
     } catch (err) {
       setError(errText(err));
