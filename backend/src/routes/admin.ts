@@ -2,6 +2,8 @@
 // every change is written to the audit log in the same database transaction.
 import { Router, type NextFunction, type Response } from "express";
 import { Prisma } from "@prisma/client";
+import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
@@ -225,6 +227,40 @@ router.post("/users/:id/adjust", async (req: AuthedRequest, res) => {
       return wallet.balance;
     });
     res.json({ ok: true, balance: toNaira(balance) });
+  } catch (err) { fail(res, err); }
+});
+
+// Delete an account the same way a player deletes their own: personal details erased, login
+// blocked for good; bets and the money ledger are kept (an operator must keep them). The phone
+// number and email become free to sign up again. With real money, the wallet must be empty and
+// no bets open first.
+router.post("/users/:id/delete", async (req: AuthedRequest, res) => {
+  try {
+    const body = z.object({ reason, confirm: z.literal("DELETE", { message: "Type DELETE to confirm" }) }).parse(req.body);
+    const id = String(req.params.id);
+    if (id === req.userId) throw new AdminError("SELF", "You can't delete your own account here");
+    const u = await prisma.user.findUnique({ where: { id }, include: { wallet: true } });
+    if (!u) throw new AdminError("NOT_FOUND", "User not found", 404);
+    if (u.deletedAt) throw new AdminError("NO_CHANGE", "This account is already deleted", 409);
+    if (u.role === "ADMIN") throw new AdminError("IS_ADMIN", "Remove their admin access first", 409);
+    const balance = u.wallet?.balance ?? 0;
+    const open = await prisma.bet.count({ where: { userId: id, status: "PENDING" } });
+    if (!SIMULATE && balance > 0) throw new AdminError("BALANCE_NOT_EMPTY", `Their balance is ${toNaira(balance).toFixed(2)}: pay it out or adjust it to zero first`, 409);
+    if (!SIMULATE && open) throw new AdminError("OPEN_BETS", `They have ${open} open bet(s): settle or void them first`, 409);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id },
+        data: {
+          deletedAt: new Date(), passwordChangedAt: new Date(),
+          email: null, emailVerifiedAt: null, phone: null, phoneVerifiedAt: null,
+          firstName: null, lastName: null, dateOfBirth: null, referralCode: null,
+          displayName: "Deleted user", role: "USER",
+          passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 10), // nobody can log in again
+        },
+      });
+      await audit(tx, req, "USER_DELETE", "USER", id, { reason: body.reason, balance: toNaira(balance), openBets: open });
+    });
+    res.json({ ok: true });
   } catch (err) { fail(res, err); }
 });
 

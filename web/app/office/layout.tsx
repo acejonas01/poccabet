@@ -1,10 +1,10 @@
-// Admin panel (/admin): its own layout, without the betting site. Kept out of search engines.
+// Admin panel (/office): its own layout, without the betting site. Kept out of search engines.
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./admin.css";
 
 export const metadata: Metadata = {
-  title: "Poccabet Admin",
+  title: "Poccabet Office",
   robots: { index: false, follow: false },
 };
 

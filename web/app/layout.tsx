@@ -1,5 +1,5 @@
 // Root layout: fonts, icons and the shared styles. The betting site is in (site)/layout.tsx,
-// the admin panel in admin/layout.tsx.
+// the admin panel in office/layout.tsx.
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import "../../frontend/src/index.css";

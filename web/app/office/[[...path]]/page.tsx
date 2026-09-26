@@ -1,4 +1,4 @@
-// Every /admin URL: the panel works out the page from the address (see AdminApp).
+// Every /office URL: the panel works out the page from the address (see AdminApp).
 import { Suspense } from "react";
 import { AdminApp } from "../AdminApp";
 

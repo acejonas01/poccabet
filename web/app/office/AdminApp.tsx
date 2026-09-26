@@ -1,5 +1,5 @@
 "use client";
-// Poccabet admin panel. One client app for every /admin URL: log in with an admin account
+// Poccabet admin panel. One client app for every /office URL: log in with an admin account
 // (the same login as the site), then Dashboard, Users, Bets, Matches and the Audit log.
 // Everything goes through /api/admin (see backend/src/routes/admin.ts); every change asks for a reason.
 import Link from "next/link";
@@ -48,15 +48,15 @@ const Badge = ({ tone, children }: { tone: string; children: ReactNode }) => <sp
 
 // ---------- shell ----------
 const NAV = [
-  { href: "/admin", label: "Dashboard", icon: "M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z" },
-  { href: "/admin/users", label: "Users", icon: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21a8 8 0 0 1 16 0" },
-  { href: "/admin/bets", label: "Bets", icon: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" },
-  { href: "/admin/matches", label: "Matches", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4 4 3-1.5 4.5h-5L8 10z" },
-  { href: "/admin/audit", label: "Audit log", icon: "M12 8v4l3 2M12 3a9 9 0 1 0 9 9" },
+  { href: "/office", label: "Dashboard", icon: "M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z" },
+  { href: "/office/users", label: "Users", icon: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21a8 8 0 0 1 16 0" },
+  { href: "/office/bets", label: "Bets", icon: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" },
+  { href: "/office/matches", label: "Matches", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4 4 3-1.5 4.5h-5L8 10z" },
+  { href: "/office/audit", label: "Audit log", icon: "M12 8v4l3 2M12 3a9 9 0 1 0 9 9" },
 ];
 
 export function AdminApp() {
-  const path = (usePathname() ?? "/admin").split("/").filter(Boolean).slice(1);
+  const path = (usePathname() ?? "/office").split("/").filter(Boolean).slice(1);
   const [me, setMe] = useState<{ id: string; displayName: string; mode: string } | null>(null);
   const [state, setState] = useState<"loading" | "login" | "denied" | "ok">("loading");
   const [toast, setToast] = useState("");
@@ -103,7 +103,7 @@ export function AdminApp() {
       <aside className="adm-side">
         <div className="adm-logo">Pocca<span>bet</span><small>ADMIN</small></div>
         {NAV.map((n) => {
-          const on = n.href === "/admin" ? !section : n.href === `/admin/${section}`;
+          const on = n.href === "/office" ? !section : n.href === `/office/${section}`;
           return (
             <Link key={n.href} href={n.href} className={`adm-nav${on ? " on" : ""}`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={n.icon} /></svg>
@@ -173,7 +173,7 @@ function Head({ title, sub, children }: { title: ReactNode; sub?: ReactNode; chi
 function useQueryState(key: string) {
   const params = useSearchParams();
   const router = useRouter();
-  const pathname = usePathname() ?? "/admin";
+  const pathname = usePathname() ?? "/office";
   const value = params?.get(key) ?? "";
   const set = (v: string) => {
     const next = new URLSearchParams(params?.toString() ?? "");
@@ -332,7 +332,7 @@ function UsersPage() {
             <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
             <tbody>
               {data.users.map((u) => (
-                <tr key={u.id} className="click" onClick={() => router.push(`/admin/users/${u.id}`)}>
+                <tr key={u.id} className="click" onClick={() => router.push(`/office/users/${u.id}`)}>
                   <td style={{ fontWeight: 700 }}>{u.name}</td><td>{u.phone ?? "—"}</td><td>{u.email ?? "—"}</td>
                   <td className="adm-num">{naira(u.balance)}</td><td className="adm-num">{u.bets}</td><td>{day(u.createdAt)}</td><td>{userBadges(u)}</td>
                 </tr>
@@ -379,13 +379,26 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
     text: u.role === "ADMIN" ? "They'll lose access to this panel." : "They'll get full access to this panel.",
     run: async (v) => { await api(`/admin/users/${u.id}/role`, { role: u.role === "ADMIN" ? "USER" : "ADMIN", reason: v.reason }); return "Role updated"; },
   });
+  const remove = () => dialog.open({
+    title: `Delete ${u.name}'s account`, confirm: "Delete account", tone: "danger",
+    text: <>Their name, phone, email and date of birth are erased and they can never log in again. Bets and wallet history are kept for the records. Their phone number and email can be used to sign up again. <b>This can't be undone.</b>{u.balance > 0 && <> They still have {naira(u.balance)}.</>}</>,
+    fields: (set, v) => <label className="adm-field">Type DELETE to confirm<input className="adm-input" value={v.confirm ?? ""} onChange={(e) => set("confirm", e.target.value.toUpperCase())} autoCapitalize="characters" required /></label>,
+    run: async (v) => {
+      if (v.confirm !== "DELETE") throw new Error("Type DELETE to confirm");
+      await api(`/admin/users/${u.id}/delete`, { confirm: "DELETE", reason: v.reason });
+      return "Account deleted";
+    },
+  });
   const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal" };
   return (
     <>
       <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Joined {day(u.createdAt)} · id {u.id}</>}>
-        <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
-        <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
-        <button className="adm-btn" onClick={role}>{u.role === "ADMIN" ? "Remove admin" : "Make admin"}</button>
+        {!u.deleted && <>
+          <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
+          <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
+          <button className="adm-btn" onClick={role}>{u.role === "ADMIN" ? "Remove admin" : "Make admin"}</button>
+          {u.role !== "ADMIN" && <button className="adm-btn danger" onClick={remove}>Delete account</button>}
+        </>}
       </Head>
       <div className="adm-grid">
         <Stat k="Balance" v={naira(u.balance)} />
@@ -402,7 +415,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
       </div>
       <div className="adm-section">
         <h2>Recent bets</h2>
-        <BetTable bets={u.bets} onOpen={(b) => router.push(`/admin/bets/${b.id}`)} />
+        <BetTable bets={u.bets} onOpen={(b) => router.push(`/office/bets/${b.id}`)} />
       </div>
       <div className="adm-section">
         <h2>Wallet history</h2>
@@ -459,7 +472,7 @@ function BetsPage() {
     <>
       <Head title="Bets" sub={data ? `${data.total} bets` : ""}><SearchBox placeholder="Ticket, player phone, email or name" /></Head>
       <div style={{ marginBottom: 12 }}><Tabs name="status" options={[["", "All"], ["PENDING", "Open"], ["WON", "Won"], ["LOST", "Lost"], ["VOID", "Void"]]} /></div>
-      {!data ? <Loading error={error} /> : <BetTable bets={data.bets} withUser onOpen={(b) => router.push(`/admin/bets/${b.id}`)} />}
+      {!data ? <Loading error={error} /> : <BetTable bets={data.bets} withUser onOpen={(b) => router.push(`/office/bets/${b.id}`)} />}
       {data && <Pager total={data.total} pageSize={data.pageSize} />}
     </>
   );
@@ -487,7 +500,7 @@ function BetPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   return (
     <>
       <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Ticket {b.ticket} <Badge tone={STATUS_TONE[b.status] ?? "gray"}>{b.status}</Badge></span>}
-        sub={<>{b.type === "ACCUMULATOR" ? "Multiple" : "Single"} · placed {when(b.createdAt)}{b.settledAt ? ` · settled ${when(b.settledAt)}` : ""} · <Link href={`/admin/users/${b.userId}`} style={{ textDecoration: "underline" }}>{b.user?.name}</Link></>}>
+        sub={<>{b.type === "ACCUMULATOR" ? "Multiple" : "Single"} · placed {when(b.createdAt)}{b.settledAt ? ` · settled ${when(b.settledAt)}` : ""} · <Link href={`/office/users/${b.userId}`} style={{ textDecoration: "underline" }}>{b.user?.name}</Link></>}>
         {open && <>
           <button className="adm-btn good" onClick={() => betAction("WON")}>Settle won</button>
           <button className="adm-btn danger" onClick={() => betAction("LOST")}>Settle lost</button>
@@ -603,13 +616,13 @@ function MatchesPage({ flash }: { flash: (m: string) => void }) {
 
 // ---------- audit log ----------
 const ACTION_LABEL: Record<string, string> = {
-  USER_SUSPEND: "Suspended user", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
+  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
   BET_VOID: "Voided bet", BET_SETTLE: "Settled bet", LEG_SETTLE: "Settled leg", MATCH_SUSPEND: "Suspended match", MATCH_UNSUSPEND: "Reopened match",
   MATCH_VOID: "Voided match bets", MATCH_RESULT: "Entered result",
 };
 function AuditTable({ entries }: { entries: AuditEntry[] }) {
-  const target = (e: AuditEntry) => e.targetType === "USER" ? <Link href={`/admin/users/${e.targetId}`} style={{ textDecoration: "underline" }}>user</Link>
-    : e.targetType === "BET" ? <Link href={`/admin/bets/${e.targetId}`} style={{ textDecoration: "underline" }}>bet</Link> : <span>match {e.targetId}</span>;
+  const target = (e: AuditEntry) => e.targetType === "USER" ? <Link href={`/office/users/${e.targetId}`} style={{ textDecoration: "underline" }}>user</Link>
+    : e.targetType === "BET" ? <Link href={`/office/bets/${e.targetId}`} style={{ textDecoration: "underline" }}>bet</Link> : <span>match {e.targetId}</span>;
   const details = (d: AuditEntry["details"]) => d ? Object.entries(d).filter(([k]) => k !== "reason").map(([k, v]) => `${k === "balanceAfter" ? "balance after" : k}: ${typeof v === "number" && (k === "amount" || k === "balanceAfter") ? naira(v) : String(v)}`).join(" · ") : "";
   return (
     <div className="adm-table-wrap">
