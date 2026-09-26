@@ -266,7 +266,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
                   {STOP_LABELS.map((l, i) => <span key={l} style={{ color: i === stop ? ACCENT : undefined }}>{l}</span>)}
                 </div>
-                <input type="range" aria-label="Kick-off within" min={0} max={HOUR_STOPS.length - 1} step={1} value={stop} onChange={(e) => setStop(Number(e.target.value))}
+                <input suppressHydrationWarning type="range" aria-label="Kick-off within" min={0} max={HOUR_STOPS.length - 1} step={1} value={stop} onChange={(e) => setStop(Number(e.target.value))}
                   style={{ width: "100%", marginTop: 8, accentColor: ACCENT }} />
                 <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--tc-muted)" }}>{stop ? `Kick-off in the ${describe(when).toLowerCase()}` : "Slide to limit by kick-off time"}</p>
               </div>
@@ -275,7 +275,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
                 {([["From", from, setFrom], ["To", to, setTo]] as const).map(([label, value, set]) => (
                   <label key={label} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
                     {label}
-                    <input type="date" value={value} min={ymd(Date.now())} onChange={(e) => e.target.value && set(e.target.value)} style={{
+                    <input suppressHydrationWarning type="date" value={value} min={ymd(Date.now())} onChange={(e) => e.target.value && set(e.target.value)} style={{
                       height: 44, padding: "0 10px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-card)", color: "var(--tc-text)", fontSize: 16, fontFamily: "inherit",
                     }} />
                   </label>

@@ -19,6 +19,8 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
+  // Stop iPhone browsers turning kick-off times, odds and numbers into tappable links.
+  formatDetection: { telephone: false, date: false, address: false, email: false },
   // Google Search Console: set GOOGLE_SITE_VERIFICATION on Vercel to the code it gives you.
   ...(process.env.GOOGLE_SITE_VERIFICATION ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } } : {}),
 };
@@ -32,14 +34,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const theme = THEMES.includes(saved) ? saved : THEMES[0];
   const themeFonts = themeFontsUrl(theme);
   return (
-    <html lang="en" data-theme={theme}>
+    // Browsers and extensions add their own attributes to <html>/<body> before React starts;
+    // that's expected here, so React doesn't warn about those two tags.
+    <html lang="en" data-theme={theme} suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         {themeFonts && <link id={`pocca-fonts-${theme}`} rel="stylesheet" href={themeFonts} />}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;1,700&family=Manrope:wght@400;600;700;800&display=swap" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <SiteApp feed={feed} theme={theme} />
         {children}
       </body>

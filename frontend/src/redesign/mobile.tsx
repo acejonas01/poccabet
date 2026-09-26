@@ -467,7 +467,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
             <label style={{ position: "relative", flexShrink: 0, whiteSpace: "nowrap", height: 32, padding: "0 10px", borderRadius: 8, border: "1px solid var(--tc-btn-line)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
               {dates.find((d) => d.id === dateId)?.label}
               <ChevronDown />
-              <select aria-label="Filter by date" value={dateId} onChange={(e) => { setDateId(e.target.value); setLimit(12); }} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", fontSize: 16 }}>
+              <select suppressHydrationWarning aria-label="Filter by date" value={dateId} onChange={(e) => { setDateId(e.target.value); setLimit(12); }} style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", fontSize: 16 }}>
                 {dates.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
             </label>

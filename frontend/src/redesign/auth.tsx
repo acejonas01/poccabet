@@ -95,7 +95,7 @@ export function CodeBoxes({ value, onChange, error, inputRef }: {
   return (
     <label style={{ position: "relative", display: "block" }}>
       <span style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>Verification code</span>
-      <input ref={inputRef} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus
+      <input suppressHydrationWarning ref={inputRef} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={6} autoFocus
         value={value} onChange={(e) => onChange(e.target.value.replace(/\D/g, "").slice(0, 6))}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, fontSize: 16, border: "none" }} />
       <span aria-hidden="true" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 8 }}>
@@ -131,7 +131,7 @@ function PhoneField({ digits, onChange, autoFocus }: { digits: string; onChange:
       </span>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "center", padding: "10px 14px" }}>
         <span style={smallLabel}>Phone number</span>
-        <input type="tel" inputMode="numeric" autoComplete="tel-national" autoFocus={autoFocus} placeholder="803 000 0000"
+        <input suppressHydrationWarning type="tel" inputMode="numeric" autoComplete="tel-national" autoFocus={autoFocus} placeholder="803 000 0000"
           value={grouped(digits)} onChange={(e) => onChange(localDigits(e.target.value))} style={textInput} />
       </span>
     </label>
@@ -144,7 +144,7 @@ function PasswordField({ value, onChange, label, autoComplete }: { value: string
     <label style={{ ...fieldBox, alignItems: "center" }}>
       <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
         <span style={smallLabel}>{label}</span>
-        <input type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...textInput, fontSize: 18, ...(show ? {} : hiddenPw) }} />
+        <input suppressHydrationWarning type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...textInput, fontSize: 18, ...(show ? {} : hiddenPw) }} />
       </span>
       <button type="button" onClick={() => setShow((s) => !s)} style={{ height: 44, padding: "0 14px", border: "none", background: "transparent", color: ACCENT_TEXT, fontSize: 13, fontWeight: 800 }}>
         {show ? "Hide" : "Show"}
@@ -307,7 +307,7 @@ export function RedesignSignup() {
             </button>
           </div>
           {hasPromo && (
-            <input aria-label="Promotion code" placeholder="Promotion code" autoCapitalize="characters" value={f.promo} onChange={(e) => set("promo")(e.target.value.toUpperCase())} style={formInput(false)} />
+            <input suppressHydrationWarning aria-label="Promotion code" placeholder="Promotion code" autoCapitalize="characters" value={f.promo} onChange={(e) => set("promo")(e.target.value.toUpperCase())} style={formInput(false)} />
           )}
           {errorLine(error)}
           <button type="submit" disabled={busy} style={primaryBtn(phoneOk && !busy)}>{busy ? "SENDING CODE…" : "GET STARTED"}</button>
@@ -359,17 +359,17 @@ export function RedesignSignup() {
             <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>Almost done</h1>
           </div>
           <FormField label="Name *" error={shown("firstName")}>
-            <input autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} onBlur={touch("firstName")} style={formInput(!!shown("firstName"))} />
+            <input suppressHydrationWarning autoComplete="given-name" value={f.firstName} onChange={(e) => set("firstName")(e.target.value)} onBlur={touch("firstName")} style={formInput(!!shown("firstName"))} />
           </FormField>
           <FormField label="Surname *" error={shown("lastName")}>
-            <input autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} onBlur={touch("lastName")} style={formInput(!!shown("lastName"))} />
+            <input suppressHydrationWarning autoComplete="family-name" value={f.lastName} onChange={(e) => set("lastName")(e.target.value)} onBlur={touch("lastName")} style={formInput(!!shown("lastName"))} />
           </FormField>
           <FormField label="Email *" error={shown("email")}>
-            <input type="email" autoComplete="email" inputMode="email" value={f.email} onChange={(e) => set("email")(e.target.value)} onBlur={touch("email")} style={formInput(!!shown("email"))} />
+            <input suppressHydrationWarning type="email" autoComplete="email" inputMode="email" value={f.email} onChange={(e) => set("email")(e.target.value)} onBlur={touch("email")} style={formInput(!!shown("email"))} />
           </FormField>
           <FormField label="Password *" error={shown("password")}>
             <span style={{ position: "relative", display: "block" }}>
-              <input type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56, ...(showPw ? {} : hiddenPw) }} />
+              <input suppressHydrationWarning type={showPw ? "text" : "password"} autoComplete="new-password" value={f.password} onChange={(e) => set("password")(e.target.value)} onBlur={touch("password")} style={{ ...formInput(!!shown("password")), paddingRight: 56, ...(showPw ? {} : hiddenPw) }} />
               <button type="button" aria-label={showPw ? "Hide password" : "Show password"} onClick={() => setShowPw((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {showPw ? <EyeIcon /> : <EyeOffIcon />}
               </button>
@@ -377,7 +377,7 @@ export function RedesignSignup() {
           </FormField>
           <div style={{ borderRadius: 10, background: "var(--tc-panel)", border: `1.5px solid ${shown("over18") ? "#E5484D" : "transparent"}`, overflow: "hidden" }}>
             <label style={{ display: "flex", alignItems: "center", gap: 12, padding: "16px", background: "var(--tc-raise)", cursor: "pointer" }}>
-              <input type="checkbox" checked={f.over18} onChange={(e) => { set("over18")(e.target.checked); touch("over18")(); }} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: ACCENT }} />
+              <input suppressHydrationWarning type="checkbox" checked={f.over18} onChange={(e) => { set("over18")(e.target.checked); touch("over18")(); }} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: ACCENT }} />
               <span style={{ fontSize: 17 }}>I am over 18 years old *</span>
             </label>
             <p style={{ margin: 0, padding: "10px 16px 12px", fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>
@@ -398,7 +398,7 @@ export function RedesignSignup() {
     const select = (label: string, value: string, set: (v: string) => void, options: [string, string][]) => (
       <label style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={{ fontSize: 14, color: "var(--tc-muted)" }}>{label}</span>
-        <select value={value} onChange={(e) => { set(e.target.value); setError(null); }} style={{ ...formInput(!!dobProblem), padding: "0 12px", appearance: "auto" }}>
+        <select suppressHydrationWarning value={value} onChange={(e) => { set(e.target.value); setError(null); }} style={{ ...formInput(!!dobProblem), padding: "0 12px", appearance: "auto" }}>
           <option value="">{label}</option>
           {options.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
         </select>
@@ -518,7 +518,7 @@ export function RedesignLogin() {
           <label style={fieldBox}>
             <span style={{ flex: 1, display: "flex", flexDirection: "column", padding: "10px 14px" }}>
               <span style={smallLabel}>Email</span>
-              <input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...textInput, fontSize: 18 }} />
+              <input suppressHydrationWarning type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={{ ...textInput, fontSize: 18 }} />
             </span>
           </label>
         ) : (

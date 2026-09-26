@@ -590,7 +590,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
       <div style={{ display: "flex", gap: 8, padding: "0 16px 14px" }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Booking code</span>
-          <input type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Enter booking code" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, letterSpacing: 0.5 }} />
+          <input suppressHydrationWarning type="text" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && load()} placeholder="Enter booking code" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, letterSpacing: 0.5 }} />
         </label>
         <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT_TEXT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
@@ -620,7 +620,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           <label style={{ height: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)" }}>
             <span style={{ color: "var(--tc-label)", fontWeight: 700 }}>₦</span>
             <span style={hidden}>Stake</span>
-            <input inputMode="numeric" value={stake.toLocaleString("en-US")} onChange={(e) => setStake(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: "60%", textAlign: "right", background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, fontWeight: 800 }} />
+            <input suppressHydrationWarning inputMode="numeric" value={stake.toLocaleString("en-US")} onChange={(e) => setStake(Number(e.target.value.replace(/\D/g, "")) || 0)} style={{ width: "60%", textAlign: "right", background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, fontWeight: 800 }} />
           </label>
           <div style={{ display: "flex", gap: 6 }}>
             {[100, 500, 1000, 5000].map((v) => (
@@ -645,7 +645,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           <span style={{ fontSize: 20, fontWeight: 800, color: ACCENT_TEXT }}>{live.length ? naira(win) : "—"}</span>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--tc-soft)", cursor: "pointer" }}>
-          <input type="checkbox" checked={anyOdds} onChange={(e) => toggleAnyOdds(e.target.checked)} style={{ width: 18, height: 18, accentColor: ACCENT, margin: 0 }} />
+          <input suppressHydrationWarning type="checkbox" checked={anyOdds} onChange={(e) => toggleAnyOdds(e.target.checked)} style={{ width: 18, height: 18, accentColor: ACCENT, margin: 0 }} />
           Accept any odds changes
         </label>
         <div style={{ display: "flex", gap: 8 }}>
@@ -685,7 +685,7 @@ export function CheckBet() {
       <div style={{ display: "flex", gap: 8 }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Ticket ID</span>
-          <input type="text" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Ticket ID, e.g. PB4AGTNX" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16 }} />
+          <input suppressHydrationWarning type="text" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Ticket ID, e.g. PB4AGTNX" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16 }} />
         </label>
         <button onClick={check} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--tc-track)", color: "var(--tc-text)", fontSize: 14, fontWeight: 800 }}>Check</button>
       </div>

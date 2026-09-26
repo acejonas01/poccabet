@@ -40,7 +40,7 @@ function PasswordInput({ value, onChange, autoComplete }: { value: string; onCha
   const [show, setShow] = useState(false);
   return (
     <span style={{ position: "relative", display: "block" }}>
-      <input type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...formInput(false), paddingRight: 56, ...(show ? {} : hiddenPw) }} />
+      <input suppressHydrationWarning type={show ? "text" : "password"} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} style={{ ...formInput(false), paddingRight: 56, ...(show ? {} : hiddenPw) }} />
       <button type="button" aria-label={show ? "Hide password" : "Show password"} onClick={() => setShow((v) => !v)} style={{ position: "absolute", right: 4, top: 4, width: 44, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         {show ? <EyeIcon /> : <EyeOffIcon />}
       </button>
@@ -76,9 +76,9 @@ function EditSheet({ me, onClose, onSaved }: { me: Profile; onClose: () => void;
     <Sheet label="Edit details" onClose={onClose}>
       <SheetTitle title="Edit details" onClose={onClose} />
       <form onSubmit={save} style={sheetBody}>
-        <Field label="Name"><input autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={formInput(false)} /></Field>
-        <Field label="Surname"><input autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} style={formInput(false)} /></Field>
-        <Field label="Email"><input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={formInput(false)} /></Field>
+        <Field label="Name"><input suppressHydrationWarning autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} style={formInput(false)} /></Field>
+        <Field label="Surname"><input suppressHydrationWarning autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} style={formInput(false)} /></Field>
+        <Field label="Email"><input suppressHydrationWarning type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} style={formInput(false)} /></Field>
         {emailChanged && me.email && <p style={{ margin: 0, fontSize: 13, color: "var(--tc-muted)" }}>You'll need to verify the new email.</p>}
         {errorLine(error)}
         <button type="submit" disabled={busy} style={primaryBtn(!busy)}>{busy ? "SAVING…" : "SAVE CHANGES"}</button>
@@ -217,7 +217,7 @@ function DeleteSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: (
           This can't be undone. Your name, phone number, email and login are erased and you'll be logged out everywhere.
           Records of your bets and payments are kept, as the law requires.
         </div>
-        <Field label='Type DELETE to confirm'><input value={typed} onChange={(e) => setTyped(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" style={formInput(false)} /></Field>
+        <Field label='Type DELETE to confirm'><input suppressHydrationWarning value={typed} onChange={(e) => setTyped(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" style={formInput(false)} /></Field>
         <Field label="Your password"><PasswordInput value={password} onChange={setPassword} autoComplete="current-password" /></Field>
         {errorLine(error)}
         <button type="submit" disabled={!ready} style={{ ...primaryBtn(ready), background: ready ? RED : "var(--tc-raise)", color: ready ? "#FFFFFF" : "var(--tc-faint)" }}>
