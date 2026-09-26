@@ -51,6 +51,7 @@ const NAV = [
   { href: "/office", label: "Dashboard", icon: "M3 13h8V3H3zm10 8h8V11h-8zM3 21h8v-6H3zm10-18v6h8V3z" },
   { href: "/office/users", label: "Users", icon: "M16 11a4 4 0 1 0-8 0 4 4 0 0 0 8 0zM4 21a8 8 0 0 1 16 0" },
   { href: "/office/bets", label: "Bets", icon: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" },
+  { href: "/office/reports", label: "Reports", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
   { href: "/office/matches", label: "Matches", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4 4 3-1.5 4.5h-5L8 10z" },
   { href: "/office/audit", label: "Audit log", icon: "M12 8v4l3 2M12 3a9 9 0 1 0 9 9" },
 ];
@@ -96,6 +97,7 @@ export function AdminApp() {
   else if (section === "bets") page = <BetsPage />;
   else if (section === "matches") page = <MatchesPage flash={flash} />;
   else if (section === "audit") page = <AuditPage />;
+  else if (section === "reports") page = <ReportsPage />;
   else page = <Dashboard />;
 
   return (
@@ -651,6 +653,130 @@ function AuditPage() {
       <Head title="Audit log" sub="Every change made in this panel: who, what, when and why." />
       {!data ? <Loading error={error} /> : <AuditTable entries={data.entries} />}
       {data && <Pager total={data.total} pageSize={data.pageSize} />}
+    </>
+  );
+}
+
+// ---------- reports (read from the database's report views) ----------
+type Row = Record<string, string | number | null>;
+function downloadCsv(name: string, rows: Row[], cols: [string, string][]) {
+  const cell = (v: unknown) => {
+    const t = v == null ? "" : String(v);
+    return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
+  const csv = [cols.map(([, h]) => cell(h)).join(","), ...rows.map((r) => cols.map(([k]) => cell(r[k])).join(","))].join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+type Col = [key: string, label: string, kind?: "ngn" | "num" | "date" | "text"];
+function ReportTable({ title, sub, rows, cols, file, link }: { title: string; sub?: string; rows: Row[] | null; cols: Col[]; file: string; link?: (r: Row) => string }) {
+  const router = useRouter();
+  const fmt = (v: unknown, kind?: Col[2]) => v == null || v === "" ? "—"
+    : kind === "ngn" ? naira(Number(v)) : kind === "num" ? Number(v).toLocaleString("en-US")
+    : kind === "date" ? day(String(v)) : String(v);
+  return (
+    <div className="adm-section">
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 12, marginBottom: 10 }}>
+        <div><h2 style={{ margin: 0 }}>{title}</h2>{sub && <div className="adm-sub">{sub}</div>}</div>
+        <button className="adm-btn sm" disabled={!rows?.length} onClick={() => rows && downloadCsv(file, rows, cols.map(([k, l]) => [k, l]))}>Download CSV</button>
+      </div>
+      <div className="adm-table-wrap">
+        <table className="adm-table">
+          <thead><tr>{cols.map(([k, l, kind]) => <th key={k} className={kind === "ngn" || kind === "num" ? "adm-num" : undefined}>{l}</th>)}</tr></thead>
+          <tbody>
+            {rows?.map((r, i) => (
+              <tr key={i} className={link ? "click" : undefined} onClick={link ? () => router.push(link(r)) : undefined}>
+                {cols.map(([k, , kind]) => (
+                  <td key={k} className={kind === "ngn" || kind === "num" ? "adm-num" : undefined}
+                    style={k === "ggr_ngn" && r[k] != null ? { color: Number(r[k]) >= 0 ? "#5BD69A" : "#FF8A8E", fontWeight: 700 } : undefined}>{fmt(r[k], kind)}</td>
+                ))}
+              </tr>
+            ))}
+            {rows && !rows.length && <tr><td colSpan={cols.length} className="adm-empty">No data yet.</td></tr>}
+            {!rows && <tr><td colSpan={cols.length} className="adm-empty">Loading…</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+// Bars for one daily number; negative values (e.g. GGR on a losing day) hang below the line.
+function DayBars({ rows, k, color }: { rows: Row[]; k: string; color: string }) {
+  const vals = rows.map((r) => Number(r[k]) || 0);
+  const max = Math.max(1, ...vals.map(Math.abs));
+  const neg = vals.some((v) => v < 0);
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", gap: 3, height: 130 }}>
+      {rows.map((r, i) => {
+        const v = vals[i];
+        const h = Math.round((Math.abs(v) / max) * (neg ? 60 : 118));
+        return (
+          <div key={String(r.day)} title={`${r.day}: ${naira(v)}`} style={{ flex: 1, minWidth: 0, maxWidth: 40, display: "flex", flexDirection: "column", justifyContent: neg ? "center" : "flex-end" }}>
+            <div style={{ height: neg ? 60 : undefined, display: "flex", alignItems: "flex-end" }}>{v > 0 && <div style={{ width: "100%", height: h, background: color, borderRadius: "3px 3px 0 0" }} />}</div>
+            {neg && <div style={{ height: 60 }}>{v < 0 && <div style={{ width: "100%", height: h, background: "#E5484D", borderRadius: "0 0 3px 3px" }} />}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReportsPage() {
+  const [range, setRange] = useQueryState("days");
+  const days = Number(range) || 30;
+  const daily = useApi<{ rows: Row[] }>(`/admin/reports/daily?days=${days}`);
+  const leagues = useApi<{ rows: Row[] }>("/admin/reports/leagues");
+  const markets = useApi<{ rows: Row[] }>("/admin/reports/markets");
+  const players = useApi<{ rows: Row[] }>("/admin/reports/players?limit=50");
+  const rows = daily.data?.rows ?? null;
+  const sum = (k: string) => (rows ?? []).reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  return (
+    <>
+      <Head title="Reports" sub="Straight from the database's report views (naira, Lagos days). The same numbers any analytics tool sees.">
+        <div className="adm-tabs">
+          {[7, 30, 90, 365].map((d) => <button key={d} className={`adm-tab${days === d ? " on" : ""}`} onClick={() => setRange(String(d))}>{d === 365 ? "1 year" : `${d} days`}</button>)}
+        </div>
+      </Head>
+      {daily.error && <Loading error={daily.error} />}
+      {rows && (
+        <>
+          <div className="adm-grid">
+            <Stat k={`GGR · ${days} days`} v={naira(sum("ggr_ngn"))} tone={sum("ggr_ngn") >= 0 ? "#5BD69A" : "#FF8A8E"} s={`${sum("bets_settled").toLocaleString()} bets settled`} />
+            <Stat k="Staked" v={naira(sum("stake_ngn"))} s={`${sum("bets_placed").toLocaleString()} bets placed`} />
+            <Stat k="Paid out" v={naira(sum("payouts_ngn"))} s={`Bonuses ${naira(sum("bonuses_ngn"))}`} />
+            <Stat k="New players" v={sum("signups").toLocaleString()} s={`Deposits ${naira(sum("deposits_ngn"))} · withdrawals ${naira(sum("withdrawals_ngn"))}`} />
+          </div>
+          <div className="adm-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            <div className="adm-card"><h2 style={{ fontSize: 15, margin: "0 0 12px" }}>Staked per day</h2><DayBars rows={rows} k="stake_ngn" color="#F5C518" /></div>
+            <div className="adm-card"><h2 style={{ fontSize: 15, margin: "0 0 12px" }}>GGR per day</h2><DayBars rows={rows} k="ggr_ngn" color="#2AB572" /></div>
+          </div>
+        </>
+      )}
+      <ReportTable title="Daily numbers" sub="One row per day, newest first" file="daily-kpis" rows={rows ? [...rows].reverse() : null} cols={[
+        ["day", "Day", "date"], ["signups", "Sign-ups", "num"], ["active_logins", "Logged in", "num"], ["active_bettors", "Bettors", "num"],
+        ["bets_placed", "Bets", "num"], ["stake_ngn", "Staked", "ngn"], ["bets_settled", "Settled", "num"], ["payouts_ngn", "Paid out", "ngn"],
+        ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"], ["deposits_ngn", "Deposits", "ngn"], ["withdrawals_ngn", "Withdrawals", "ngn"],
+      ]} />
+      <ReportTable title="GGR by league" sub="Settled bets; a multiple's stake is split evenly across its legs" file="ggr-by-league" rows={leagues.data?.rows ?? null} cols={[
+        ["league", "League", "text"], ["country", "Country", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
+        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
+      ]} />
+      <ReportTable title="GGR by market" sub="Settled bets" file="ggr-by-market" rows={markets.data?.rows ?? null} cols={[
+        ["market_label", "Market", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
+        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
+      ]} />
+      <ReportTable title="Top players" sub="By amount staked (top 50). Click a row for the player." file="top-players" rows={players.data?.rows ?? null}
+        link={(r) => `/office/users/${r.user_id}`} cols={[
+        ["display_name", "Player", "text"], ["signup_source", "Came from", "text"], ["bets", "Bets", "num"], ["days_active", "Days active", "num"],
+        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"],
+        ["balance_ngn", "Balance", "ngn"], ["last_bet_at", "Last bet", "date"],
+      ]} />
     </>
   );
 }

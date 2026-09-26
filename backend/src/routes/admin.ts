@@ -468,6 +468,40 @@ router.post("/matches/:matchId/result", async (req: AuthedRequest, res) => {
   } catch (err) { fail(res, err); }
 });
 
+// ---------- reports (the v_* views in the database) ----------
+// Postgres numbers come back as BigInt / Decimal and dates as Date: turn them into plain JSON.
+const plain = (rows: Record<string, unknown>[]) => rows.map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k,
+  typeof v === "bigint" ? Number(v)
+  : v instanceof Prisma.Decimal ? Number(v.toString())
+  : v instanceof Date ? (k === "day" ? v.toISOString().slice(0, 10) : v.toISOString())
+  : v])));
+
+router.get("/reports/daily", async (req, res) => {
+  try {
+    const days = Math.min(366, Math.max(1, Number(req.query.days) || 30));
+    const rows = await prisma.$queryRaw<Record<string, unknown>[]>`
+      SELECT * FROM v_daily_kpis WHERE day > ((now() AT TIME ZONE 'UTC') + interval '1 hour')::date - ${days}::int ORDER BY day`;
+    res.json({ days, rows: plain(rows) });
+  } catch (err) { fail(res, err); }
+});
+
+router.get("/reports/leagues", async (_req, res) => {
+  try { res.json({ rows: plain(await prisma.$queryRaw<Record<string, unknown>[]>`SELECT * FROM v_ggr_by_league ORDER BY stake_ngn DESC`) }); }
+  catch (err) { fail(res, err); }
+});
+
+router.get("/reports/markets", async (_req, res) => {
+  try { res.json({ rows: plain(await prisma.$queryRaw<Record<string, unknown>[]>`SELECT * FROM v_ggr_by_market ORDER BY stake_ngn DESC`) }); }
+  catch (err) { fail(res, err); }
+});
+
+router.get("/reports/players", async (req, res) => {
+  try {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
+    res.json({ rows: plain(await prisma.$queryRaw<Record<string, unknown>[]>`SELECT * FROM v_player_value WHERE bets > 0 ORDER BY stake_ngn DESC LIMIT ${limit}`) });
+  } catch (err) { fail(res, err); }
+});
+
 // ---------- audit log ----------
 router.get("/audit", async (req, res) => {
   const p = page(req.query.page);

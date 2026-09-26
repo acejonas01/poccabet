@@ -1,0 +1,486 @@
+{
+  "title": "Poccabet — Business overview",
+  "uid": "poccabet-overview",
+  "timezone": "Africa/Lagos",
+  "schemaVersion": 39,
+  "version": 2,
+  "editable": true,
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "refresh": "5m",
+  "tags": [
+    "poccabet"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "GGR (selected period)",
+      "description": "Stakes minus payouts of bets settled in the period",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT coalesce(sum(ggr_ngn),0) AS ggr FROM v_daily_kpis WHERE $__timeFilter(day::timestamp)",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "prefix:₦",
+          "decimals": 2,
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Staked",
+      "description": "",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT coalesce(sum(stake_ngn),0) AS staked FROM v_daily_kpis WHERE $__timeFilter(day::timestamp)",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "prefix:₦",
+          "decimals": 2,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "yellow"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Bets placed",
+      "description": "",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT coalesce(sum(bets_placed),0) AS bets FROM v_daily_kpis WHERE $__timeFilter(day::timestamp)",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "New players",
+      "description": "",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 5,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT coalesce(sum(signups),0) AS signups FROM v_daily_kpis WHERE $__timeFilter(day::timestamp)",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "purple"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Staked, paid out and GGR per day",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 9,
+        "w": 16,
+        "x": 0,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT day::timestamp AS time, stake_ngn AS \"Staked\", payouts_ngn AS \"Paid out\", ggr_ngn AS \"GGR\" FROM v_daily_kpis WHERE $__timeFilter(day::timestamp) ORDER BY 1",
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "prefix:₦",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "barAlignment": 0
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "GGR"
+            },
+            "properties": [
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 3
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Staked"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Paid out"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Players per day",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 9,
+        "w": 8,
+        "x": 16,
+        "y": 5
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT day::timestamp AS time, signups AS \"Sign-ups\", active_logins AS \"Logged in\", active_bettors AS \"Placed a bet\" FROM v_daily_kpis WHERE $__timeFilter(day::timestamp) ORDER BY 1",
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 10
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "GGR by league (settled bets, all time)",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT league AS \"League\", country AS \"Country\", bets AS \"Bets\", stake_ngn AS \"Staked\", payouts_ngn AS \"Paid out\", ggr_ngn AS \"GGR\" FROM v_ggr_by_league ORDER BY stake_ngn DESC",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Staked|Paid out|GGR"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:₦"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "GGR by market (settled bets, all time)",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT market_label AS \"Market\", bets AS \"Bets\", stake_ngn AS \"Staked\", payouts_ngn AS \"Paid out\", ggr_ngn AS \"GGR\" FROM v_ggr_by_market ORDER BY stake_ngn DESC",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Staked|Paid out|GGR"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:₦"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Top players by amount staked (all time)",
+      "datasource": "grafana-postgresql-datasource",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": "grafana-postgresql-datasource",
+          "rawSql": "SELECT display_name AS \"Player\", signup_source AS \"Came from\", bets AS \"Bets\", days_active AS \"Days active\", stake_ngn AS \"Staked\", payouts_ngn AS \"Paid out\", ggr_ngn AS \"GGR\", bonuses_ngn AS \"Bonuses\", balance_ngn AS \"Balance\", last_bet_at AS \"Last bet\" FROM v_player_value WHERE bets > 0 ORDER BY stake_ngn DESC LIMIT 50",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "Staked|Paid out|GGR|Bonuses|Balance"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "prefix:₦"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "description": "From the Neon report views (v_*). Money in naira, days are Lagos days."
+}
