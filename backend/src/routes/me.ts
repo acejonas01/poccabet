@@ -132,7 +132,7 @@ router.post("/bonus", limit("bonus", 10, 15, byUser), async (req: AuthedRequest,
       if (mark.count !== 1) return false;
       const wallet = await tx.wallet.update({ where: { userId: me.id }, data: { balance: { increment: RULES.welcomeBonus } } });
       await tx.transaction.create({
-        data: { walletId: wallet.id, type: "BONUS", amount: RULES.welcomeBonus, balanceAfter: wallet.balance, reference: "welcome", status: "COMPLETED" },
+        data: { walletId: wallet.id, type: "BONUS", amount: RULES.welcomeBonus, balanceBefore: wallet.balance - RULES.welcomeBonus, balanceAfter: wallet.balance, reference: "welcome", status: "COMPLETED" },
       });
       return true;
     });

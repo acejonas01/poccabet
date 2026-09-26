@@ -126,7 +126,7 @@ async function placeLegacy(req: AuthedRequest, res: Response) {
         include: betInclude,
       });
       await tx.transaction.create({
-        data: { walletId: wallet.id, type: "BET_STAKE", amount: -stake, balanceAfter: wallet.balance, reference: created.id, status: "COMPLETED" },
+        data: { walletId: wallet.id, type: "BET_STAKE", amount: -stake, balanceBefore: wallet.balance + stake, balanceAfter: wallet.balance, reference: created.id, betId: created.id, status: "COMPLETED" },
       });
       return { created, balance: wallet.balance };
     });

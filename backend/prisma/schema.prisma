@@ -8,53 +8,73 @@ datasource db {
 }
 
 model User {
-  id              String    @id @default(cuid())
-  email           String?   @unique // older accounts; new ones sign up with a phone number
-  emailVerifiedAt DateTime?
-  bonusClaimedAt  DateTime? // welcome bonus (one per account, needs a verified email)
-  deletedAt       DateTime? // account deleted: personal details erased, login blocked; bets and ledger kept
-  phone           String?   @unique // E.164, e.g. +2348030999969
-  phoneVerifiedAt DateTime?
-  firstName       String?
-  lastName        String?
-  referralCode    String? // promotion / referral code entered at sign-up
-  ageConfirmedAt  DateTime? // when they confirmed they're over 18 (sign-up)
-  dateOfBirth     DateTime? @db.Date
-  passwordHash      String
-  passwordChangedAt DateTime? // sessions from before this are logged out (password reset / change)
-  displayName     String
-  role            String    @default("USER") // USER | ADMIN (admin panel access)
-  suspendedAt     DateTime? // set by an admin: can't log in or bet until lifted
-  suspendedReason String?
-  createdAt       DateTime  @default(now())
+  id                String    @id @default(cuid())
+  email             String?   @unique // older accounts; new ones sign up with a phone number
+  emailVerifiedAt   DateTime? @map("email_verified_at")
+  bonusClaimedAt    DateTime? @map("bonus_claimed_at") // welcome bonus (one per account, needs a verified email)
+  deletedAt         DateTime? @map("deleted_at") // account deleted: personal details erased, login blocked; bets and ledger kept
+  phone             String?   @unique // E.164, e.g. +2348030999969
+  phoneVerifiedAt   DateTime? @map("phone_verified_at")
+  firstName         String?   @map("first_name")
+  lastName          String?   @map("last_name")
+  referralCode      String?   @map("referral_code") // promotion / referral code entered at sign-up
+  ageConfirmedAt    DateTime? @map("age_confirmed_at") // when they confirmed they're over 18 (sign-up)
+  dateOfBirth       DateTime? @map("date_of_birth") @db.Date
+  passwordHash      String    @map("password_hash")
+  passwordChangedAt DateTime? @map("password_changed_at") // sessions from before this are logged out (password reset / change)
+  displayName       String    @map("display_name")
+  role              String    @default("USER") // USER | ADMIN (admin panel access)
+  suspendedAt       DateTime? @map("suspended_at") // set by an admin: can't log in or bet until lifted
+  suspendedReason   String?   @map("suspended_reason")
+  createdAt         DateTime  @default(now()) @map("created_at")
 
   wallet Wallet?
   bets   Bet[]
+
+  signupSource String?      @map("signup_source") // where they came from: utm_source / ref from the first visit
+  lastLoginAt  DateTime?    @map("last_login_at")
+  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at")
+  loginEvents  LoginEvent[]
+
+  @@map("users")
 }
 
 // Money is stored in kobo (whole numbers, ₦1 = 100 kobo) so it never picks up rounding errors.
 model Wallet {
   id      String @id @default(cuid())
-  userId  String @unique
+  userId  String @unique @map("user_id")
   user    User   @relation(fields: [userId], references: [id])
   balance Int    @default(0) // kobo
 
   transactions Transaction[]
+
+  currency      String   @default("NGN")
+  lockedBalance Int      @default(0) @map("locked_balance") // kobo held for pending withdrawals
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("wallets")
 }
 
 // The ledger: every change to a balance is one row (+ credit, − debit).
 model Transaction {
-  id           String   @id @default(cuid())
-  walletId     String
-  wallet       Wallet   @relation(fields: [walletId], references: [id])
-  type         String // DEPOSIT | WITHDRAWAL | BET_STAKE | BET_PAYOUT | BET_REFUND | BONUS | DEMO_TOPUP
-  amount       Int // kobo
-  balanceAfter Int? // kobo, wallet balance right after this row
-  reference    String? // what it belongs to: a bet id, a payment reference, …
-  status       String // PENDING | COMPLETED | FAILED
-  createdAt    DateTime @default(now())
+  id            String   @id @default(cuid())
+  walletId      String   @map("wallet_id")
+  wallet        Wallet   @relation(fields: [walletId], references: [id])
+  type          String // DEPOSIT | WITHDRAWAL | BET_STAKE | BET_PAYOUT | BET_REFUND | BONUS | DEMO_TOPUP
+  amount        Int // kobo
+  balanceAfter  Int?     @map("balance_after") // kobo, wallet balance right after this row
+  reference     String? // what it belongs to: a bet id, a payment reference, …
+  status        String // PENDING | COMPLETED | FAILED
+  createdAt     DateTime @default(now()) @map("created_at")
+  balanceBefore Int?     @map("balance_before") // kobo, wallet balance right before this row
+  betId         String?  @map("bet_id") // the bet a stake / payout / refund belongs to
+  bet           Bet?     @relation(fields: [betId], references: [id], onDelete: SetNull)
 
   @@index([walletId, createdAt])
+  @@index([betId])
+  @@index([type, createdAt])
+  @@map("wallet_transactions")
 }
 
 model Sport {
@@ -62,92 +82,142 @@ model Sport {
   name   String
   slug   String  @unique
   events Event[]
+
+  leagues League[]
+
+  @@map("sports")
 }
 
 model Event {
   id        String   @id @default(cuid())
-  sportId   String
+  sportId   String   @map("sport_id")
   sport     Sport    @relation(fields: [sportId], references: [id])
   league    String
-  homeTeam  String
-  awayTeam  String
-  startTime DateTime
+  homeTeam  String   @map("home_team")
+  awayTeam  String   @map("away_team")
+  startTime DateTime @map("start_time")
   status    String // SCHEDULED | LIVE | FINISHED | CANCELLED
 
   markets Market[]
+
+  externalId  String?        @unique @map("external_id") // feed match id, e.g. "af-12345" (null = old Theme D events)
+  leagueId    String?        @map("league_id")
+  leagueRef   League?        @relation(fields: [leagueId], references: [id])
+  country     String         @default("")
+  homeScore   Int?           @map("home_score")
+  awayScore   Int?           @map("away_score")
+  htHomeScore Int?           @map("ht_home_score")
+  htAwayScore Int?           @map("ht_away_score")
+  result      String? // "1" | "X" | "2" once finished, "VOID" if it didn't count
+  settledAt   DateTime?      @map("settled_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @default(now()) @updatedAt @map("updated_at")
+  legs        BetSelection[]
+
+  @@index([startTime])
+  @@index([leagueId])
+  @@map("events")
 }
 
 model Market {
   id      String @id @default(cuid())
-  eventId String
+  eventId String @map("event_id")
   event   Event  @relation(fields: [eventId], references: [id])
   type    String // MATCH_WINNER | OVER_UNDER | BOTH_TEAMS_TO_SCORE | ...
   name    String
 
   outcomes Outcome[]
+
+  code      String? // market id used by the site: 1x2, ou, gg, dc, … (null = old Theme D markets)
+  status    String         @default("OPEN") // OPEN | SUSPENDED | SETTLED
+  settledAt DateTime?      @map("settled_at")
+  legs      BetSelection[]
+
+  @@unique([eventId, code])
+  @@map("markets")
 }
 
 model Outcome {
   id       String @id @default(cuid())
-  marketId String
+  marketId String @map("market_id")
   market   Market @relation(fields: [marketId], references: [id])
   label    String // e.g. "Home", "Draw", "Away", "Over 2.5"
   odds     Float
 
   selections BetSelection[]
+
+  code   String? // column label: "1", "X", "2", "Over", "GG", … (null = old Theme D outcomes)
+  status String  @default("OPEN") // OPEN | SUSPENDED | SETTLED
+  result String? // WON | LOST | VOID once settled
+
+  @@unique([marketId, code])
+  @@map("selections")
 }
 
 model Bet {
   id              String    @id @default(cuid())
   ticket          String    @unique // short public code for "Check a bet", e.g. "PB7K2M9Q"
-  userId          String
+  userId          String    @map("user_id")
   user            User      @relation(fields: [userId], references: [id])
   stake           Int // kobo
-  totalOdds       Float     @default(1)
-  potentialPayout Int // kobo
+  totalOdds       Float     @default(1) @map("total_odds")
+  potentialPayout Int       @map("potential_payout") // kobo
   payout          Int? // kobo actually paid once settled (0 = lost; refunds count too)
   type            String // SINGLE | ACCUMULATOR
   status          String // PENDING | WON | LOST | CASHED_OUT | VOID
   source          String    @default("legacy") // feed that priced it: simulation | live | legacy
-  idempotencyKey  String? // one per slip submission, so a double tap can't place it twice
-  createdAt       DateTime  @default(now())
-  settledAt       DateTime?
+  idempotencyKey  String?   @map("idempotency_key") // one per slip submission, so a double tap can't place it twice
+  createdAt       DateTime  @default(now()) @map("placed_at")
+  settledAt       DateTime? @map("settled_at")
 
-  selections BetSelection[]
+  selections   BetSelection[]
+  transactions Transaction[]
 
   @@unique([userId, idempotencyKey])
   @@index([userId, createdAt])
+  @@index([status])
+  @@index([createdAt])
+  @@map("bets")
 }
 
 // A copy of what was bet on, taken at placement, so settling never depends on the feed
 // still having the match. outcomeId is only set by the old (Theme D) database events.
 model BetSelection {
   id              String    @id @default(cuid())
-  betId           String
+  betId           String    @map("bet_id")
   bet             Bet       @relation(fields: [betId], references: [id])
-  outcomeId       String?
+  outcomeId       String?   @map("selection_id")
   outcome         Outcome?  @relation(fields: [outcomeId], references: [id], onDelete: SetNull)
-  matchId         String    @default("") // feed match id, e.g. "af-12345"
+  matchId         String    @default("") @map("match_id") // feed match id, e.g. "af-12345"
   home            String    @default("")
   away            String    @default("")
   league          String    @default("")
   country         String    @default("")
   kickoff         DateTime?
   market          String    @default("") // market id: 1x2, ou, gg, dc, …
-  marketLabel     String    @default("")
+  marketLabel     String    @default("") @map("market_label")
   selection       String    @default("") // column label: "1", "X", "Over", "GG", …
-  oddsAtPlacement Float
+  oddsAtPlacement Float     @map("odds")
   result          String // PENDING | WON | LOST | VOID
+  eventId         String?   @map("event_id")
+  event           Event?    @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  marketId        String?   @map("market_id")
+  marketRef       Market?   @relation(fields: [marketId], references: [id], onDelete: SetNull)
+  settledAt       DateTime? @map("settled_at")
 
   @@index([matchId])
   @@index([result, kickoff]) // settlement: "still pending, match should be over"
+  @@index([eventId])
+  @@map("bet_legs")
 }
 
 // "Book bet": a saved slip anyone can load with its code.
 model BookedSlip {
   code       String   @id
   selections Json // [{ matchId, market, selection }]
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("booked_slips")
 }
 
 // A bettor adding a selection to their bet slip — drives "Pick of the day" (most picked today).
@@ -155,22 +225,23 @@ model BookedSlip {
 model Pick {
   id        String   @id @default(cuid())
   day       String // UTC yyyy-mm-dd
-  deviceId  String
-  matchId   String
+  deviceId  String   @map("device_id")
+  matchId   String   @map("match_id")
   market    String // 1x2, ou, gg, dc, …
   selection String // column label: "1", "X", "Over", "GG", …
   home      String
   away      String
   league    String
   country   String   @default("")
-  homeLogo  String   @default("")
-  awayLogo  String   @default("")
+  homeLogo  String   @default("") @map("home_logo")
+  awayLogo  String   @default("") @map("away_logo")
   kickoff   DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([day, deviceId, matchId])
   @@index([day])
+  @@map("picks")
 }
 
 // One-time codes (SMS for sign-up, email for verifying an email). Only a hash of the code is
@@ -179,36 +250,68 @@ model OtpCode {
   id         String    @id @default(cuid())
   phone      String // where the code went: a phone number, or an email address for EMAIL_VERIFY
   purpose    String // SIGNUP | EMAIL_VERIFY
-  codeHash   String
+  codeHash   String    @map("code_hash")
   attempts   Int       @default(0)
-  expiresAt  DateTime
-  consumedAt DateTime?
-  createdAt  DateTime  @default(now())
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
 
   @@index([phone, purpose, createdAt])
+  @@map("otp_codes")
 }
 
 // Admin panel: every change an admin makes (who, what, to what, and the details), newest first.
 model AuditLog {
   id         String   @id @default(cuid())
-  adminId    String
+  adminId    String   @map("admin_id")
   action     String // e.g. USER_SUSPEND, BALANCE_ADJUST, BET_VOID, BET_SETTLE, MATCH_SUSPEND
-  targetType String // USER | BET | MATCH
-  targetId   String
+  targetType String   @map("target_type") // USER | BET | MATCH
+  targetId   String   @map("target_id")
   details    Json?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([targetType, targetId])
+  @@map("audit_logs")
 }
 
 // Matches an admin has taken off the board: no new bets, odds shown locked.
 model SuspendedMatch {
-  matchId   String   @id // feed match id, e.g. "af-12345"
+  matchId   String   @id @map("match_id") // feed match id, e.g. "af-12345"
   home      String   @default("")
   away      String   @default("")
   league    String   @default("")
   reason    String
-  createdBy String
-  createdAt DateTime @default(now())
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("suspended_matches")
+}
+
+// A league (or division / competition) inside a sport, e.g. England · Premier League.
+model League {
+  id        String   @id @default(cuid())
+  sportId   String   @map("sport_id")
+  sport     Sport    @relation(fields: [sportId], references: [id])
+  name      String
+  country   String   @default("")
+  slug      String   @unique // "england-premier-league", same as the site's league pages
+  createdAt DateTime @default(now()) @map("created_at")
+  events    Event[]
+
+  @@map("leagues")
+}
+
+// Every log-in (and sign-up / password reset that logs in): drives active-player numbers.
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  method    String // PASSWORD | SIGNUP | RESET
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("login_events")
 }

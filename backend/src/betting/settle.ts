@@ -3,6 +3,7 @@
 import { prisma } from "../lib/prisma";
 import { betOutcome, gradeSelection } from "./grade";
 import { getResults } from "./results";
+import { recordResult } from "./catalog";
 
 const MATCH_OVER_AFTER = 105 * 60_000; // kickoff + 105 min: a match (with half-time) should be finished
 const GIVE_UP_AFTER = 72 * 3600_000; // no result 3 days after kickoff: void the selection (stake back on singles)
@@ -33,7 +34,12 @@ export async function settlePending(now = Date.now(), batch = 300) {
   let graded = 0;
   for (const [result, ids] of Object.entries(byGrade)) {
     if (!ids.length) continue;
-    graded += (await prisma.betSelection.updateMany({ where: { id: { in: ids }, result: "PENDING" }, data: { result } })).count;
+    graded += (await prisma.betSelection.updateMany({ where: { id: { in: ids }, result: "PENDING" }, data: { result, settledAt: new Date(now) } })).count;
+  }
+  // Keep each match's result on its catalog event (score, 1/X/2, selection results).
+  for (const [matchId, r] of results) {
+    if (r.status === "FINISHED") await recordResult(matchId, { status: "FINISHED", score: r }, now);
+    else if (r.status === "VOID") await recordResult(matchId, { status: "VOID" }, now);
   }
 
   // 3. Settle the bets those selections belong to.
@@ -62,8 +68,10 @@ export async function settleBet(betId: string, now = Date.now()) {
           walletId: wallet.id,
           type: out.status === "VOID" ? "BET_REFUND" : "BET_PAYOUT",
           amount: out.payout,
+          balanceBefore: wallet.balance - out.payout,
           balanceAfter: wallet.balance,
           reference: bet.id,
+          betId: bet.id,
           status: "COMPLETED",
         },
       });

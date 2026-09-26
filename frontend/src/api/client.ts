@@ -1,5 +1,28 @@
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
+// Where this visitor first came from (?utm_source= / ?ref= on the first visit, else the site that
+// linked here). Kept on the device and sent with sign-up, for "which campaign brought players".
+const SOURCE_KEY = "pocca-source";
+function firstTouchSource(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const saved = localStorage.getItem(SOURCE_KEY);
+    if (saved) return saved;
+    const q = new URLSearchParams(window.location.search);
+    let src = q.get("utm_source") || q.get("ref") || q.get("source") || "";
+    if (!src && document.referrer) {
+      const host = new URL(document.referrer).hostname.replace(/^www\./, "");
+      if (host && host !== window.location.hostname) src = host;
+    }
+    if (!src) return undefined;
+    localStorage.setItem(SOURCE_KEY, src.slice(0, 60));
+    return src.slice(0, 60);
+  } catch {
+    return undefined;
+  }
+}
+if (typeof window !== "undefined") firstTouchSource(); // remember it on the first page view
+
 function getToken() {
   return localStorage.getItem("token");
 }
@@ -46,7 +69,7 @@ export const api = {
   signup: (data: { email: string; password: string; displayName: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/signup", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, signupSource: firstTouchSource() }),
     }),
   // Phone sign-up: send a code → check it → create the account with the verification token.
   otpStart: (phone: string, email?: string) =>
@@ -64,7 +87,7 @@ export const api = {
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/reset/complete", { method: "POST", body: JSON.stringify({ resetToken, password }) }),
   signupPhone: (data: SignupDetails & { verificationToken: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/signup/phone", {
-      method: "POST", body: JSON.stringify(data),
+      method: "POST", body: JSON.stringify({ ...data, signupSource: firstTouchSource() }),
     }),
   login: (data: { email?: string; phone?: string; password: string }) =>
     request<{ token: string; user: any; wallet: { balance: number; demo?: boolean } }>("/api/auth/login", {

@@ -16,6 +16,7 @@ import { currentMatches } from "../betting/feed";
 import { gradeSelection } from "../betting/grade";
 import { settleBet } from "../betting/settle";
 import { forgetSuspensions } from "../betting/suspensions";
+import { recordResult } from "../betting/catalog";
 import { normaliseCode } from "../betting/codes";
 
 const router = Router();
@@ -107,8 +108,8 @@ router.get("/stats", async (_req, res) => {
       prisma.transaction.aggregate({ where: { type: "BONUS" }, _sum: { amount: true } }),
       // Last 14 Lagos days: bets placed and amount staked per day.
       prisma.$queryRaw<{ day: string; bets: bigint; stake: bigint | null }[]>`
-        SELECT to_char(("createdAt" + interval '1 hour')::date, 'YYYY-MM-DD') AS day, count(*) AS bets, sum("stake") AS stake
-        FROM "Bet" WHERE "createdAt" >= ${lagosDayStart(13)} GROUP BY 1 ORDER BY 1`,
+        SELECT to_char((placed_at + interval '1 hour')::date, 'YYYY-MM-DD') AS day, count(*) AS bets, sum(stake) AS stake
+        FROM bets WHERE placed_at >= ${lagosDayStart(13)} GROUP BY 1 ORDER BY 1`,
     ]);
     const ggr = (a: typeof ggrAll) => toNaira((a._sum.stake ?? 0) - (a._sum.payout ?? 0));
     res.json({
@@ -222,7 +223,7 @@ router.post("/users/:id/adjust", async (req: AuthedRequest, res) => {
       });
       if (moved.count !== 1) throw new AdminError("CANT_ADJUST", kobo < 0 ? "The balance is too low for that debit" : "Wallet not found", 409);
       const wallet = await tx.wallet.findUniqueOrThrow({ where: { userId: id } });
-      await tx.transaction.create({ data: { walletId: wallet.id, type: "ADJUSTMENT", amount: kobo, balanceAfter: wallet.balance, reference: `admin:${req.userId}`, status: "COMPLETED" } });
+      await tx.transaction.create({ data: { walletId: wallet.id, type: "ADJUSTMENT", amount: kobo, balanceBefore: wallet.balance - kobo, balanceAfter: wallet.balance, reference: `admin:${req.userId}`, status: "COMPLETED" } });
       await audit(tx, req, "BALANCE_ADJUST", "USER", id, { amount: body.amount, reason: body.reason, balanceAfter: toNaira(wallet.balance) });
       return wallet.balance;
     });
@@ -324,7 +325,7 @@ async function setLegs(req: AuthedRequest, betId: string, where: Prisma.BetSelec
     const bet = await tx.bet.findUnique({ where: { id: betId }, select: { status: true } });
     if (!bet) throw new AdminError("NOT_FOUND", "Bet not found", 404);
     if (bet.status !== "PENDING") throw new AdminError("SETTLED", "This bet is already settled", 409);
-    const r = await tx.betSelection.updateMany({ where: { betId, ...where }, data: { result } });
+    const r = await tx.betSelection.updateMany({ where: { betId, ...where }, data: { result, settledAt: new Date() } });
     if (!r.count) throw new AdminError("NO_CHANGE", "Nothing to change on this bet", 409);
     await audit(tx, req, action, "BET", betId, { ...details, legs: r.count });
   });
@@ -438,7 +439,7 @@ async function settleMatchLegs(req: AuthedRequest, matchId: string, grade: (leg:
   }
   let changed = 0;
   await prisma.$transaction(async (tx) => {
-    for (const [result, ids] of byResult) changed += (await tx.betSelection.updateMany({ where: { id: { in: ids }, result: "PENDING" }, data: { result } })).count;
+    for (const [result, ids] of byResult) changed += (await tx.betSelection.updateMany({ where: { id: { in: ids }, result: "PENDING" }, data: { result, settledAt: new Date() } })).count;
     await audit(tx, req, action, "MATCH", matchId, { ...details, legs: changed, skipped });
   });
   let settled = 0;
@@ -449,7 +450,10 @@ async function settleMatchLegs(req: AuthedRequest, matchId: string, grade: (leg:
 router.post("/matches/:matchId/void", async (req: AuthedRequest, res) => {
   try {
     const why = reason.parse(req.body?.reason);
-    res.json({ ok: true, ...(await settleMatchLegs(req, String(req.params.matchId), () => "VOID", "MATCH_VOID", { reason: why })) });
+    const matchId = String(req.params.matchId);
+    const out = await settleMatchLegs(req, matchId, () => "VOID", "MATCH_VOID", { reason: why });
+    await recordResult(matchId, { status: "VOID" });
+    res.json({ ok: true, ...out });
   } catch (err) { fail(res, err); }
 });
 
@@ -458,6 +462,7 @@ router.post("/matches/:matchId/result", async (req: AuthedRequest, res) => {
     const goals = z.number().int().min(0).max(50);
     const body = z.object({ home: goals, away: goals, htHome: goals.nullable().default(null), htAway: goals.nullable().default(null), reason }).parse(req.body);
     const score = { home: body.home, away: body.away, htHome: body.htHome, htAway: body.htAway };
+    await recordResult(String(req.params.matchId), { status: "FINISHED", score });
     const out = await settleMatchLegs(req, String(req.params.matchId), (l) => gradeSelection(l.market, l.selection, score), "MATCH_RESULT", { score: `${body.home}-${body.away}${body.htHome != null ? ` (HT ${body.htHome}-${body.htAway})` : ""}`, reason: body.reason });
     res.json({ ok: true, ...out });
   } catch (err) { fail(res, err); }

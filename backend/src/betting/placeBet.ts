@@ -7,6 +7,7 @@ import { FEED_SOURCE, findMatches } from "./feed";
 import { formatNaira, toNaira } from "./money";
 import { type LegRequest, type OddsPolicy, type PricedLeg, payoutKobo, priceLegs, totalOdds } from "./pricing";
 import { RULES } from "./rules";
+import { catalogLegs } from "./catalog";
 
 export class BetError extends Error {
   constructor(public code: string, message: string, public status = 400, public details?: unknown) {
@@ -113,6 +114,9 @@ export async function placeBets(userId: string, input: PlaceInput, attempt = 0):
     }
   }
   const totalStake = stakeKobo * planned.length;
+  // Store the matches / markets / selections in the catalog (outside the money transaction).
+  const ids = new Map(legs.map((l, i) => [l, i]));
+  const catalog = await catalogLegs(legs);
 
   // ---- take the stake and save, all or nothing ----
   try {
@@ -156,6 +160,7 @@ export async function placeBets(userId: string, input: PlaceInput, attempt = 0):
                 selection: l.selection,
                 oddsAtPlacement: l.odds,
                 result: "PENDING",
+                ...(catalog[ids.get(l)!] ?? {}),
               })),
             },
           },
@@ -163,7 +168,7 @@ export async function placeBets(userId: string, input: PlaceInput, attempt = 0):
         });
         running -= stakeKobo;
         await tx.transaction.create({
-          data: { walletId: wallet.id, type: "BET_STAKE", amount: -stakeKobo, balanceAfter: running, reference: bet.id, status: "COMPLETED" },
+          data: { walletId: wallet.id, type: "BET_STAKE", amount: -stakeKobo, balanceBefore: running + stakeKobo, balanceAfter: running, reference: bet.id, betId: bet.id, status: "COMPLETED" },
         });
         created.push(bet);
       }

@@ -1,4 +1,4 @@
-import { Router, type Response } from "express";
+import { Router, type Request, type Response } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { Prisma, type User, type Wallet } from "@prisma/client";
@@ -18,10 +18,22 @@ const newWallet = () => ({
   create: {
     balance: RULES.startingBalance,
     ...(RULES.startingBalance
-      ? { transactions: { create: { type: "DEMO_TOPUP", amount: RULES.startingBalance, balanceAfter: RULES.startingBalance, status: "COMPLETED" } } }
+      ? { transactions: { create: { type: "DEMO_TOPUP", amount: RULES.startingBalance, balanceBefore: 0, balanceAfter: RULES.startingBalance, status: "COMPLETED" } } }
       : {}),
   },
 });
+
+// Every successful log-in (sign-up and password reset log in too): last_login_at + login_events.
+// Never blocks the log-in itself.
+async function recordLogin(req: Request, userId: string, method: "PASSWORD" | "SIGNUP" | "RESET") {
+  const userAgent = String(req.headers["user-agent"] ?? "").slice(0, 200) || null;
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
+    prisma.loginEvent.create({ data: { userId, method, userAgent } }),
+  ]).catch((err) => console.error("login event not saved:", err));
+}
+// Where a new player came from (utm_source / ref of their first visit), kept short and plain.
+const sourceOf = (v: unknown) => String(v ?? "").trim().toLowerCase().replace(/[^a-z0-9_.-]/g, "").slice(0, 60) || null;
 
 function sendSession(res: Response, user: User & { wallet: Wallet | null }, status = 200) {
   const token = signSession(user.id);
@@ -140,6 +152,7 @@ router.post("/reset/complete", limits.otpVerify, async (req, res) => {
       data: { passwordHash: await bcrypt.hash(password, 10), passwordChangedAt: new Date() },
       include: { wallet: true },
     });
+    await recordLogin(req, updated.id, "RESET");
     sendSession(res, updated);
   } catch (err) {
     otpFail(res, err);
@@ -193,12 +206,14 @@ router.post("/signup/phone", limits.signup, async (req, res) => {
         ageConfirmedAt: now,
         dateOfBirth: new Date(`${dateOfBirth}T00:00:00Z`),
         referralCode: referralCode || null,
+        signupSource: sourceOf(req.body?.signupSource),
         displayName: firstName,
         passwordHash: await bcrypt.hash(password, 10),
         wallet: newWallet(),
       },
       include: { wallet: true },
     });
+    await recordLogin(req, user.id, "SIGNUP");
     sendSession(res, user, 201);
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
@@ -229,9 +244,10 @@ router.post("/signup", limits.signup, async (req, res) => {
   }
 
   const user = await prisma.user.create({
-    data: { email, passwordHash: await bcrypt.hash(password, 10), displayName, wallet: newWallet() },
+    data: { email, passwordHash: await bcrypt.hash(password, 10), displayName, signupSource: sourceOf(req.body?.signupSource), wallet: newWallet() },
     include: { wallet: true },
   });
+  await recordLogin(req, user.id, "SIGNUP");
   sendSession(res, user, 201);
 });
 
@@ -258,6 +274,7 @@ router.post("/login", ...limits.login, async (req, res) => {
     return res.status(401).json({ error: phone ? "Wrong phone number or password" : "Wrong email or password", code: "INVALID_CREDENTIALS" });
   }
   if (user.suspendedAt) return res.status(403).json({ error: SUSPENDED_MESSAGE, code: "ACCOUNT_SUSPENDED" });
+  await recordLogin(req, user.id, "PASSWORD");
   sendSession(res, user);
 });
 
