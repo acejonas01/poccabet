@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchCode, matchesDate } from "./data";
+import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchCode, matchHref, matchesDate } from "./data";
 import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
@@ -216,6 +216,7 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
 }) {
   const leagues = groupByLeague(limit ? matches.slice(0, limit) : matches);
   const busy = useMinLoading(loading && matches.length === 0);
+  const navigate = useNavigate();
   let row = 0;
   return (
     <div style={{ ...card, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -243,7 +244,8 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
                   <span title="Match ID" style={{ fontSize: 10, fontWeight: 700, color: ACCENT, whiteSpace: "nowrap" }}>{matchCode(m.id)}</span>
                 </div>
               )}
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+              {/* Team names open the match page. */}
+              <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", color: "var(--tc-text)", textDecoration: "none" }}>
                 {live ? (
                   ([[m.home, m.homeLogo, m.hs, m.red === "home"], [m.away, m.awayLogo, m.as, m.red === "away"]] as const).map(([name, logo, score, red]) => (
                     <div key={name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, lineHeight: "22px" }}>
@@ -265,8 +267,8 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
                     ))}
                   </>
                 )}
-              </div>
-              <a href="#" onClick={(e) => e.preventDefault()} aria-label={`All ${marketCount(m.o, m.ou)} markets for ${m.home} vs ${m.away}`} style={{ width: 44, flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>+{marketCount(m.o, m.ou)}</a>
+              </a>
+              <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} aria-label={`All ${marketCount(m.o, m.ou)} markets for ${m.home} vs ${m.away}`} style={{ width: 44, flexShrink: 0, fontSize: 12, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap" }}>+{marketCount(m.o, m.ou)}</a>
               <OddsGroups m={m} pill={pill} flashBase={(row++) * 5} />
             </div>
           ))}
@@ -376,7 +378,7 @@ export function DesktopHome({ upcoming, live, tab, setTab, loaded = true }: {
         onLive={() => { setTab("live"); setLimit(15); }} onUpcoming={() => { setTab("upcoming"); setLimit(15); }} onTop={() => { setTab("top"); setLimit(15); }}
         right={isLive ? <Chip on>Football · {live.length}</Chip> : dateOptions().map((d) => <Chip key={d.id} on={d.id === dateId} onClick={() => { setDateId(d.id); setLimit(15); }}>{d.label}</Chip>)} />
 
-      {featuredMatch && <FeaturedMatchWide f={featuredMatch} onMoreMarkets={() => setPill("dc")} />}
+      {featuredMatch && <FeaturedMatchWide f={featuredMatch} />}
 
       <LeagueTable matches={list} pill={pill} setPill={setPill} live={isLive} limit={limit} onMore={() => setLimit((l) => l + 15)} loading={!loaded} />
 
@@ -427,8 +429,10 @@ export function DesktopListPage({ title, sub, country, liveList, upList, loaded,
 // ---------- live ----------
 // Featured match at the top of each table tab (wide). Live: score, minute and stats.
 // Upcoming: kickoff time and the chance implied by the odds.
-function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: () => void }) {
+function FeaturedMatchWide({ f }: { f: TCMatch }) {
   const { isOn, pick } = usePicker();
+  const navigate = useNavigate();
+  const open = () => navigate(matchHref(f));
   return (
     <section aria-label={f.live ? "Featured live match" : "Featured match"} style={{ display: "flex", gap: 28, padding: "20px 24px", background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 }}>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
@@ -475,8 +479,8 @@ function FeaturedMatchWide({ f, onMoreMarkets }: { f: TCMatch; onMoreMarkets: ()
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
-          <button onClick={onMoreMarkets} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
+          <button onClick={open} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 700 }}>{f.live ? "Match tracker" : "Match preview"}</button>
+          <button onClick={open} style={{ flex: 1, height: 40, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 700 }}>+{marketCount(f.o, f.ou)} {f.live ? "live markets" : "markets"}</button>
         </div>
       </div>
     </section>

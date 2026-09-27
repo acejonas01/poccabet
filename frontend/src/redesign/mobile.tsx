@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
 import { useTheme } from "../context/ThemeContext";
 import {
-  type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchesDate,
+  type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchHref, matchesDate,
 } from "./data";
 import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
@@ -240,9 +240,12 @@ function UpcomingRow({ m, market, onMore, timeOnly }: { m: TCMatch; market: stri
     <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3 }}>
         <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{timeOnly ? hhmm(m.start) : kickoff(m.start)}</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.away} url={m.awayLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.away}</span></span>
-        <a href="#" onClick={(e) => { e.preventDefault(); onMore(); }} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>+{marketCount(m.o, m.ou)} markets</a>
+        {/* Team names and "+ markets" open the match page. */}
+        <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); onMore(); }} style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0, color: "var(--tc-text)", textDecoration: "none" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.home} url={m.homeLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.home}</span></span>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}><Crest name={m.away} url={m.awayLogo} size={18} /><span style={{ fontSize: 14, fontWeight: 700, ...ellipsis }}>{m.away}</span></span>
+        </a>
+        <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); onMore(); }} style={{ fontSize: 12, fontWeight: 700, textDecoration: "none" }}>+{marketCount(m.o, m.ou)} markets</a>
       </div>
       <div style={{ display: "flex", gap: 6 }}>{odds}</div>
     </div>
@@ -255,6 +258,7 @@ function RedCard({ show }: { show: boolean }) {
 
 function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: number }) {
   const odds = useOdds(m, market, "live", index * 3);
+  const navigate = useNavigate();
   const locked = !m.o[0];
   const team = (name: string, logo: string, score: number, red: boolean) => (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, height: 24, lineHeight: "24px" }}>
@@ -273,10 +277,11 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
         <div style={{ width: 26, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "flex-start", height: 48 }}>
           <span style={{ fontSize: 12, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>{m.clock}</span>
         </div>
-        <div style={{ flexGrow: 1, minWidth: 0, height: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0 }}>
+        {/* Tapping the teams opens the match page (stats, timeline, every market). */}
+        <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} style={{ flexGrow: 1, minWidth: 0, height: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 0, color: "var(--tc-text)", textDecoration: "none" }}>
           {team(m.home, m.homeLogo, m.hs, m.red === "home")}
           {team(m.away, m.awayLogo, m.as, m.red === "away")}
-        </div>
+        </a>
         <div style={{ display: "flex", gap: 6 }} aria-disabled={locked}>{odds}</div>
       </div>
     </div>
@@ -751,7 +756,7 @@ function FeaturedMatchCard({ f, onOpenMatch }: { f: TCMatch; onOpenMatch: (m: TC
         </div>
       </div>
       <div style={{ display: "flex", gap: 8 }}>
-        <button style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
           <TrackerIcon />{f.live ? "Match tracker" : "Match preview"}
         </button>
         <button onClick={() => onOpenMatch(f)} style={{ flex: 1, height: 44, borderRadius: 10, border: "1px solid var(--tc-outline-2)", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700 }}>

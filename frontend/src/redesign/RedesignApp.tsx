@@ -5,11 +5,12 @@ import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "r
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
-import { type TCMatch, useTCData } from "./data";
+import { type TCMatch, matchHref, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { ACCENT, BetSlipBody, MarketsSheet, MatchMarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { ACCENT, BetSlipBody, MarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { MatchPage } from "./matchpage";
 import { SUPPORT_EMAIL, ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
@@ -37,18 +38,16 @@ export function RedesignApp() {
   const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
   const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
   const [market, setMarket] = useStoredState("pocca-home-market", "1x2", "session");
-  const [sheet, setSheet] = useState<"markets" | "match" | "shortcuts" | "support" | null>(null);
+  const [sheet, setSheet] = useState<"markets" | "shortcuts" | "support" | null>(null);
   // A shared booking link (/?book=CODE) loads the slip; on phones, open it (desktop shows it in the rail).
   useBookingLink(() => { if (!desk) navigate("/betslip"); });
   // A slip brought back after a reload gets today's prices (and loses games that are over).
   const feedMatches = useMemo(() => [...data.live, ...data.upcoming], [data.live, data.upcoming]);
   useSyncSlipWithFeed(feedMatches, data.upcomingLoaded && data.liveLoaded);
-  // Match whose markets sheet is open — looked up live so its odds keep updating.
-  const [matchId, setMatchId] = useState<string | null>(null);
-  const sheetMatch = matchId ? [...data.live, ...data.upcoming].find((x) => x.id === matchId) : undefined;
   // Search index over today's feed: teams, leagues and matches (see search.ts).
   const searchIndex = useMemo(() => buildIndex(data.live, data.upcoming), [data.live, data.upcoming]);
-  const openMatch = (m: TCMatch) => { setMatchId(m.id); setSheet("match"); };
+  // Tapping a match (row, "+ markets", search result…) opens its page.
+  const openMatch = (m: TCMatch) => navigate(matchHref(m));
 
   const goHome = () => { setTab("upcoming"); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
@@ -89,7 +88,7 @@ export function RedesignApp() {
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
   ) : (
     <MobileHome upcoming={data.upcoming} live={data.live} loaded={data.upcomingLoaded} liveLoaded={data.liveLoaded} tab={tab} setTab={setTab} dateId={dateId} setDateId={setDateId}
-      openSheet={() => setSheet("markets")} onOpenMatch={(m) => { setMatchId(m.id); setSheet("match"); }}
+      openSheet={() => setSheet("markets")} onOpenMatch={openMatch}
       market={market} setMarket={setMarket} />
   );
 
@@ -105,7 +104,7 @@ export function RedesignApp() {
   );
   const listProps = {
     upcoming: data.upcoming, live: data.live, loaded: data.upcomingLoaded, market, setMarket,
-    openSheet: () => setSheet("markets"), onOpenMatch: (m: TCMatch) => { setMatchId(m.id); setSheet("match"); },
+    openSheet: () => setSheet("markets"), onOpenMatch: openMatch,
   };
   // Mobile keeps the bottom free for the fixed nav and the Betslip ticket that sticks up above it.
   const page = (el: ReactNode) => (
@@ -134,6 +133,9 @@ export function RedesignApp() {
         <Route path="/search" element={desk
           ? deskShell(<SearchResultsPage {...listProps} index={searchIndex} View={DesktopListPage} />)
           : <SearchResultsPage {...listProps} index={searchIndex} View={MatchListPage} />} />
+        <Route path="/match/:slug" element={desk
+          ? deskShell(<MatchPage matches={feedMatches} loaded={data.upcomingLoaded && data.liveLoaded} desktop />)
+          : page(<MatchPage matches={feedMatches} loaded={data.upcomingLoaded && data.liveLoaded} />)} />
         <Route path="/login" element={authPage(<RedesignLogin />)} />
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/forgot-password" element={authPage(<RedesignForgot />)} />
@@ -161,7 +163,6 @@ export function RedesignApp() {
       {sheet === "markets" && (
         <MarketsSheet active={market} onPick={(id) => { setMarket(id); setSheet(null); }} onClose={() => setSheet(null)} />
       )}
-      {sheet === "match" && sheetMatch && <MatchMarketsSheet m={sheetMatch} onClose={() => setSheet(null)} />}
       {sheet === "shortcuts" && <ShortcutsPanel onClose={() => setSheet(null)} />}
       {sheet === "support" && <SupportSheet onClose={() => setSheet(null)} />}
       {notice && <SessionEndedDialog code={notice.code} message={notice.message} onClose={() => { clearNotice(); navigate(notice.code === "SESSION_EXPIRED" ? "/login" : "/"); }} />}

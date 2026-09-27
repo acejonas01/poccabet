@@ -40,3 +40,27 @@ export function leaguesIn(feed: InitialFeed | null) {
   }
   return [...map.values()];
 }
+
+// Match pages (/match/arsenal-vs-chelsea-68500351). Same address rules as matchSlugOf / matchCode
+// in frontend/src/redesign/data.ts (kept here so server code doesn't load the browser-side module).
+const slugify = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const codeOf = (id: string | number) => String(id).replace(/^[a-z]+-/i, "");
+export const matchSlug = (home: string, away: string, id: string | number) => `${slugify(home)}-vs-${slugify(away)}-${codeOf(id)}`;
+
+export type FeedMatch = { slug: string; home: string; away: string; league: string; country: string; start: string; live: boolean; score?: [number, number]; minute?: number | null };
+export function matchesIn(feed: InitialFeed | null): FeedMatch[] {
+  const live = (feed?.live ?? []).map((f: any) => ({
+    slug: matchSlug(f.homeTeam, f.awayTeam, f.externalId), home: f.homeTeam, away: f.awayTeam, league: f.league, country: f.country ?? "",
+    start: new Date(f.startTime).toISOString(), live: true, score: [f.homeGoals ?? 0, f.awayGoals ?? 0] as [number, number], minute: f.minute ?? null,
+  }));
+  const upcoming = (feed?.upcoming ?? []).map((e: any) => ({
+    slug: matchSlug(e.homeTeam, e.awayTeam, e.externalId), home: e.homeTeam, away: e.awayTeam, league: e.league, country: e.country ?? "",
+    start: new Date(e.startTime).toISOString(), live: false,
+  }));
+  return [...live, ...upcoming];
+}
+// The match a /match/<slug> address points to (found by the ID at its end), if it's on the board.
+export const matchIn = (feed: InitialFeed | null, slug: string) => {
+  const code = /-(\d+)$/.exec(slug)?.[1];
+  return code ? matchesIn(feed).find((m) => m.slug.endsWith(`-${code}`)) : undefined;
+};

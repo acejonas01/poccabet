@@ -1,7 +1,7 @@
 // Titles and descriptions for each page (what search results and link previews show).
 import type { Metadata } from "next";
 import type { InitialFeed } from "../../frontend/src/redesign/data";
-import { leaguesIn } from "./feed";
+import { leaguesIn, matchIn } from "./feed";
 import { SPORT_NAMES } from "./routes";
 
 export const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://poccabet.vercel.app").replace(/\/$/, "");
@@ -45,6 +45,22 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
       !feed || !!lg,
       [`${lg?.name ?? name} odds`, lg ? `${lg.country ? `${lg.country} · ` : ""}${lg.matches.length} upcoming matches` : "Fixtures, live scores and markets"],
     );
+  }
+  if (first === "match" && second) {
+    const m = matchIn(feed, second);
+    if (!m) return base(`Match | ${BRAND}`, `Odds, live scores and stats on ${BRAND}.`, false);
+    const when = new Date(m.start).toLocaleString("en-GB", { timeZone: "Africa/Lagos", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    const where = `${m.league}${m.country ? `, ${m.country}` : ""}`;
+    const meta = base(
+      `${m.home} vs ${m.away} odds${m.live ? " & live score" : ""} | ${BRAND}`,
+      m.live
+        ? `${m.home} ${m.score?.[0]}-${m.score?.[1]} ${m.away}, live now (${where}). In-play odds, match stats and every market on ${BRAND}.`
+        : `${m.home} vs ${m.away} (${where}), ${when} WAT. Betting odds for 1X2, over/under, both teams to score, correct score and more on ${BRAND}.`,
+      true,
+      [`${m.home} vs ${m.away}`, m.live ? `Live now · ${m.score?.[0]}-${m.score?.[1]}` : `${where} · ${when}`],
+    );
+    // One address per match, even if the team names in a shared link are spelt differently.
+    return { ...meta, alternates: { canonical: `${SITE}/match/${m.slug}` } };
   }
   if (first === "sports") {
     const Sport = SPORT_NAMES[second ?? "football"] ?? "Football";

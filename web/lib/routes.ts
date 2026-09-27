@@ -14,6 +14,7 @@ export function checkPath([first, second, third, ...rest]: string[]): RouteCheck
   if (rest.length) return { notFound: true };
   if (!first) return { ok: true };
   if (first === "league") return second && !third ? { ok: true } : { notFound: true };
+  if (first === "match") return second && !third && /-\d+$/.test(second) ? { ok: true } : { notFound: true };
   if (first === "sports") {
     if (!second) return { redirect: "/sports/football" };
     if (!(second in SPORT_NAMES)) return { notFound: true };

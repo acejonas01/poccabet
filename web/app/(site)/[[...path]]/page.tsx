@@ -2,7 +2,7 @@
 // 404s and redirects for unknown URLs, and adds structured data for search engines.
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { getFeed, leaguesIn } from "../../../lib/feed";
+import { getFeed, leagueSlug, leaguesIn, matchIn } from "../../../lib/feed";
 import { SPORT_NAMES, checkPath } from "../../../lib/routes";
 import { SITE, metadataFor } from "../../../lib/seo";
 
@@ -30,8 +30,14 @@ export default async function Page({ params }: Props) {
   const matches = league?.matches
     ?? (path.length === 0 ? (feed?.upcoming ?? []).slice(0, 20).map((e: any) => ({ home: e.homeTeam, away: e.awayTeam, start: e.startTime })) : []);
 
-  // Home › League, or Home › Football › Today
+  const match = path[0] === "match" && path[1] ? matchIn(feed, path[1]) : undefined;
+
+  // Home › League, or Home › Football › Today, or Home › League › Match
   const crumbs: [string, string][] = [];
+  if (match) {
+    crumbs.push([match.league, `/league/${leagueSlug(match.country, match.league)}`]);
+    crumbs.push([`${match.home} vs ${match.away}`, `/match/${match.slug}`]);
+  }
   if (league) crumbs.push([league.name, `/league/${league.slug}`]);
   if (path[0] === "sports" && path[1]) {
     crumbs.push([SPORT_NAMES[path[1]], `/sports/${path[1]}`]);
@@ -47,6 +53,19 @@ export default async function Page({ params }: Props) {
       "@type": "BreadcrumbList",
       itemListElement: [["Home", "/"] as [string, string], ...crumbs].map(([name, href], i) => ({ "@type": "ListItem", position: i + 1, name, item: `${SITE}${href}` })),
     }] : []),
+    ...(match ? [{
+      "@context": "https://schema.org",
+      "@type": "SportsEvent",
+      name: `${match.home} vs ${match.away}`,
+      startDate: match.start,
+      sport: "Soccer",
+      eventStatus: "https://schema.org/EventScheduled",
+      url: `${SITE}/match/${match.slug}`,
+      location: { "@type": "Place", name: match.country || match.league },
+      homeTeam: { "@type": "SportsTeam", name: match.home },
+      awayTeam: { "@type": "SportsTeam", name: match.away },
+      superEvent: { "@type": "SportsEvent", name: match.league },
+    }] : []),
     ...(matches.length ? [{
       "@context": "https://schema.org",
       "@type": "ItemList",
@@ -61,6 +80,7 @@ export default async function Page({ params }: Props) {
   return (
     <>
       {path.length === 0 && <h1 style={hidden}>Poccabet: football betting odds, live scores and booking codes</h1>}
+      {match && <h1 style={hidden}>{`${match.home} vs ${match.away}: odds, live score and stats`}</h1>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
     </>
   );

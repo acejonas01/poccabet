@@ -51,6 +51,8 @@ export interface LiveFixture {
   // Only the simulation fills these for now (real stats need extra API calls).
   stats?: { possession: [number, number]; shots: [number, number]; corners: [number, number] };
   redCard?: "home" | "away" | null;
+  // Goals and red cards so far, for the match page timeline (simulation only for now).
+  events?: { minute: number; type: "goal" | "red"; side: "home" | "away" }[];
 }
 
 let usage = { day: "", calls: 0, remaining: Infinity };

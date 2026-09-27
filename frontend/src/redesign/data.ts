@@ -19,6 +19,7 @@ export interface TCMatch {
   as: number;
   red: "home" | "away" | null;
   stats: { possession: [number, number]; shots: [number, number]; corners: [number, number] } | null;
+  events: { minute: number; type: "goal" | "red"; side: "home" | "away" }[]; // goals & red cards so far (live)
   o: number[]; // 1X2 (0 = unavailable)
   ou: number[]; // Over / Under 2.5
   dirs: { "1x2": Dir[]; ou: Dir[] }; // last price movement, drives the flashing arrows
@@ -35,6 +36,12 @@ const COUNTRY: Record<string, string> = {
 
 // The number players can quote for a match (support, shops): the feed id without its source prefix.
 export const matchCode = (id: string) => id.replace(/^[a-z]+-/i, "");
+
+// Match page address: /match/arsenal-vs-chelsea-68500351 (readable, and ends with the match ID).
+const slugify = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+export const matchSlugOf = (home: string, away: string, id: string) => `${slugify(home)}-vs-${slugify(away)}-${matchCode(id)}`;
+export const matchHref = (m: { home: string; away: string; id: string }) => `/match/${matchSlugOf(m.home, m.away, m.id)}`;
+export const codeFromMatchSlug = (slug: string) => /-(\d+)$/.exec(slug)?.[1] ?? null;
 
 export function leagueRank(league: string) {
   const i = LEAGUE_ORDER.indexOf(league);
@@ -74,6 +81,7 @@ function fromLive(f: any): TCMatch {
     as: f.awayGoals ?? 0,
     red: f.redCard ?? null,
     stats: f.stats ?? null,
+    events: f.events ?? [],
     o: oneXTwo(f.markets),
     ou: overUnder25(f.markets),
     dirs: noDirs(),
@@ -96,6 +104,7 @@ function fromUpcoming(e: any): TCMatch {
     as: 0,
     red: null,
     stats: null,
+    events: [],
     o: oneXTwo(e.markets),
     ou: overUnder25(e.markets),
     dirs: noDirs(),

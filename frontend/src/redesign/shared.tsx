@@ -9,8 +9,6 @@ import { useDeviceState } from "../lib/browser";
 import type { Dir, TCMatch } from "./data";
 import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
-import { dayLabel, hhmm } from "./data";
-import { Crest, Flag } from "./media";
 
 export const ACCENT = "#F5C518";
 export const WELCOME_BONUS_AMOUNT = "₦50,000";
@@ -741,59 +739,45 @@ export function DemoTag() {
 
 // ---------- one match, every market ----------
 // Opened from "+N markets" on a match: all markets for that match, each odd tappable into the slip.
-export function MatchMarketsSheet({ m, onClose }: { m: TCMatch; onClose: () => void }) {
+// Every market for one match, grouped (Main, Goals, Handicap, Halves), as odds buttons that add to
+// the slip. Prices come from the live feed, so they keep updating while it's on screen.
+const MARKET_GROUPS: { id: string; title: string }[] = [
+  { id: "MAIN", title: "Main" }, { id: "GOALS", title: "Goals" }, { id: "HANDICAP", title: "Handicap" }, { id: "HALVES", title: "Halves" },
+];
+export function MatchMarkets({ m, desktop = false }: { m: TCMatch; desktop?: boolean }) {
   const { isOn, pick } = usePicker();
   const all = deriveOdds(m.o, m.ou);
-  const markets = [...MK, CORRECT_SCORE];
-  const team = (name: string, logo: string) => (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, textAlign: "center" }}>
-      <Crest name={name} url={logo} size={36} />
-      <span style={{ fontSize: 14, fontWeight: 800, maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-    </div>
-  );
+  const byGroup = (g: string) => [...MK, CORRECT_SCORE].filter((mk) => mk.group === g);
   return (
-    <Sheet label={`${m.home} vs ${m.away} markets`} onClose={onClose}>
-      <SheetTitle title="All markets" onClose={onClose} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "0 20px 12px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6 }}><Flag country={m.country} size={14} />{m.country ? `${m.country} · ` : ""}{m.league}</span>
-          {m.live
-            ? <span style={{ color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D", fontWeight: 800 }}>{m.clock}</span>
-            : <span style={{ color: "var(--tc-soft)", fontWeight: 800 }}>{dayLabel(m.start)} {hhmm(m.start)}</span>}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {team(m.home, m.homeLogo)}
-          <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: m.live ? 32 : 14, fontWeight: 700, color: m.live ? "var(--tc-text)" : "var(--tc-faint)" }}>
-            {m.live ? `${m.hs} – ${m.as}` : "VS"}
-          </span>
-          {team(m.away, m.awayLogo)}
-        </div>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 20px 24px", borderTop: "1px solid var(--tc-line)" }}>
-        {markets.map((mk) => (
-          <div key={mk.id} style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 12 }}>
-            <span style={{ fontSize: 13, fontWeight: 800 }}>{mk.label}</span>
-            <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(mk.cols.length, 3)}, minmax(0, 1fr))`, gap: 6 }}>
-              {mk.cols.map((c, i) => {
-                const v = all[mk.id]?.[i] ?? 0;
-                const id = `${m.id}|${mk.id}|${c}`;
-                const on = isOn(id);
-                return (
-                  <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
-                    onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
-                      height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
-                      padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
-                    }}>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
-                    {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
-                  </button>
-                );
-              })}
+    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      {MARKET_GROUPS.map((g) => (
+        <section key={g.id} aria-label={g.title} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ margin: 0, fontSize: 11, fontWeight: 800, letterSpacing: 1, color: "var(--tc-label)" }}>{g.title.toUpperCase()}</h3>
+          {byGroup(g.id).map((mk) => (
+            <div key={mk.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span style={{ fontSize: 14, fontWeight: 800 }}>{mk.label}</span>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(mk.cols.length, desktop ? 5 : 3)}, minmax(0, 1fr))`, gap: 6 }}>
+                {mk.cols.map((c, i) => {
+                  const v = all[mk.id]?.[i] ?? 0;
+                  const id = `${m.id}|${mk.id}|${c}`;
+                  const on = isOn(id);
+                  return (
+                    <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
+                      onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
+                        height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
+                      }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
+                      {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </Sheet>
+          ))}
+        </section>
+      ))}
+    </div>
   );
 }
 

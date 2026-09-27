@@ -2,7 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
-import { simTopPick } from "../providers/simulation";
+import { simMatchPicks, simTopPick } from "../providers/simulation";
 import { limit } from "../lib/rateLimit";
 
 // "Pick of the day" = the selection bettors add to their slips most today.
@@ -91,6 +91,20 @@ router.get("/top", async (_req, res) => {
   } catch (err) {
     console.error("Failed to load top pick", err);
     res.status(500).json({ error: "Couldn't load the top pick" });
+  }
+});
+
+// GET /api/picks/match/:matchId — today's picks on one match (match page: "what players are picking")
+router.get("/match/:matchId", limit("match-picks", 240, 10), async (req, res) => {
+  const matchId = String(req.params.matchId).slice(0, 64);
+  if (SIMULATE) return res.json({ ...(simMatchPicks(matchId) ?? { total: 0, picks: [] }), simulated: true });
+  try {
+    const groups = await prisma.pick.groupBy({ by: ["market", "selection"], where: { day: today(), matchId }, _count: { _all: true } });
+    const picks = groups.map((g) => ({ market: g.market, selection: g.selection, count: g._count._all })).sort((a, b) => b.count - a.count);
+    res.json({ total: picks.reduce((n, p) => n + p.count, 0), picks });
+  } catch (err) {
+    console.error("Failed to load match picks", err);
+    res.status(500).json({ error: "Couldn't load picks" });
   }
 });
 

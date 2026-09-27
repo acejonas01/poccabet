@@ -111,6 +111,8 @@ export const api = {
     request<{ simulated: boolean; winners: { id: string; player: string; amount: number; stake?: number; product: string; detail?: string; at: string }[] }>("/api/live/winners"),
   recordPick: (pick: Record<string, unknown>) =>
     request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
+  getMatchPicks: (matchId: string) =>
+    request<{ total: number; picks: { market: string; selection: string; count: number }[]; simulated?: boolean }>(`/api/picks/match/${encodeURIComponent(matchId)}`),
   getTopPick: () => request<{ top: any | null; totalToday: number }>("/api/picks/top"),
   syncOdds: (sport?: string) =>
     request<{ synced: number; total: number }>(

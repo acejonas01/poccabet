@@ -273,9 +273,29 @@ export function simLive(now = Date.now()): LiveFixture[] {
           corners: [Math.round((m.cornerRate[0] * minute) / 90), Math.round((m.cornerRate[1] * minute) / 90)] as [number, number],
         },
         redCard: m.redCard && m.redCard.minute <= minute ? m.redCard.side : null,
+        events: [
+          ...m.goals.filter((g) => g.minute <= minute).map((g) => ({ minute: g.minute, type: "goal" as const, side: g.side })),
+          ...(m.redCard && m.redCard.minute <= minute ? [{ minute: m.redCard.minute, type: "red" as const, side: m.redCard.side }] : []),
+        ].sort((a, b) => a.minute - b.minute),
       };
     })
     .sort((a, b) => (b.minute ?? 0) - (a.minute ?? 0));
+}
+
+// "What players are picking" on one simulated match: 1X2 shares that lean towards the
+// favourite (the crowd backs favourites more than the odds do). Same numbers for everyone.
+export function simMatchPicks(matchId: string, now = Date.now()) {
+  const id = Number(matchId.replace(/^(sim|af)-/, ""));
+  const m = [...scheduleFor(isoDay(now)), ...scheduleFor(isoDay(now + 86400000)), ...scheduleFor(isoDay(now - 86400000))].find((x) => x.id === id);
+  if (!m) return null;
+  const [h, d, a] = markets(m, 0, 0, 0)[0].outcomes.map((o) => o.odds);
+  const lean = [1 / h, 1 / d, 1 / a].map((p) => p ** 1.2);
+  const sum = lean.reduce((x, y) => x + y, 0);
+  const rand = rng(hash(`pocca-match-picks-${isoDay(now)}-${m.id}`));
+  const pull = (POPULAR_CLUBS[m.home] ?? 0) + (POPULAR_CLUBS[m.away] ?? 0);
+  const total = 150 + Math.floor((pull * 380 + rand() * 900) * (0.3 + 0.7 * Math.min(1, (now - Date.parse(`${isoDay(now)}T00:00:00Z`)) / 86400000)));
+  const counts = lean.map((p) => Math.round((p / sum) * total));
+  return { total: counts.reduce((x, y) => x + y, 0), picks: ["1", "X", "2"].map((selection, i) => ({ market: "1x2", selection, count: counts[i] })) };
 }
 
 // Beyond the next 30 games, a sample of each of the coming days (demo only), so the
