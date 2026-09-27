@@ -100,7 +100,7 @@ router.get("/stats", async (_req, res) => {
       prisma.user.count({ where: { deletedAt: null } }),
       prisma.user.count({ where: { deletedAt: null, createdAt: { gte: today } } }),
       prisma.user.count({ where: { deletedAt: null, createdAt: { gte: week } } }),
-      prisma.user.count({ where: { suspendedAt: { not: null } } }),
+      prisma.user.count({ where: { deletedAt: null, suspendedAt: { not: null } } }),
       betsSince(today), betsSince(week),
       settledSince(today), settledSince(week), settledSince(),
       prisma.bet.aggregate({ where: { status: "PENDING" }, _count: { _all: true }, _sum: { stake: true, potentialPayout: true } }),
@@ -153,6 +153,8 @@ router.get("/users", async (req, res) => {
   const where: Prisma.UserWhereInput = {
     ...userSearch(q),
     ...(filter === "suspended" ? { suspendedAt: { not: null } } : filter === "admins" ? { role: "ADMIN" } : {}),
+    // Deleted (anonymised) accounts are kept for the records but only listed under their own tab.
+    deletedAt: filter === "deleted" ? { not: null } : null,
   };
   const p = page(req.query.page);
   const [total, users] = await Promise.all([

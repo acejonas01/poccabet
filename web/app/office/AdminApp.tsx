@@ -328,7 +328,7 @@ function UsersPage() {
   return (
     <>
       <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or id" /></Head>
-      <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["suspended", "Suspended"], ["admins", "Admins"]]} /></div>
+      <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["suspended", "Suspended"], ["admins", "Admins"], ["deleted", "Deleted"]]} /></div>
       {!data ? <Loading error={error} /> : (
         <div className="adm-table-wrap">
           <table className="adm-table">
