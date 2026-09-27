@@ -116,7 +116,7 @@ export function AdminApp() {
         <div className="adm-side-foot">
           <span>Signed in as <b style={{ color: "var(--text)" }}>{me?.displayName}</b></span>
           <Badge tone={me?.mode === "live" ? "green" : "yellow"}>{me?.mode === "live" ? "LIVE FEED" : "SIMULATION"}</Badge>
-          <a href="/" style={{ color: "var(--muted)" }}>← View site</a>
+          <a href="/" target="_blank" rel="noopener" style={{ color: "var(--muted)" }}>View site ↗</a>
           <button className="adm-btn sm" onClick={logout}>Log out</button>
         </div>
       </aside>
@@ -306,7 +306,124 @@ function Dashboard() {
           </div>
         ) : <div className="adm-empty">No bets in the last 14 days.</div>}
       </div>
+      <Breakdown />
     </>
+  );
+}
+
+// ---------- dashboard charts ----------
+// Colours: validated categorical slots for the dark card (see admin.css --s1…--s5). Each bet
+// status keeps its own colour whatever the range, so a filter never repaints the others.
+type Part = { label: string; value: number; color: string; note?: string };
+const STATUS: Record<string, { label: string; color: string }> = {
+  WON: { label: "Won by players", color: "var(--s1)" }, LOST: { label: "Lost by players", color: "var(--s2)" },
+  PENDING: { label: "Open", color: "var(--s3)" }, VOID: { label: "Void", color: "var(--s4)" }, CASHED_OUT: { label: "Cashed out", color: "var(--s5)" },
+};
+const TYPE: Record<string, { label: string; color: string }> = {
+  SINGLE: { label: "Singles", color: "var(--s1)" }, ACCUMULATOR: { label: "Multiples", color: "var(--s2)" },
+};
+const pct = (v: number, total: number) => (total ? `${Math.round((v / total) * 100)}%` : "0%");
+
+// Donut with the total in the middle and a legend beside it (label, count, share).
+function Donut({ parts, center, unit }: { parts: Part[]; center: ReactNode; unit: string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  const R = 52, C = 2 * Math.PI * R, GAP = parts.length > 1 ? 2 : 0;
+  let at = 0;
+  return (
+    <div className="adm-donut">
+      <svg viewBox="0 0 140 140" width="140" height="140" role="img" aria-label={parts.map((p) => `${p.label} ${p.value}`).join(", ")}>
+        <circle cx="70" cy="70" r={R} fill="none" stroke="var(--raise)" strokeWidth="18" />
+        {total > 0 && parts.map((p, i) => {
+          const len = (p.value / total) * C;
+          const seg = <circle key={p.label} cx="70" cy="70" r={R} fill="none" stroke={p.color} strokeWidth={hover === i ? 22 : 18}
+            strokeDasharray={`${Math.max(0, len - GAP)} ${C}`} strokeDashoffset={-at} transform="rotate(-90 70 70)"
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ transition: "stroke-width .12s", cursor: "default" }} />;
+          at += len;
+          return seg;
+        })}
+        <foreignObject x="30" y="42" width="80" height="56">
+          <div className="adm-donut-mid">{hover == null ? center : <><b>{parts[hover].value.toLocaleString()}</b><span>{pct(parts[hover].value, total)}</span></>}</div>
+        </foreignObject>
+      </svg>
+      <ul className="adm-legend">
+        {parts.map((p, i) => (
+          <li key={p.label} className={hover === i ? "on" : undefined} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}>
+            <i style={{ background: p.color }} /><span>{p.label}</span>
+            <b>{p.value.toLocaleString()} {unit}</b><em>{pct(p.value, total)}</em>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Horizontal bars, one hue (magnitude), largest first; the tail past `max` folds into "Other".
+function HBars({ rows, format, max = 6 }: { rows: { label: string; value: number; note?: string }[]; format: (v: number) => string; max?: number }) {
+  const shown = rows.length > max ? [...rows.slice(0, max - 1), { label: "Other", value: rows.slice(max - 1).reduce((a, r) => a + r.value, 0) }] : rows;
+  const top = Math.max(1, ...shown.map((r) => r.value));
+  return (
+    <div className="adm-hbars">
+      {shown.map((r) => (
+        <div key={r.label} className="row" title={`${r.label}: ${format(r.value)}${"note" in r && r.note ? ` · ${r.note}` : ""}`}>
+          <span className="name">{r.label}</span>
+          <span className="track"><span className="fill" style={{ width: `${Math.max(1.5, (r.value / top) * 100)}%` }} /></span>
+          <span className="val">{format(r.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// One 100% bar split into parts, with a legend (for 2–3 parts a pie would be harder to read).
+function SplitBar({ parts, unit }: { parts: Part[]; unit: string }) {
+  const total = parts.reduce((a, p) => a + p.value, 0);
+  return (
+    <div>
+      <div className="adm-split">
+        {parts.filter((p) => p.value > 0).map((p) => <span key={p.label} title={`${p.label}: ${p.value} ${unit} (${pct(p.value, total)})`} style={{ flex: p.value, background: p.color }} />)}
+      </div>
+      <ul className="adm-legend row">
+        {parts.map((p) => <li key={p.label}><i style={{ background: p.color }} /><span>{p.label}</span><b>{p.value.toLocaleString()}</b><em>{pct(p.value, total)}</em></li>)}
+      </ul>
+    </div>
+  );
+}
+
+type Split = { name: string; bets?: number; players?: number; stake_ngn?: number };
+function Breakdown() {
+  const [days, setDays] = useState(30);
+  const { data, error } = useApi<{ outcomes: Split[]; types: Split[]; leagues: Split[]; markets: Split[]; sources: Split[] }>(`/admin/reports/breakdown?days=${days}`);
+  const known = (map: Record<string, { label: string; color: string }>, rows: Split[]): Part[] =>
+    Object.entries(map).map(([k, m]) => ({ label: m.label, color: m.color, value: Number(rows.find((r) => r.name === k)?.bets ?? 0) })).filter((p) => p.value > 0);
+  const outcomes = data ? known(STATUS, data.outcomes) : [];
+  const betCount = outcomes.reduce((a, p) => a + p.value, 0);
+  const empty = <div className="adm-empty">No bets in this period.</div>;
+  return (
+    <div className="adm-section">
+      <div className="adm-h2row" style={{ marginBottom: 12 }}>
+        <h2 style={{ margin: 0 }}>Breakdown</h2>
+        <div className="adm-tabs">
+          {[7, 30, 90].map((d) => <button key={d} className={`adm-tab${days === d ? " on" : ""}`} onClick={() => setDays(d)}>{d} days</button>)}
+        </div>
+      </div>
+      {!data ? <Loading error={error} /> : (
+        <div className="adm-chart-grid">
+          <div className="adm-card"><h3>Bet outcomes</h3><div className="adm-sub" style={{ margin: "-6px 0 12px" }}>Bets placed in the last {days} days, by result</div>
+            {betCount ? <Donut parts={outcomes} unit="bets" center={<><b>{betCount.toLocaleString()}</b><span>bets</span></>} /> : empty}</div>
+          <div className="adm-card"><h3>Singles vs multiples</h3><div className="adm-sub" style={{ margin: "-6px 0 12px" }}>Number of bets by type</div>
+            {betCount ? <SplitBar parts={Object.entries(TYPE).map(([k, m]) => ({ label: m.label, color: m.color, value: Number(data.types.find((r) => r.name === k)?.bets ?? 0) }))} unit="bets" /> : empty}
+            <h3 style={{ marginTop: 22 }}>Where new players came from</h3>
+            {data.sources.length
+              ? <HBars rows={data.sources.map((r) => ({ label: r.name, value: Number(r.players) }))} format={(v) => `${v.toLocaleString()} player${v === 1 ? "" : "s"}`} max={5} />
+              : <div className="adm-empty">No sign-ups in this period.</div>}</div>
+          <div className="adm-card"><h3>Staked by league</h3><div className="adm-sub" style={{ margin: "-6px 0 12px" }}>A multiple&apos;s stake is split across its legs</div>
+            {data.leagues.length ? <HBars rows={data.leagues.map((r) => ({ label: r.name, value: Number(r.stake_ngn), note: `${r.bets} bets` }))} format={naira} /> : empty}</div>
+          <div className="adm-card"><h3>Staked by market</h3><div className="adm-sub" style={{ margin: "-6px 0 12px" }}>Which bet types players pick</div>
+            {data.markets.length ? <HBars rows={data.markets.map((r) => ({ label: r.name, value: Number(r.stake_ngn), note: `${r.bets} bets` }))} format={naira} /> : empty}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -328,7 +445,7 @@ function UsersPage() {
   return (
     <>
       <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or id" /></Head>
-      <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["suspended", "Suspended"], ["admins", "Admins"], ["deleted", "Deleted"]]} /></div>
+      <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["active", "Active"], ["suspended", "Suspended"], ["deleted", "Deleted"], ["admins", "Admins"]]} /></div>
       {!data ? <Loading error={error} /> : (
         <div className="adm-table-wrap">
           <table className="adm-table">

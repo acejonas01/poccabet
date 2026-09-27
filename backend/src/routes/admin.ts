@@ -152,9 +152,12 @@ router.get("/users", async (req, res) => {
   const filter = String(req.query.filter ?? "");
   const where: Prisma.UserWhereInput = {
     ...userSearch(q),
-    ...(filter === "suspended" ? { suspendedAt: { not: null } } : filter === "admins" ? { role: "ADMIN" } : {}),
-    // Deleted (anonymised) accounts are kept for the records but only listed under their own tab.
-    deletedAt: filter === "deleted" ? { not: null } : null,
+    // All = every account; Active = not suspended or deleted; the other tabs are what they say.
+    ...(filter === "active" ? { suspendedAt: null, deletedAt: null }
+      : filter === "suspended" ? { suspendedAt: { not: null }, deletedAt: null }
+      : filter === "deleted" ? { deletedAt: { not: null } }
+      : filter === "admins" ? { role: "ADMIN", deletedAt: null }
+      : {}),
   };
   const p = page(req.query.page);
   const [total, users] = await Promise.all([
@@ -495,6 +498,30 @@ router.get("/reports/leagues", async (_req, res) => {
 router.get("/reports/markets", async (_req, res) => {
   try { res.json({ rows: plain(await prisma.$queryRaw<Record<string, unknown>[]>`SELECT * FROM v_ggr_by_market ORDER BY stake_ngn DESC`) }); }
   catch (err) { fail(res, err); }
+});
+
+// Dashboard charts: how the bets placed (and players who joined) in the last N Lagos days split up.
+// League / market stake splits a multiple's stake evenly across its legs, as the report views do.
+router.get("/reports/breakdown", async (req, res) => {
+  try {
+    const days = Math.min(366, Math.max(1, Number(req.query.days) || 30));
+    const since = lagosDayStart(days - 1);
+    const byLeg = (col: Prisma.Sql) => prisma.$queryRaw<Record<string, unknown>[]>`
+      WITH b AS (SELECT id, stake, (SELECT count(*) FROM bet_legs WHERE bet_id = bets.id) AS n FROM bets WHERE placed_at >= ${since})
+      SELECT coalesce(${col}, 'Unknown') AS name, count(DISTINCT b.id) AS bets, round(sum(b.stake::numeric / greatest(b.n, 1)) / 100, 2) AS stake_ngn
+      FROM v_bet_legs v JOIN b ON b.id = v.bet_id GROUP BY 1 ORDER BY 3 DESC`;
+    const [outcomes, types, leagues, markets, sources] = await Promise.all([
+      prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT status AS name, count(*) AS bets, round(sum(stake) / 100.0, 2) AS stake_ngn FROM bets WHERE placed_at >= ${since} GROUP BY 1 ORDER BY 2 DESC`,
+      prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT type AS name, count(*) AS bets, round(sum(stake) / 100.0, 2) AS stake_ngn FROM bets WHERE placed_at >= ${since} GROUP BY 1 ORDER BY 2 DESC`,
+      byLeg(Prisma.sql`v.league`),
+      byLeg(Prisma.sql`v.market_label`),
+      prisma.$queryRaw<Record<string, unknown>[]>`
+        SELECT coalesce(nullif(signup_source, ''), 'direct') AS name, count(*) AS players FROM users WHERE created_at >= ${since} GROUP BY 1 ORDER BY 2 DESC`,
+    ]);
+    res.json({ days, outcomes: plain(outcomes), types: plain(types), leagues: plain(leagues), markets: plain(markets), sources: plain(sources) });
+  } catch (err) { fail(res, err); }
 });
 
 router.get("/reports/players", async (req, res) => {
