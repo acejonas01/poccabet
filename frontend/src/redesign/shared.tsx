@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, type BookedLeg } from "../api/client";
 import { useAuth } from "../context/AuthContext";
@@ -410,29 +411,65 @@ export function CodeRow({ code, share }: { code: string; share: { text: string; 
 
 type CodeCardData = { kind: "booking" | "ticket"; codes: { code: string; count: number; odds: number }[] };
 
-// Shown at the top of the slip after Book bet / Place bet: the code(s), big, with Copy & Share.
-function CodeCard({ data, onClose, onViewBets }: { data: CodeCardData; onClose: () => void; onViewBets: () => void }) {
+// Pops up after Book bet / Place bet: a congratulations heading, the code(s) big, Copy & Share.
+// Rendered on <body> (the slip itself may sit inside a sheet), wrapped in .tc-root for the theme.
+function CodePopup({ data, onClose, onViewBets }: { data: CodeCardData; onClose: () => void; onViewBets: () => void }) {
   const booking = data.kind === "booking";
-  return (
-    <section aria-label={booking ? "Booking code" : "Ticket ID"} style={{ margin: "0 16px 14px", padding: "12px 14px 14px", borderRadius: 12, border: `1px solid ${booking ? ACCENT : "#2AB572"}`, background: "var(--tc-card)", display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, letterSpacing: 0.8, color: booking ? ACCENT : "#2AB572" }}>
-          {!booking && <CheckIcon size={14} />}
-          {booking ? "BOOKING CODE" : data.codes.length > 1 ? `${data.codes.length} BETS PLACED · TICKET IDS` : "BET PLACED · TICKET ID"}
-        </span>
-        <button aria-label="Close" onClick={onClose} style={{ width: 32, height: 32, margin: -6, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <CloseIcon size={14} />
-        </button>
-      </div>
-      {data.codes.map((c) => (
-        <CodeRow key={c.code} code={c.code} share={booking ? bookingShare(c.code, c.count, c.odds) : ticketShare(c.code, c.count, c.odds)} />
-      ))}
-      <span style={{ fontSize: 12, color: "var(--tc-label)" }}>
-        {booking
-          ? "Anyone can load this slip with the code or the shared link."
-          : <>Track it in <a href="/my-bets" onClick={(e) => { e.preventDefault(); onViewBets(); }}>My Bets</a>, or check it anytime with this ID.</>}
-      </span>
-    </section>
+  const green = "#2AB572";
+  const tone = booking ? ACCENT : green;
+  const one = data.codes.length === 1 ? data.codes[0] : null;
+  const [done, setDone] = useState<"copy" | "share" | null>(null);
+  const flash = (what: "copy" | "share") => { setDone(what); setTimeout(() => setDone(null), 1600); };
+  const share = (c: CodeCardData["codes"][number]) => (booking ? bookingShare : ticketShare)(c.code, c.count, c.odds);
+  const bigBtn = (primary: boolean): CSSProperties => ({
+    flex: 1, height: 48, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+    fontFamily: "inherit", fontSize: 15, fontWeight: 800,
+    border: primary ? "none" : "1px solid var(--tc-outline-2)", background: primary ? ACCENT : "transparent", color: primary ? "#13171C" : "var(--tc-text)",
+  });
+  return createPortal(
+    <div className="tc-root" style={{ minHeight: 0, background: "transparent" }}>
+      <Sheet label={booking ? "Bet booked" : "Bet placed"} onClose={onClose}>
+        <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 8px" }}>
+          <button aria-label="Close" onClick={onClose} style={{ width: 40, height: 40, border: "none", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <CloseIcon />
+          </button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "0 20px 20px", textAlign: "center" }}>
+          <span aria-hidden="true" style={{ width: 64, height: 64, borderRadius: 32, background: `color-mix(in srgb, ${tone} 16%, transparent)`, color: tone, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32 }}>
+            {booking ? "🎉" : <CheckIcon size={30} />}
+          </span>
+          <h2 style={{ margin: "8px 0 0", fontSize: 22, fontWeight: 800 }}>{booking ? "Congratulations!" : "Bet placed. Good luck!"}</h2>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)" }}>
+            {booking ? "Your bet is booked. Share the code so anyone can load this slip."
+              : data.codes.length > 1 ? `${data.codes.length} bets are in. Here are your ticket IDs.` : "Your bet is in. Here's your ticket ID."}
+          </p>
+          {one && <p style={{ margin: 0, fontSize: 13, color: "var(--tc-label)" }}>{one.count} selection{one.count === 1 ? "" : "s"} · odds {one.odds.toFixed(2)}</p>}
+
+          <div style={{ alignSelf: "stretch", marginTop: 12, padding: "14px 16px", borderRadius: 14, border: `1px dashed ${tone}`, background: "var(--tc-card)", display: "flex", flexDirection: "column", gap: 10 }}>
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: tone }}>{booking ? "BOOKING CODE" : one ? "TICKET ID" : "TICKET IDS"}</span>
+            {one
+              ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 40, fontWeight: 700, letterSpacing: 3, lineHeight: 1, userSelect: "all" }}>{one.code}</span>
+              : data.codes.map((c) => <CodeRow key={c.code} code={c.code} share={share(c)} />)}
+          </div>
+
+          {one && (
+            <div style={{ alignSelf: "stretch", display: "flex", gap: 10, marginTop: 12 }}>
+              <button onClick={async () => { if (await copyText(one.code)) flash("copy"); }} style={bigBtn(false)}>
+                {done === "copy" ? <><CheckIcon size={18} style={{ color: green }} />Copied</> : <><CopyIcon />Copy code</>}
+              </button>
+              <button onClick={async () => { const s = share(one); if ((await shareText(s.text, s.url)) !== "failed") flash("share"); }} style={bigBtn(true)}>
+                {done === "share" ? <><CheckIcon size={18} />Shared</> : <><ShareIcon />Share</>}
+              </button>
+            </div>
+          )}
+          {!booking && (
+            <button onClick={onViewBets} style={{ ...bigBtn(!one), alignSelf: "stretch", flex: "none", marginTop: 10 }}>View My Bets</button>
+          )}
+          <button onClick={onClose} style={{ marginTop: 8, height: 44, border: "none", background: "transparent", color: "var(--tc-muted)", fontFamily: "inherit", fontSize: 14, fontWeight: 700 }}>Done</button>
+        </div>
+      </Sheet>
+    </div>,
+    document.body,
   );
 }
 
@@ -580,7 +617,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
           <button onClick={() => setMode("single")} style={segBtn(mode === "single")}>Single</button>
         </div>
       </div>
-      {codeCard && <CodeCard data={codeCard} onClose={() => setCodeCard(null)} onViewBets={() => navigate("/my-bets")} />}
+      {codeCard && <CodePopup data={codeCard} onClose={() => setCodeCard(null)} onViewBets={() => { setCodeCard(null); navigate("/my-bets"); }} />}
       <div style={{ display: "flex", gap: 8, padding: "0 16px 14px" }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Booking code</span>

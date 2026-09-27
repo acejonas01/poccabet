@@ -728,6 +728,49 @@ function DayBars({ rows, k, color }: { rows: Row[]; k: string; color: string }) 
   );
 }
 
+const DAILY_COLS: Col[] = [
+  ["day", "Day", "date"], ["signups", "Sign-ups", "num"], ["active_logins", "Logged in", "num"], ["active_bettors", "Bettors", "num"],
+  ["bets_placed", "Bets", "num"], ["stake_ngn", "Staked", "ngn"], ["bets_settled", "Settled", "num"], ["payouts_ngn", "Paid out", "ngn"],
+  ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"], ["deposits_ngn", "Deposits", "ngn"], ["withdrawals_ngn", "Withdrawals", "ngn"],
+];
+const LEAGUE_COLS: Col[] = [
+  ["league", "League", "text"], ["country", "Country", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
+  ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
+];
+const MARKET_COLS: Col[] = [
+  ["market_label", "Market", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
+  ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
+];
+const PLAYER_COLS: Col[] = [
+  ["display_name", "Player", "text"], ["signup_source", "Came from", "text"], ["bets", "Bets", "num"], ["days_active", "Days active", "num"],
+  ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"],
+  ["balance_ngn", "Balance", "ngn"], ["last_bet_at", "Last bet", "date"],
+];
+
+// Every report in one Excel file, one sheet each. Numbers stay numbers (naira as ₦#,##0.00),
+// days stay dates, so the file sums and sorts properly. The library is loaded only on click.
+async function workbook(sheets: { name: string; rows: Row[]; cols: Col[] }[]) {
+  const { default: writeExcelFile } = await import("write-excel-file/browser");
+  const cell = (v: Row[string], kind?: Col[2]) => {
+    if (v == null || v === "") return null;
+    if (kind === "ngn") return { value: Number(v), type: Number, format: '"₦"#,##0.00' };
+    if (kind === "num") return { value: Number(v), type: Number, format: "#,##0" };
+    if (kind === "date") return { value: new Date(String(v)), type: Date, format: "dd mmm yyyy" };
+    return { value: String(v), type: String };
+  };
+  return writeExcelFile(sheets.map(({ name, rows, cols }) => ({
+    sheet: name,
+    data: [
+      cols.map(([, label]) => ({ value: label, fontWeight: "bold" as const })),
+      ...rows.map((r) => cols.map(([k, , kind]) => cell(r[k], kind))),
+    ],
+    columns: cols.map(([, label, kind]) => ({ width: kind === "text" ? 22 : Math.max(12, label.length + 2) })),
+    stickyRowsCount: 1,
+  })));
+}
+const downloadWorkbook = async (sheets: Parameters<typeof workbook>[0]) =>
+  (await workbook(sheets)).toFile(`poccabet-reports-${new Date().toISOString().slice(0, 10)}.xlsx`);
+
 function ReportsPage() {
   const [range, setRange] = useQueryState("days");
   const days = Number(range) || 30;
@@ -737,9 +780,22 @@ function ReportsPage() {
   const players = useApi<{ rows: Row[] }>("/admin/reports/players?limit=50");
   const rows = daily.data?.rows ?? null;
   const sum = (k: string) => (rows ?? []).reduce((a, r) => a + (Number(r[k]) || 0), 0);
+  const [saving, setSaving] = useState(false);
+  const all = rows && leagues.data && markets.data && players.data ? [
+    { name: `Daily (${days} days)`, rows: [...rows].reverse(), cols: DAILY_COLS },
+    { name: "By league", rows: leagues.data.rows, cols: LEAGUE_COLS },
+    { name: "By market", rows: markets.data.rows, cols: MARKET_COLS },
+    { name: "Top players", rows: players.data.rows, cols: PLAYER_COLS },
+  ] : null;
+  const downloadAll = async () => {
+    if (!all) return;
+    setSaving(true);
+    try { await downloadWorkbook(all); } catch (e) { alert(`Couldn't create the file: ${e instanceof Error ? e.message : e}`); } finally { setSaving(false); }
+  };
   return (
     <>
       <Head title="Reports" sub="Straight from the database's report views (naira, Lagos days). The same numbers any analytics tool sees.">
+        <button className="adm-btn primary" disabled={!all || saving} onClick={downloadAll}>{saving ? "Preparing…" : "Download all (Excel)"}</button>
         <div className="adm-tabs">
           {[7, 30, 90, 365].map((d) => <button key={d} className={`adm-tab${days === d ? " on" : ""}`} onClick={() => setRange(String(d))}>{d === 365 ? "1 year" : `${d} days`}</button>)}
         </div>
@@ -759,25 +815,11 @@ function ReportsPage() {
           </div>
         </>
       )}
-      <ReportTable title="Daily numbers" sub="One row per day, newest first" file="daily-kpis" rows={rows ? [...rows].reverse() : null} cols={[
-        ["day", "Day", "date"], ["signups", "Sign-ups", "num"], ["active_logins", "Logged in", "num"], ["active_bettors", "Bettors", "num"],
-        ["bets_placed", "Bets", "num"], ["stake_ngn", "Staked", "ngn"], ["bets_settled", "Settled", "num"], ["payouts_ngn", "Paid out", "ngn"],
-        ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"], ["deposits_ngn", "Deposits", "ngn"], ["withdrawals_ngn", "Withdrawals", "ngn"],
-      ]} />
-      <ReportTable title="GGR by league" sub="Settled bets; a multiple's stake is split evenly across its legs" file="ggr-by-league" rows={leagues.data?.rows ?? null} cols={[
-        ["league", "League", "text"], ["country", "Country", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
-        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
-      ]} />
-      <ReportTable title="GGR by market" sub="Settled bets" file="ggr-by-market" rows={markets.data?.rows ?? null} cols={[
-        ["market_label", "Market", "text"], ["bets", "Bets", "num"], ["legs", "Legs", "num"],
-        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"],
-      ]} />
+      <ReportTable title="Daily numbers" sub="One row per day, newest first" file="daily-kpis" rows={rows ? [...rows].reverse() : null} cols={DAILY_COLS} />
+      <ReportTable title="GGR by league" sub="Settled bets; a multiple's stake is split evenly across its legs" file="ggr-by-league" rows={leagues.data?.rows ?? null} cols={LEAGUE_COLS} />
+      <ReportTable title="GGR by market" sub="Settled bets" file="ggr-by-market" rows={markets.data?.rows ?? null} cols={MARKET_COLS} />
       <ReportTable title="Top players" sub="By amount staked (top 50). Click a row for the player." file="top-players" rows={players.data?.rows ?? null}
-        link={(r) => `/office/users/${r.user_id}`} cols={[
-        ["display_name", "Player", "text"], ["signup_source", "Came from", "text"], ["bets", "Bets", "num"], ["days_active", "Days active", "num"],
-        ["stake_ngn", "Staked", "ngn"], ["payouts_ngn", "Paid out", "ngn"], ["ggr_ngn", "GGR", "ngn"], ["bonuses_ngn", "Bonuses", "ngn"],
-        ["balance_ngn", "Balance", "ngn"], ["last_bet_at", "Last bet", "date"],
-      ]} />
+        link={(r) => `/office/users/${r.user_id}`} cols={PLAYER_COLS} />
     </>
   );
 }
