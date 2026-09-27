@@ -289,6 +289,10 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
   );
 }
 
+// Each league / day group is its own full-width block with a gutter above it (like the match
+// page's markets and BetKing's lists).
+const LIST_SECTION: CSSProperties = { marginTop: 8, background: "var(--tc-card)", borderTop: "1px solid var(--tc-card-line)", borderBottom: "1px solid var(--tc-card-line)" };
+
 // Theme A: darker headers (var(--tc-league)) so each league reads as a block.
 // Theme B: lighter, compact headers (var(--tc-panel)) — the original Live-tab look.
 function LeagueHeader({ country, name, market }: { country: string; name: string; market: string }) {
@@ -483,7 +487,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
 
       {!listLoading && leagues.map((lg) => (
-        <section key={lg.key} style={{ display: "flex", flexDirection: "column" }}>
+        <section key={lg.key} style={{ ...LIST_SECTION, display: "flex", flexDirection: "column" }}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
@@ -624,23 +628,23 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
 
       {busy ? <Loader1X2 label="Loading matches…" /> : <>
       {liveList.length > 0 && (group === "day" ? (
-        <section>
+        <section style={LIST_SECTION}>
           <GroupHeader title="Live now" live market={market} />
           {liveList.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       ) : groupByLeague(liveList).map((lg) => (
-        <section key={`live-${lg.key}`}>
+        <section key={`live-${lg.key}`} style={LIST_SECTION}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       )))}
       {group === "day" ? days.map((d) => (
-        <section key={d.key}>
+        <section key={d.key} style={LIST_SECTION}>
           <GroupHeader title={d.title} market={market} />
           {d.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} timeOnly />)}
         </section>
       )) : groupByLeague(shown).map((lg) => (
-        <section key={lg.key}>
+        <section key={lg.key} style={LIST_SECTION}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>

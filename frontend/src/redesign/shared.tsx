@@ -756,10 +756,51 @@ export function DemoTag() {
 const MARKET_GROUPS: { id: string; title: string }[] = [
   { id: "MAIN", title: "Main" }, { id: "GOALS", title: "Goals" }, { id: "HANDICAP", title: "Handicap" }, { id: "HALVES", title: "Halves" },
 ];
-export function MatchMarkets({ m, desktop = false }: { m: TCMatch; desktop?: boolean }) {
+// section: phones' match page — each market is its own full-width section (style given by the
+// page) with a gutter between, and can be folded away, like BetKing. Otherwise one grouped list.
+export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desktop?: boolean; section?: CSSProperties }) {
   const { isOn, pick } = usePicker();
+  const [folded, setFolded] = useState<Set<string>>(new Set());
   const all = deriveOdds(m.o, m.ou);
   const byGroup = (g: string) => [...MK, CORRECT_SCORE].filter((mk) => mk.group === g);
+  const grid = (mk: (typeof MK)[number]) => (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(mk.cols.length, desktop ? 5 : 3)}, minmax(0, 1fr))`, gap: 6 }}>
+      {mk.cols.map((c, i) => {
+        const v = all[mk.id]?.[i] ?? 0;
+        const id = `${m.id}|${mk.id}|${c}`;
+        const on = isOn(id);
+        return (
+          <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
+            onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
+              height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
+            }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
+            {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+  if (section) {
+    const toggle = (id: string) => setFolded((f) => { const n = new Set(f); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {MARKET_GROUPS.flatMap((g) => byGroup(g.id)).map((mk) => {
+          const open = !folded.has(mk.id);
+          return (
+            <section key={mk.id} aria-label={mk.label} style={{ ...section, padding: open ? "4px 16px 16px" : "4px 16px" }}>
+              <button onClick={() => toggle(mk.id)} aria-expanded={open} style={{ width: "100%", height: 44, padding: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 15, fontWeight: 800 }}>
+                {mk.label}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "var(--tc-label)", transform: open ? "none" : "rotate(180deg)", transition: "transform .2s" }}><path d="m6 15 6-6 6 6" /></svg>
+              </button>
+              {open && grid(mk)}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {MARKET_GROUPS.map((g) => (
@@ -768,23 +809,7 @@ export function MatchMarkets({ m, desktop = false }: { m: TCMatch; desktop?: boo
           {byGroup(g.id).map((mk) => (
             <div key={mk.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 800 }}>{mk.label}</span>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(mk.cols.length, desktop ? 5 : 3)}, minmax(0, 1fr))`, gap: 6 }}>
-                {mk.cols.map((c, i) => {
-                  const v = all[mk.id]?.[i] ?? 0;
-                  const id = `${m.id}|${mk.id}|${c}`;
-                  const on = isOn(id);
-                  return (
-                    <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
-                      onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
-                        height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
-                        padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
-                      }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
-                      {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
-                    </button>
-                  );
-                })}
-              </div>
+              {grid(mk)}
             </div>
           ))}
         </section>

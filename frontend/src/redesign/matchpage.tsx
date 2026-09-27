@@ -42,6 +42,8 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
     );
   }
 
+  // Phones: every market its own full-width section with a gutter between; desktop: one card.
+  const markets = desktop ? <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop /></div> : <MatchMarkets m={m} section={flat} />;
   const more = matches.filter((x) => x.league === m.league && x.country === m.country && x.id !== m.id).sort((a, b) => Number(b.live) - Number(a.live) || a.start - b.start).slice(0, 6);
   const tabBtn = (id: "markets" | "stats", label: string) => (
     <button role="tab" aria-selected={tab === id} onClick={() => setTab(id)} style={{
@@ -68,13 +70,13 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
         {/* Live: match view with Pitch / Stats / Timeline / Commentary / Line-ups, live chat, then the markets. */}
         <MatchView m={m} flat={!desktop} />
         <LiveChat m={m} flat={!desktop} />
-        <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div>
+        {markets}
       </> : <>
         <div role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--tc-line)" }}>
           {tabBtn("markets", "Markets")}
           {tabBtn("stats", m.live ? "Stats & timeline" : "Stats")}
         </div>
-        {tab === "markets" ? <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div> : (
+        {tab === "markets" ? markets : (
           desktop ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {m.live && <><Timeline m={m} boxed /><LiveStats m={m} boxed /></>}
