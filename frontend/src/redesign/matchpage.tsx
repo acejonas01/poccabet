@@ -44,8 +44,8 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
     );
   }
 
-  // Phones: every market its own full-width section with a gutter between; desktop: one card.
-  const markets = desktop ? <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop /></div> : <MatchMarkets m={m} section={flat} />;
+  // Every market its own section (phones: full width, flush; desktop: rounded cards), sticky market tabs on top.
+  const markets = <MatchMarkets m={m} desktop={desktop} section={desktop ? card : flat} />;
   const more = matches.filter((x) => x.league === m.league && x.country === m.country && x.id !== m.id).sort((a, b) => Number(b.live) - Number(a.live) || a.start - b.start).slice(0, 6);
   const tabBtn = (id: "markets" | "stats", label: string) => (
     <button role="tab" aria-selected={tab === id} onClick={() => setTab(id)} style={{

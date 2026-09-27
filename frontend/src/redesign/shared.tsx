@@ -804,15 +804,18 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
       setTab(id);
       const el = top.current;
       if (!el) return;
-      const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tc-header-h")) || 69;
-      const y = el.getBoundingClientRect().top + window.scrollY - header + 8; // 8 = the bar's top margin
+      const header = desktop ? 72 : parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tc-header-h")) || 69;
+      const y = el.getBoundingClientRect().top + window.scrollY - header + (desktop ? 0 : 8); // phones: 8 = the bar's top margin
       if (window.scrollY > y) window.scrollTo(0, y);
     };
     return (
-      <div ref={top} style={{ display: "flex", flexDirection: "column" }}>
+      // Phones: full-width sections, flush; desktop: rounded cards with a gap, the bar under the 72px header.
+      <div ref={top} style={{ display: "flex", flexDirection: "column", gap: desktop ? 10 : 0 }}>
         <div role="tablist" aria-label="Markets" className="tc-hscroll" style={{
-          position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 15, margin: "8px -16px 0", padding: "0 8px",
-          display: "flex", overflowX: "auto", background: "var(--tc-card)", borderBottom: "0.5px solid var(--tc-line)",
+          position: "sticky", top: desktop ? 72 : "var(--tc-header-h, 69px)", zIndex: 15, display: "flex", overflowX: "auto", background: "var(--tc-card)",
+          ...(desktop
+            ? { padding: "0 8px", borderRadius: 12, border: "1px solid var(--tc-card-line)", boxShadow: "0 6px 16px rgba(0,0,0,0.25)" }
+            : { margin: "8px -16px 0", padding: "0 8px", borderBottom: "0.5px solid var(--tc-line)" }),
         }}>
           {MARKET_TABS.map((t) => (
             <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => choose(t.id)} style={{
