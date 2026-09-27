@@ -96,6 +96,12 @@
   color: var(--tc-text);
   font-family: 'Manrope', system-ui, sans-serif;
 }
+/* Wide screens: hide the server's phone-layout page until the app has switched to desktop
+   (RedesignApp adds .tc-ready). Shown anyway after 4s in case the script never runs. */
+@media (min-width: 900px) {
+  html:not(.tc-ready) .tc-root { visibility: hidden; animation: tc-reveal 0s 4s forwards; }
+}
+@keyframes tc-reveal { to { visibility: visible; } }
 .tc-root a { color: #F5C518; }
 .tc-root a:hover { color: #FFD84D; }
 .tc-root button { font-family: inherit; cursor: pointer; }

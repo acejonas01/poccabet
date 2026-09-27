@@ -1,7 +1,7 @@
 // Themes A (default) and B: the "Poccabet Homepage Redesign" layout. B uses lighter league headers.
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
@@ -22,6 +22,11 @@ import "./redesign.css";
 
 export function RedesignApp() {
   const desk = useIsDesktop();
+  // Server pages don't know the screen width, so they arrive in the phone layout. On wide screens
+  // redesign.css keeps them hidden until the first render that knows (desk and ready land together).
+  const [ready, setReady] = useState(false);
+  useEffect(() => setReady(true), []);
+  useLayoutEffect(() => { if (ready) document.documentElement.classList.add("tc-ready"); }, [ready]);
   const data = useTCData();
   const navigate = useNavigate();
   const location = useLocation();
