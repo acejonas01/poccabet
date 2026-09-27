@@ -22,8 +22,9 @@ import "./redesign.css";
 
 export function RedesignApp() {
   const desk = useIsDesktop();
-  // Server pages don't know the screen width, so they arrive in the phone layout. On wide screens
-  // redesign.css keeps them hidden until the first render that knows (desk and ready land together).
+  // Server pages guess the layout from the browser's user agent. If the guess doesn't fit the screen
+  // (e.g. a narrow desktop window), redesign.css hides the page until the first render that knows
+  // the real width (desk and ready land together).
   const [ready, setReady] = useState(false);
   useEffect(() => setReady(true), []);
   useLayoutEffect(() => { if (ready) document.documentElement.classList.add("tc-ready"); }, [ready]);
@@ -112,7 +113,7 @@ export function RedesignApp() {
   );
 
   return (
-    <div className="tc-root">
+    <div className="tc-root" data-layout={desk ? "desk" : "phone"}>
       {desk ? <DesktopHeader searchIndex={searchIndex} onOpenMatch={openMatch} simulated={data.simulated} onSupport={() => setSheet("support")} />
         : !onAuth && <MobileHeader searchIndex={searchIndex} onOpenMatch={openMatch} simulated={data.simulated} />}
       {!desk && onRoot && <SectionsNav active={activeSection} onSelect={onSection} />}

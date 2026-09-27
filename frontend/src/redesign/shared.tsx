@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, type BookedLeg } from "../api/client";
@@ -17,9 +17,14 @@ export const WELCOME_BONUS_AMOUNT = "₦50,000";
 // One switch for the featured-match card at the top of the Live, Upcoming and Top leagues tabs.
 export const SHOW_TAB_FEATURE = true;
 
+// The server's guess (from the browser's user agent) for the first render, so desktops get the
+// desktop layout straight away; the real screen width takes over once the page is running.
+export const DeskGuessContext = createContext(false);
+
 export function useIsDesktop() {
   const query = "(min-width: 900px)";
-  const [desk, setDesk] = useDeviceState(() => window.matchMedia(query).matches, false);
+  const guess = useContext(DeskGuessContext);
+  const [desk, setDesk] = useDeviceState(() => window.matchMedia(query).matches, guess);
   useEffect(() => {
     const mq = window.matchMedia(query);
     const on = () => setDesk(mq.matches);

@@ -9,8 +9,9 @@ import { BetSlipProvider } from "../../../frontend/src/context/BetSlipContext";
 import { ThemeProvider } from "../../../frontend/src/context/ThemeContext";
 import { InitialFeedContext, type InitialFeed } from "../../../frontend/src/redesign/data";
 import { RedesignApp } from "../../../frontend/src/redesign/RedesignApp";
+import { DeskGuessContext } from "../../../frontend/src/redesign/shared";
 
-export function SiteApp({ feed }: { feed: InitialFeed | null }) {
+export function SiteApp({ feed, desk }: { feed: InitialFeed | null; desk: boolean }) {
   // First render uses Nigerian time like the server; then show the visitor's own clock.
   const [, setClock] = useState(0);
   useEffect(() => { switchToVisitorClock(); setClock(1); }, []);
@@ -19,7 +20,9 @@ export function SiteApp({ feed }: { feed: InitialFeed | null }) {
       <AuthProvider>
         <BetSlipProvider>
           <InitialFeedContext.Provider value={feed}>
-            <RedesignApp />
+            <DeskGuessContext.Provider value={desk}>
+              <RedesignApp />
+            </DeskGuessContext.Provider>
           </InitialFeedContext.Provider>
         </BetSlipProvider>
       </AuthProvider>
