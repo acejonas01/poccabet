@@ -252,7 +252,7 @@ export function simLive(now = Date.now()): LiveFixture[] {
         return g.minute <= minute && d >= 0 && d < LOCK_AFTER_GOAL_MIN;
       });
       return {
-        externalId: m.id,
+        externalId: `sim-${m.id}`,
         league: m.league.name,
         country: m.league.country,
         leagueLogo: "",
@@ -300,7 +300,7 @@ export function simUpcoming(now = Date.now()): OddsEvent[] {
   }
   return [...next, ...ahead]
     .map((m) => ({
-      externalId: `af-${m.id}`,
+      externalId: `sim-${m.id}`,
       sport: "football",
       league: m.league.name,
       country: m.league.country,
@@ -358,7 +358,7 @@ export function simTopPick(now = Date.now()) {
   const share = 0.48 + rand() * 0.24;
 
   return {
-    matchId: `af-${m.id}`,
+    matchId: `sim-${m.id}`,
     market,
     selection,
     count,
@@ -421,7 +421,7 @@ export function simResults(now = Date.now()): FinishedFixture[] {
     .map((m) => {
       const s = scoreAt(m, 90);
       return {
-        externalId: `af-${m.id}`,
+        externalId: `sim-${m.id}`,
         league: m.league.name,
         homeTeam: m.home,
         awayTeam: m.away,
@@ -437,7 +437,8 @@ export function simResults(now = Date.now()): FinishedFixture[] {
 // The final (and half-time) score of a simulated match, once it has finished. Matches are
 // found through the day they kicked off, which every bet records.
 export function simResult(matchId: string, kickoff: Date, now = Date.now()) {
-  const id = Number(matchId.replace(/^af-/, ""));
+  // "sim-<id>"; bets placed before 27 Sept 2026 used "af-<id>" for simulated matches too.
+  const id = Number(matchId.replace(/^(sim|af)-/, ""));
   const m = scheduleFor(isoDay(kickoff.getTime())).find((x) => x.id === id);
   if (!m) return { status: "UNKNOWN" as const };
   if (clock(m, now).status !== "FT") return { status: "NOT_FINISHED" as const };

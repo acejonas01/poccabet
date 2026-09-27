@@ -56,7 +56,7 @@ function normalizeLiveEvent(evt: any, index: number) {
 // API-Football live fixture -> board event (reuses the odds normalizer for markets).
 function normalizeLiveFixture(f: any, index: number) {
   return {
-    ...normalizeLiveEvent({ ...f, externalId: `af-${f.externalId}`, sport: "football" }, index),
+    ...normalizeLiveEvent({ ...f, externalId: /^\d+$/.test(String(f.externalId)) ? `af-${f.externalId}` : f.externalId, sport: "football" }, index),
     status: "LIVE",
     minute: f.minute,
     period: f.status,

@@ -9,6 +9,12 @@ const MATCH_OVER_AFTER = 105 * 60_000; // kickoff + 105 min: a match (with half-
 const GIVE_UP_AFTER = 72 * 3600_000; // no result 3 days after kickoff: void the selection (stake back on singles)
 
 export async function settlePending(now = Date.now(), batch = 300) {
+  // 0. Bets whose selections were all graded by an earlier run that stopped before paying out
+  //    (a crash or a deploy mid-run): no selection is pending any more, so close them here.
+  let closed = 0;
+  const stuck = await prisma.bet.findMany({ where: { status: "PENDING", selections: { some: {}, none: { result: "PENDING" } } }, select: { id: true }, take: 50 });
+  for (const b of stuck) if (await settleBet(b.id, now)) closed++;
+
   // 1. Selections still waiting whose match should be over.
   const due = await prisma.betSelection.findMany({
     where: { result: "PENDING", matchId: { not: "" }, kickoff: { lte: new Date(now - MATCH_OVER_AFTER) } },
@@ -16,7 +22,7 @@ export async function settlePending(now = Date.now(), batch = 300) {
     orderBy: { kickoff: "asc" },
     take: batch,
   });
-  if (!due.length) return { graded: 0, settled: 0 };
+  if (!due.length) return { graded: 0, settled: closed };
 
   const matches = [...new Map(due.map((d) => [d.matchId, { matchId: d.matchId, kickoff: d.kickoff! }])).values()];
   const results = await getResults(matches, now);
@@ -43,7 +49,7 @@ export async function settlePending(now = Date.now(), batch = 300) {
   }
 
   // 3. Settle the bets those selections belong to.
-  let settled = 0;
+  let settled = closed;
   for (const betId of new Set(due.map((d) => d.betId))) if (await settleBet(betId, now)) settled++;
   return { graded, settled };
 }

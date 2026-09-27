@@ -2,13 +2,12 @@
 // every change is written to the audit log in the same database transaction.
 import { Router, type NextFunction, type Response } from "express";
 import { Prisma } from "@prisma/client";
-import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
 import { normaliseNgPhone, formatNgPhone } from "../lib/phone";
 import { byUser, limit } from "../lib/rateLimit";
+import { closeAccount } from "../lib/closeAccount";
 import { requireAuth, type AuthedRequest } from "../middleware/auth";
 import { requireAdminKey } from "../middleware/admin";
 import { toKobo, toNaira } from "../betting/money";
@@ -131,9 +130,9 @@ router.get("/stats", async (_req, res) => {
 });
 
 // ---------- users ----------
-const userRow = { id: true, displayName: true, firstName: true, lastName: true, email: true, phone: true, role: true, suspendedAt: true, suspendedReason: true, deletedAt: true, createdAt: true, wallet: { select: { balance: true } }, _count: { select: { bets: true } } } as const;
+const userRow = { id: true, customerNo: true, displayName: true, firstName: true, lastName: true, email: true, phone: true, role: true, suspendedAt: true, suspendedReason: true, deletedAt: true, createdAt: true, wallet: { select: { balance: true } }, _count: { select: { bets: true } } } as const;
 const userDto = (u: Prisma.UserGetPayload<{ select: typeof userRow }>) => ({
-  id: u.id, name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.displayName, email: u.email,
+  id: u.id, customerNo: u.customerNo, name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.displayName, email: u.email,
   phone: u.phone ? formatNgPhone(u.phone) : null, role: u.role, suspended: !!u.suspendedAt, suspendedReason: u.suspendedReason,
   deleted: !!u.deletedAt, createdAt: u.createdAt, balance: toNaira(u.wallet?.balance ?? 0), bets: u._count.bets,
 });
@@ -142,8 +141,11 @@ function userSearch(q: string): Prisma.UserWhereInput {
   if (!q) return {};
   const phone = normaliseNgPhone(q);
   const text = { contains: q, mode: "insensitive" as const };
+  const customer = /^(pc)?[-\s]?(\d{7})$/i.exec(q); // "PC-4829135", "pc4829135" or just the 7 digits
   return { OR: [
-    ...(phone ? [{ phone }] : []), { id: q }, { email: text }, { displayName: text }, { firstName: text }, { lastName: text },
+    ...(phone ? [{ phone }] : []), ...(customer ? [{ customerNo: `PC-${customer[2]}` }] : []), { id: q }, { email: text }, { displayName: text }, { firstName: text }, { lastName: text },
+    // deleted accounts: by the identity kept in the sealed archive
+    { closedAccount: { is: { OR: [...(phone ? [{ phone }] : []), { email: text }, { firstName: text }, { lastName: text }, { displayName: text }] } } },
   ] };
 }
 
@@ -164,6 +166,9 @@ router.get("/users", async (req, res) => {
     prisma.user.count({ where }),
     prisma.user.findMany({ where, select: userRow, orderBy: { createdAt: "desc" }, skip: p * PAGE, take: PAGE }),
   ]);
+  // A search that found deleted accounts looked into the identity archive: keep a record of it.
+  const found = users.filter((u) => u.deletedAt).map((u) => u.id);
+  if (q && found.length) await audit(prisma, req as AuthedRequest, "ARCHIVE_SEARCH", "USER", found[0], { query: q, matches: found.length });
   res.json({ total, page: p, pageSize: PAGE, users: users.map(userDto) });
 });
 
@@ -171,14 +176,17 @@ router.get("/users/:id", async (req, res) => {
   const id = String(req.params.id);
   const u = await prisma.user.findUnique({ where: { id }, select: { ...userRow, dateOfBirth: true, emailVerifiedAt: true, phoneVerifiedAt: true, referralCode: true, bonusClaimedAt: true } });
   if (!u) return res.status(404).json({ error: "User not found", code: "NOT_FOUND" });
-  const [stats, bets, txs, log] = await Promise.all([
+  const [stats, bets, txs, log, closed] = await Promise.all([
     prisma.bet.aggregate({ where: { userId: id }, _sum: { stake: true, payout: true } }),
     prisma.bet.findMany({ where: { userId: id }, orderBy: { createdAt: "desc" }, take: 20, include: { _count: { select: { selections: true } } } }),
     prisma.transaction.findMany({ where: { wallet: { userId: id } }, orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.auditLog.findMany({ where: { targetType: "USER", targetId: id }, orderBy: { createdAt: "desc" }, take: 20 }),
+    prisma.closedAccount.findUnique({ where: { userId: id }, select: { closedAt: true, closedBy: true, closedByAdmin: true, reason: true, retainUntil: true } }),
   ]);
+  const closedBy = closed?.closedByAdmin ? (await named([{ adminId: closed.closedByAdmin }]))[0].admin : null;
   res.json({
     ...userDto(u),
+    closed: closed ? { closedAt: closed.closedAt, by: closed.closedBy, byName: closedBy, reason: closed.reason, retainUntil: closed.retainUntil } : null,
     dateOfBirth: u.dateOfBirth?.toISOString().slice(0, 10) ?? null, emailVerified: !!u.emailVerifiedAt, phoneVerified: !!u.phoneVerifiedAt,
     referralCode: u.referralCode, bonusClaimed: !!u.bonusClaimedAt,
     totals: { staked: toNaira(stats._sum.stake ?? 0), paidOut: toNaira(stats._sum.payout ?? 0), net: toNaira((stats._sum.stake ?? 0) - (stats._sum.payout ?? 0)) },
@@ -186,6 +194,35 @@ router.get("/users/:id", async (req, res) => {
     transactions: txs.map((t) => ({ id: t.id, type: t.type, amount: toNaira(t.amount), balanceAfter: t.balanceAfter == null ? null : toNaira(t.balanceAfter), reference: t.reference, status: t.status, createdAt: t.createdAt })),
     audit: await named(log),
   });
+});
+
+// The sealed identity of a deleted account (legal / AML requests). Needs a reason; every read is audited.
+router.post("/users/:id/identity", async (req: AuthedRequest, res) => {
+  try {
+    const why = reason.parse(req.body?.reason);
+    const id = String(req.params.id);
+    const a = await prisma.closedAccount.findUnique({ where: { userId: id } });
+    if (!a) throw new AdminError("NOT_FOUND", "No archived identity for this account (deleted before the archive existed, or past its retention period)", 404);
+    await audit(prisma, req, "IDENTITY_REVEAL", "USER", id, { reason: why });
+    const closedByName = a.closedByAdmin ? (await named([{ adminId: a.closedByAdmin }]))[0].admin : null;
+    const day = (d: Date | null) => d?.toISOString().slice(0, 10) ?? null;
+    const { customerNo } = await prisma.user.findUniqueOrThrow({ where: { id }, select: { customerNo: true } });
+    res.json({
+      userId: id, customerNo,
+      closure: { closedAt: a.closedAt, closedBy: a.closedBy, closedByName, reason: a.reason, retainUntil: day(a.retainUntil) },
+      identity: {
+        displayName: a.displayName, firstName: a.firstName, lastName: a.lastName, dateOfBirth: day(a.dateOfBirth),
+        phone: a.phone, phoneVerifiedAt: a.phoneVerifiedAt, email: a.email, emailVerifiedAt: a.emailVerifiedAt,
+        ageConfirmedAt: a.ageConfirmedAt, referralCode: a.referralCode, signupSource: a.signupSource, registeredAt: a.registeredAt,
+        suspendedAt: a.suspendedAt, suspendedReason: a.suspendedReason,
+      },
+      access: { lastLoginAt: a.lastLoginAt, lastLoginIp: a.lastLoginIp, lastUserAgent: a.lastUserAgent, signupIp: a.signupIp },
+      money: {
+        balance: toNaira(a.balance), deposits: toNaira(a.deposits), withdrawals: toNaira(a.withdrawals), bonuses: toNaira(a.bonuses),
+        staked: toNaira(a.staked), paidOut: toNaira(a.paidOut), bets: a.bets, openBets: a.openBets, firstBetAt: a.firstBetAt, lastBetAt: a.lastBetAt,
+      },
+    });
+  } catch (err) { fail(res, err); }
 });
 
 router.post("/users/:id/suspend", async (req: AuthedRequest, res) => {
@@ -254,18 +291,9 @@ router.post("/users/:id/delete", async (req: AuthedRequest, res) => {
     if (!SIMULATE && balance > 0) throw new AdminError("BALANCE_NOT_EMPTY", `Their balance is ${toNaira(balance).toFixed(2)}: pay it out or adjust it to zero first`, 409);
     if (!SIMULATE && open) throw new AdminError("OPEN_BETS", `They have ${open} open bet(s): settle or void them first`, 409);
     await prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id },
-        data: {
-          deletedAt: new Date(), passwordChangedAt: new Date(),
-          email: null, emailVerifiedAt: null, phone: null, phoneVerifiedAt: null,
-          firstName: null, lastName: null, dateOfBirth: null, referralCode: null,
-          displayName: "Deleted user", role: "USER",
-          passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 10), // nobody can log in again
-        },
-      });
-      await audit(tx, req, "USER_DELETE", "USER", id, { reason: body.reason, balance: toNaira(balance), openBets: open });
-    });
+      const { retainUntil } = await closeAccount(tx, id, { kind: "ADMIN", adminId: req.userId! }, body.reason);
+      await audit(tx, req, "USER_DELETE", "USER", id, { reason: body.reason, balance: toNaira(balance), openBets: open, archivedUntil: retainUntil.toISOString().slice(0, 10) });
+    }, { timeout: 20_000 });
     res.json({ ok: true });
   } catch (err) { fail(res, err); }
 });

@@ -52,9 +52,12 @@ function overUnder25(markets: any[]): number[] {
 }
 const noDirs = () => ({ "1x2": ["", "", ""] as Dir[], ou: ["", ""] as Dir[] });
 
+// Live fixtures carry their full id ("af-123" / "sim-123"); older API versions sent the bare number.
+const fullId = (id: string | number) => (typeof id === "number" || /^\d+$/.test(id) ? `af-${id}` : id);
+
 function fromLive(f: any): TCMatch {
   return {
-    id: `af-${f.externalId}`,
+    id: fullId(f.externalId),
     league: f.league,
     country: f.country || COUNTRY[f.league] || "",
     home: f.homeTeam,

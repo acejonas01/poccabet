@@ -1,7 +1,6 @@
 // The logged-in user's own account: profile, edits, email verification, password, delete.
 import { Router, type Response } from "express";
 import bcrypt from "bcryptjs";
-import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { SIMULATE } from "../lib/feedMode";
@@ -11,6 +10,7 @@ import { OtpError, consumeOtp, startOtp } from "../auth/otp";
 import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
 import { byUser, everyone, limit } from "../lib/rateLimit";
+import { closeAccount } from "../lib/closeAccount";
 
 const router = Router();
 router.use(requireAuth);
@@ -27,6 +27,7 @@ async function profile(userId: string) {
   const count = (s: string) => byStatus.find((b) => b.status === s)?._count._all ?? 0;
   return {
     id: u.id,
+    customerNo: u.customerNo,
     firstName: u.firstName,
     lastName: u.lastName,
     displayName: u.displayName,
@@ -161,8 +162,8 @@ router.post("/password", limit("password", 10, 15, byUser), async (req: AuthedRe
 });
 
 // DELETE /api/me { password, confirm: "DELETE" }
-// Personal details are erased and login is blocked. Bets and the money ledger are kept, as a
-// betting operator must. With real money, the wallet must be empty and no bets open first.
+// Personal details leave the account (into the sealed closed_accounts archive, kept for legal record
+// keeping) and login is blocked. Bets and the money ledger are kept, as a betting operator must. With real money, the wallet must be empty and no bets open first.
 router.delete("/", limit("delete-account", 10, 15, byUser), async (req: AuthedRequest, res) => {
   const parsed = z.object({ password: z.string(), confirm: z.literal("DELETE") }).safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "Type DELETE and your password to confirm", code: "INVALID_DETAILS" });
@@ -177,16 +178,7 @@ router.delete("/", limit("delete-account", 10, 15, byUser), async (req: AuthedRe
         return res.status(409).json({ error: "Wait for your open bets to settle before deleting your account", code: "OPEN_BETS" });
       }
     }
-    await prisma.user.update({
-      where: { id: me.id },
-      data: {
-        deletedAt: new Date(),
-        email: null, emailVerifiedAt: null, phone: null, phoneVerifiedAt: null,
-        firstName: null, lastName: null, dateOfBirth: null, referralCode: null,
-        displayName: "Deleted user",
-        passwordHash: await bcrypt.hash(randomBytes(32).toString("hex"), 10), // nobody can log in again
-      },
-    });
+    await prisma.$transaction((tx) => closeAccount(tx, me.id, { kind: "PLAYER" }, "Closed by the player"), { timeout: 20_000 });
     res.json({ ok: true });
   } catch (err) {
     fail(res, err);

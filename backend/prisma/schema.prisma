@@ -9,6 +9,7 @@ datasource db {
 
 model User {
   id                String    @id @default(cuid())
+  customerNo        String    @unique @default(dbgenerated("generate_customer_no()")) @map("customer_no") // public customer number, e.g. PC-4829135 (support, records)
   email             String?   @unique // older accounts; new ones sign up with a phone number
   emailVerifiedAt   DateTime? @map("email_verified_at")
   bonusClaimedAt    DateTime? @map("bonus_claimed_at") // welcome bonus (one per account, needs a verified email)
@@ -31,10 +32,11 @@ model User {
   wallet Wallet?
   bets   Bet[]
 
-  signupSource String?      @map("signup_source") // where they came from: utm_source / ref from the first visit
-  lastLoginAt  DateTime?    @map("last_login_at")
-  updatedAt    DateTime     @default(now()) @updatedAt @map("updated_at")
-  loginEvents  LoginEvent[]
+  signupSource  String?        @map("signup_source") // where they came from: utm_source / ref from the first visit
+  lastLoginAt   DateTime?      @map("last_login_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+  loginEvents   LoginEvent[]
+  closedAccount ClosedAccount? // identity archive, kept after the account is deleted
 
   @@map("users")
 }
@@ -309,9 +311,66 @@ model LoginEvent {
   user      User     @relation(fields: [userId], references: [id])
   method    String // PASSWORD | SIGNUP | RESET
   userAgent String?  @map("user_agent")
+  ip        String? // visitor IP at login (from X-Forwarded-For via Vercel)
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([userId, createdAt])
   @@map("login_events")
+}
+
+// Sealed identity record of a deleted account. The users row is anonymised on deletion; this keeps
+// who the player was (and a money summary at closure) for legal / anti-money-laundering requests,
+// until `retainUntil`, then it's purged. Admins can only read it with a reason, which is audited.
+// Not granted to analytics_reader.
+model ClosedAccount {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id])
+
+  // closure
+  closedAt      DateTime @default(now()) @map("closed_at") // date of deletion
+  closedBy      String   @map("closed_by") // PLAYER | ADMIN
+  closedByAdmin String?  @map("closed_by_admin") // admin user id when closed by an admin
+  reason        String?
+  retainUntil   DateTime @map("retain_until")
+
+  // identity as it was at closure
+  displayName     String    @map("display_name")
+  firstName       String?   @map("first_name")
+  lastName        String?   @map("last_name")
+  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
+  phone           String?
+  phoneVerifiedAt DateTime? @map("phone_verified_at")
+  email           String?
+  emailVerifiedAt DateTime? @map("email_verified_at")
+  ageConfirmedAt  DateTime? @map("age_confirmed_at")
+  referralCode    String?   @map("referral_code")
+  signupSource    String?   @map("signup_source")
+  registeredAt    DateTime  @map("registered_at")
+  suspendedAt     DateTime? @map("suspended_at")
+  suspendedReason String?   @map("suspended_reason")
+
+  // last known access
+  lastLoginAt   DateTime? @map("last_login_at")
+  lastLoginIp   String?   @map("last_login_ip")
+  lastUserAgent String?   @map("last_user_agent")
+  signupIp      String?   @map("signup_ip")
+
+  // money at closure (kobo)
+  balance     Int       @default(0)
+  deposits    Int       @default(0)
+  withdrawals Int       @default(0)
+  bonuses     Int       @default(0)
+  staked      Int       @default(0)
+  paidOut     Int       @default(0) @map("paid_out")
+  bets        Int       @default(0)
+  openBets    Int       @default(0) @map("open_bets")
+  firstBetAt  DateTime? @map("first_bet_at")
+  lastBetAt   DateTime? @map("last_bet_at")
+
+  @@index([retainUntil])
+  @@index([phone])
+  @@index([email])
+  @@map("closed_accounts")
 }

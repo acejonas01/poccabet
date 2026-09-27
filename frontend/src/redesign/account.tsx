@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
 import { CheckIcon, ChevronRight, DepositIcon, GiftIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
-import { ACCENT, Loader, Sheet, SheetTitle, useMinLoading } from "./shared";
+import { ACCENT, Loader, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -20,6 +20,17 @@ const rowStyle: CSSProperties = {
   width: "100%", minHeight: 56, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12, border: "none",
   borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", textAlign: "left", font: "inherit",
 };
+
+// Small "Copy" button for the customer number (quoted when contacting support).
+function CopyChip({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button type="button" onClick={async () => { if (await copyText(text)) { setDone(true); setTimeout(() => setDone(false), 1600); } }}
+      style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid var(--tc-outline-2)", background: "transparent", color: done ? GREEN : "var(--tc-text)", fontSize: 12, fontWeight: 800 }}>
+      {done ? "Copied" : "Copy"}
+    </button>
+  );
+}
 
 const Badge = ({ ok, children }: { ok: boolean; children: ReactNode }) => (
   <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 800, color: ok ? GREEN : ACCENT, background: ok ? "rgba(42, 181, 114, 0.12)" : "rgba(245, 197, 24, 0.12)" }}>
@@ -215,8 +226,9 @@ function DeleteSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: (
       <SheetTitle title="Delete account" onClose={onClose} />
       <form onSubmit={remove} style={sheetBody}>
         <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(229, 72, 77, 0.1)", border: "1px solid rgba(229, 72, 77, 0.4)", fontSize: 14, lineHeight: 1.5, color: "var(--tc-soft)" }}>
-          This can't be undone. Your name, phone number, email and login are erased and you'll be logged out everywhere.
-          Records of your bets and payments are kept, as the law requires.
+          This can't be undone. You'll be logged out everywhere and can't log in again, and your name, phone number and email
+          are removed from your account. As the law requires, we keep a sealed record of who you were, your bets and your
+          payments for 5 years, then delete it.
         </div>
         <Field label='Type DELETE to confirm'><input suppressHydrationWarning value={typed} onChange={(e) => setTyped(e.target.value.toUpperCase())} autoCapitalize="characters" autoComplete="off" style={formInput(false)} /></Field>
         <Field label="Your password"><PasswordInput value={password} onChange={setPassword} autoComplete="current-password" /></Field>
@@ -245,6 +257,7 @@ function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose:
     <Sheet label="Personal details" onClose={onClose}>
       <SheetTitle title="Personal details" onClose={onClose} />
       <div style={{ paddingBottom: 8 }}>
+        {row("Customer number", me.customerNo, <CopyChip text={me.customerNo} />)}
         {row("Name", me.firstName ?? me.displayName)}
         {row("Surname", me.lastName ?? "—")}
         {row("Email", me.email ?? "—", me.email && (me.emailVerified

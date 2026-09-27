@@ -439,7 +439,7 @@ function Breakdown() {
 }
 
 // ---------- users ----------
-type UserRow = { id: string; name: string; email: string | null; phone: string | null; role: string; suspended: boolean; suspendedReason: string | null; deleted: boolean; createdAt: string; balance: number; bets: number };
+type UserRow = { id: string; customerNo: string; name: string; email: string | null; phone: string | null; role: string; suspended: boolean; suspendedReason: string | null; deleted: boolean; createdAt: string; balance: number; bets: number };
 const userBadges = (u: UserRow) => (
   <span style={{ display: "inline-flex", gap: 6 }}>
     {u.role === "ADMIN" && <Badge tone="blue">ADMIN</Badge>}
@@ -455,20 +455,20 @@ function UsersPage() {
   const { data, error } = useApi<{ total: number; pageSize: number; users: UserRow[] }>(`/admin/users${qs ? `?${qs}` : ""}`);
   return (
     <>
-      <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or id" /></Head>
+      <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or customer no." /></Head>
       <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["active", "Active"], ["suspended", "Suspended"], ["deleted", "Deleted"], ["admins", "Admins"]]} /></div>
       {!data ? <Loading error={error} /> : (
         <div className="adm-table-wrap">
           <table className="adm-table">
-            <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
+            <thead><tr><th>Name</th><th>Customer no.</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
             <tbody>
               {data.users.map((u) => (
                 <tr key={u.id} className="click" onClick={() => router.push(`/office/users/${u.id}`)}>
-                  <td style={{ fontWeight: 700 }}>{u.name}</td><td>{u.phone ?? "—"}</td><td>{u.email ?? "—"}</td>
+                  <td style={{ fontWeight: 700 }}>{u.name}</td><td style={{ fontVariantNumeric: "tabular-nums" }}>{u.customerNo}</td><td>{u.phone ?? "—"}</td><td>{u.email ?? "—"}</td>
                   <td className="adm-num">{naira(u.balance)}</td><td className="adm-num">{u.bets}</td><td>{day(u.createdAt)}</td><td>{userBadges(u)}</td>
                 </tr>
               ))}
-              {!data.users.length && <tr><td colSpan={7} className="adm-empty">No users found.</td></tr>}
+              {!data.users.length && <tr><td colSpan={8} className="adm-empty">No users found.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -485,12 +485,68 @@ type UserDetail = UserRow & {
   totals: { staked: number; paidOut: number; net: number };
   bets: BetRow[]; transactions: { id: string; type: string; amount: number; balanceAfter: number | null; reference: string | null; status: string; createdAt: string }[];
   audit: AuditEntry[];
+  closed: { closedAt: string; by: "PLAYER" | "ADMIN"; byName: string | null; reason: string | null; retainUntil: string } | null;
 };
+type Identity = {
+  userId: string; customerNo: string;
+  closure: { closedAt: string; closedBy: string; closedByName: string | null; reason: string | null; retainUntil: string };
+  identity: { displayName: string; firstName: string | null; lastName: string | null; dateOfBirth: string | null; phone: string | null; phoneVerifiedAt: string | null;
+    email: string | null; emailVerifiedAt: string | null; ageConfirmedAt: string | null; referralCode: string | null; signupSource: string | null; registeredAt: string;
+    suspendedAt: string | null; suspendedReason: string | null };
+  access: { lastLoginAt: string | null; lastLoginIp: string | null; lastUserAgent: string | null; signupIp: string | null };
+  money: { balance: number; deposits: number; withdrawals: number; bonuses: number; staked: number; paidOut: number; bets: number; openBets: number; firstBetAt: string | null; lastBetAt: string | null };
+};
+
+// Full date and time in Nigerian time, for records that may end up in front of a regulator.
+const stamp = (v: string | Date) =>
+  `${new Date(v).toLocaleString("en-GB", { timeZone: "Africa/Lagos", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })} WAT`;
+
+// The sealed record of a deleted account, laid out for a legal request, as label/value groups.
+function identityRows(r: Identity): [string, [string, string][]][] {
+  const t = (v: string | null) => (v ? stamp(v) : "—");
+  const yes = (v: string | null) => (v ? `yes, ${stamp(v)}` : "no");
+  const i = r.identity, a = r.access, m = r.money, c = r.closure;
+  return [
+    ["Identity", [
+      ["Full name", [i.firstName, i.lastName].filter(Boolean).join(" ") || "—"], ["Display name", i.displayName], ["Date of birth", i.dateOfBirth ?? "—"],
+      ["Phone", i.phone ?? "—"], ["Phone verified", yes(i.phoneVerifiedAt)], ["Email", i.email ?? "—"], ["Email verified", yes(i.emailVerifiedAt)],
+      ["Confirmed 18+", yes(i.ageConfirmedAt)], ["Promo / referral code", i.referralCode ?? "—"], ["Came from", i.signupSource ?? "direct"],
+      ["Registered", stamp(i.registeredAt)], ["Suspended", i.suspendedAt ? `${stamp(i.suspendedAt)}${i.suspendedReason ? ` (${i.suspendedReason})` : ""}` : "no"],
+    ]],
+    ["Access", [
+      ["Last login", t(a.lastLoginAt)], ["Last login IP", a.lastLoginIp ?? "not recorded"], ["Sign-up IP", a.signupIp ?? "not recorded"], ["Last device", a.lastUserAgent ?? "—"],
+    ]],
+    ["Money at closure", [
+      ["Balance", naira(m.balance)], ["Deposits", naira(m.deposits)], ["Withdrawals", naira(m.withdrawals)], ["Bonuses", naira(m.bonuses)],
+      ["Total staked", naira(m.staked)], ["Total paid out", naira(m.paidOut)], ["Bets", String(m.bets)], ["Open bets at closure", String(m.openBets)],
+      ["First bet", t(m.firstBetAt)], ["Last bet", t(m.lastBetAt)],
+    ]],
+    ["Closure", [
+      ["Account deleted on", stamp(c.closedAt)], ["Deleted by", c.closedBy === "ADMIN" ? `Admin: ${c.closedByName ?? "unknown"}` : "The player"],
+      ["Reason", c.reason ?? "—"], ["Record kept until", day(c.retainUntil)], ["Customer number", r.customerNo], ["Account id", r.userId],
+    ]],
+  ];
+}
+function downloadIdentity(r: Identity) {
+  const lines = [`Poccabet - closed account record`, `Exported ${stamp(new Date())}. Confidential: contains personal data.`, ""];
+  for (const [group, rows] of identityRows(r)) {
+    lines.push(group.toUpperCase());
+    for (const [k, v] of rows) lines.push(`  ${k}: ${v}`);
+    lines.push("");
+  }
+  const url = URL.createObjectURL(new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `closed-account-${r.userId}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   const router = useRouter();
   const { data: u, error, reload } = useApi<UserDetail>(`/admin/users/${id}`);
   const dialog = useDialog((m) => { flash(m); reload(); });
+  const [identity, setIdentity] = useState<Identity | null>(null);
   if (!u) return <><Head title="User" /><Loading error={error} /></>;
   const adjust = () => dialog.open({
     title: "Adjust balance", confirm: "Apply", text: <>Current balance {naira(u.balance)}. Use a minus sign to take money off (never below ₦0).</>,
@@ -512,7 +568,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   });
   const remove = () => dialog.open({
     title: `Delete ${u.name}'s account`, confirm: "Delete account", tone: "danger",
-    text: <>Their name, phone, email and date of birth are erased and they can never log in again. Bets and wallet history are kept for the records. Their phone number and email can be used to sign up again. <b>This can't be undone.</b>{u.balance > 0 && <> They still have {naira(u.balance)}.</>}</>,
+    text: <>They can never log in again and their name, phone, email and date of birth are removed from the account. Those details go into a sealed archive, kept for legal record keeping and readable only with a logged reason. Bets and wallet history stay with the account. Their phone number and email can be used to sign up again. <b>This can't be undone.</b>{u.balance > 0 && <> They still have {naira(u.balance)}.</>}</>,
     fields: (set, v) => <label className="adm-field">Type DELETE to confirm<input className="adm-input" value={v.confirm ?? ""} onChange={(e) => set("confirm", e.target.value.toUpperCase())} autoCapitalize="characters" required /></label>,
     run: async (v) => {
       if (v.confirm !== "DELETE") throw new Error("Type DELETE to confirm");
@@ -520,10 +576,15 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
       return "Account deleted";
     },
   });
+  const reveal = () => dialog.open({
+    title: "Reveal identity", confirm: "Reveal", tone: "primary",
+    text: "Shows who this player was: the sealed record kept for legal and anti-money-laundering requests. Use it only when there's a real need. Your name, the time and the reason are saved in the audit log.",
+    run: async (v) => { setIdentity(await api<Identity>(`/admin/users/${u.id}/identity`, { reason: v.reason })); return "Identity revealed (logged in the audit log)"; },
+  });
   const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal" };
   return (
     <>
-      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Joined {day(u.createdAt)} · id {u.id}</>}>
+      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Customer <b style={{ color: "var(--text)" }}>{u.customerNo}</b> · joined {day(u.createdAt)} · id {u.id}</>}>
         {!u.deleted && <>
           <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
           <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
@@ -537,6 +598,27 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
         <Stat k="Paid out" v={naira(u.totals.paidOut)} />
         <Stat k="Net to us" v={naira(u.totals.net)} tone={u.totals.net >= 0 ? "#5BD69A" : "#FF8A8E"} s="Staked − paid out" />
       </div>
+      {u.deleted && (
+        <div className="adm-section adm-card">
+          <div className="adm-h2row" style={{ marginBottom: 12, flexWrap: "wrap" }}>
+            <h2 style={{ margin: 0 }}>Closed account record</h2>
+            {u.closed && !identity && <button className="adm-btn primary sm" onClick={reveal}>Reveal identity</button>}
+            {identity && <span className="adm-actions"><button className="adm-btn sm" onClick={() => downloadIdentity(identity)}>Download record</button><button className="adm-btn sm" onClick={() => setIdentity(null)}>Hide</button></span>}
+          </div>
+          {!u.closed ? <div className="adm-sub">Deleted before the identity archive existed, or its record has passed the retention period: no identity was kept.</div>
+            : !identity ? (
+              <div className="adm-kv">
+                {[["Account deleted on", stamp(u.closed.closedAt)], ["Deleted by", u.closed.by === "ADMIN" ? `Admin: ${u.closed.byName ?? "unknown"}` : "The player"],
+                  ["Reason", u.closed.reason ?? "—"], ["Identity kept until", day(u.closed.retainUntil)]].map(([k, v]) => <div key={k}><div className="k">{k}</div><div className="v">{v}</div></div>)}
+              </div>
+            ) : identityRows(identity).map(([group, rows]) => (
+              <div key={group} style={{ marginTop: 14 }}>
+                <div className="adm-sub" style={{ fontWeight: 800, letterSpacing: 0.6, marginBottom: 8 }}>{group.toUpperCase()}</div>
+                <div className="adm-kv">{rows.map(([k, v]) => <div key={k}><div className="k">{k}</div><div className="v">{v}</div></div>)}</div>
+              </div>
+            ))}
+        </div>
+      )}
       <div className="adm-section adm-card">
         <div className="adm-kv">
           {[["Phone", u.phone ? `${u.phone}${u.phoneVerified ? " ✓" : ""}` : "—"], ["Email", u.email ? `${u.email}${u.emailVerified ? " ✓ verified" : " (not verified)"}` : "—"],
@@ -747,7 +829,7 @@ function MatchesPage({ flash }: { flash: (m: string) => void }) {
 
 // ---------- audit log ----------
 const ACTION_LABEL: Record<string, string> = {
-  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
+  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", IDENTITY_REVEAL: "Revealed identity", ARCHIVE_SEARCH: "Searched deleted accounts", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
   BET_VOID: "Voided bet", BET_SETTLE: "Settled bet", LEG_SETTLE: "Settled leg", MATCH_SUSPEND: "Suspended match", MATCH_UNSUSPEND: "Reopened match",
   MATCH_VOID: "Voided match bets", MATCH_RESULT: "Entered result",
 };

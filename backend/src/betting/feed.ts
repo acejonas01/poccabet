@@ -10,7 +10,7 @@ import { deriveOdds } from "./markets";
 import { suspendedIds } from "./suspensions";
 
 export interface BettableMatch {
-  matchId: string; // same id the site uses, e.g. "af-12345"
+  matchId: string; // same id the site uses: "af-12345" (API-Football) or "sim-12345" (simulation)
   home: string;
   away: string;
   league: string;
@@ -45,7 +45,7 @@ function pricesFrom(markets: OddsMarket[], suspended: boolean): Record<string, n
 
 function fromLive(f: LiveFixture, stale: boolean): BettableMatch {
   return {
-    matchId: `af-${f.externalId}`,
+    matchId: f.externalId,
     home: f.homeTeam,
     away: f.awayTeam,
     league: f.league,

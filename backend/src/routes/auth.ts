@@ -8,7 +8,7 @@ import { formatNgPhone, normaliseNgPhone } from "../lib/phone";
 import { toNaira } from "../betting/money";
 import { RULES } from "../betting/rules";
 import { OtpError, phoneFromToken, startOtp, verifyOtp } from "../auth/otp";
-import { everyone, limit } from "../lib/rateLimit";
+import { everyone, limit, clientIp } from "../lib/rateLimit";
 import { SUSPENDED_MESSAGE, signSession } from "../middleware/auth";
 
 const router = Router();
@@ -27,9 +27,10 @@ const newWallet = () => ({
 // Never blocks the log-in itself.
 async function recordLogin(req: Request, userId: string, method: "PASSWORD" | "SIGNUP" | "RESET") {
   const userAgent = String(req.headers["user-agent"] ?? "").slice(0, 200) || null;
+  const ip = clientIp(req).slice(0, 64);
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } }),
-    prisma.loginEvent.create({ data: { userId, method, userAgent } }),
+    prisma.loginEvent.create({ data: { userId, method, userAgent, ip: ip === "unknown" ? null : ip } }),
   ]).catch((err) => console.error("login event not saved:", err));
 }
 // Where a new player came from (utm_source / ref of their first visit), kept short and plain.

@@ -13,7 +13,7 @@ const router = Router();
 // GET /api/live — in-play football fixtures (cached server-side)
 router.get("/", async (_req, res) => {
   const ids = await suspendedIds();
-  const lock = <T extends { externalId: string | number; markets: any[] }>(list: T[]) => (ids.size ? list.map((f) => (ids.has(`af-${f.externalId}`) ? lockMarkets(f) : f)) : list);
+  const lock = <T extends { externalId: string; markets: any[] }>(list: T[]) => (ids.size ? list.map((f) => (ids.has(f.externalId) ? lockMarkets(f) : f)) : list);
   if (SIMULATE) {
     const fixtures = lock(simLive());
     return res.json({ count: fixtures.length, fetchedAt: new Date(), stale: false, simulated: true, fixtures });

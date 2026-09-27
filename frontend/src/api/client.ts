@@ -145,7 +145,7 @@ export const api = {
 };
 
 export interface Profile {
-  id: string; firstName: string | null; lastName: string | null; displayName: string;
+  id: string; customerNo: string; firstName: string | null; lastName: string | null; displayName: string;
   email: string | null; emailVerified: boolean; phone: string | null; phoneDisplay: string | null; phoneVerified: boolean;
   dateOfBirth: string | null; memberSince: string; balance: number; demo: boolean;
   bonus: { amount: number; claimed: boolean }; // welcome bonus: claimed once, needs a verified email

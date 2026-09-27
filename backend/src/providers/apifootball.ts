@@ -34,7 +34,7 @@ export interface FinishedFixture {
 }
 
 export interface LiveFixture {
-  externalId: number;
+  externalId: string; // "af-<fixture id>" (API-Football) or "sim-<id>" (simulation)
   league: string;
   country: string;
   leagueLogo: string;
@@ -133,7 +133,7 @@ async function fetchLive(): Promise<LiveFixture[]> {
   }
 
   return fixtures.map((f: any) => ({
-    externalId: f.fixture.id,
+    externalId: `af-${f.fixture.id}`,
     league: f.league.name,
     country: f.league.country,
     leagueLogo: f.league.logo,
