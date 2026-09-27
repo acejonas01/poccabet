@@ -4,10 +4,10 @@
 // moves between plausible positions every few seconds (it's a picture of the play, not tracking).
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, type ChatMessage } from "../api/client";
+import { api, type ChatMessage, type Lineup, type MatchInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { type TCMatch, teamCode } from "./data";
-import { Timeline, usePickShares } from "./matchstats";
+import { usePickShares } from "./matchstats";
 import { impliedPct } from "./markets";
 import { ACCENT } from "./shared";
 
@@ -16,23 +16,29 @@ const AWAY = "#4C9EEB";
 const QUOTE = "#2AB572"; // reply quote bar in chat
 const PITCH_W = 360, PITCH_H = 220; // match view box (pitch and every tab)
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
+// flat: full screen width on phones (see matchpage.tsx), cancelling the page's 16px side padding.
+const shell = (flat?: boolean): CSSProperties => flat
+  ? { background: "var(--tc-card)", borderTop: "1px solid var(--tc-card-line)", borderBottom: "1px solid var(--tc-card-line)", margin: "0 -16px", overflow: "hidden" }
+  : card;
 
-type Panel = "pitch" | "stats" | "timeline" | "commentary" | "lineups";
+type Panel = "pitch" | "stats" | "h2h" | "table" | "timeline" | "lineups";
 const JERSEY = <path d="M8.5 3.5 4 5.5 2.5 10l3 1.2V20.5h13v-9.3l3-1.2L20 5.5l-4.5-2a3.6 3.6 0 0 1-7 0z" />;
 const CHAT_ICON = <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" />;
 const ic = (d: ReactNode) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
 const PANELS: { id: Panel; label: string; icon: ReactNode }[] = [
   { id: "pitch", label: "Match view", icon: ic(<><rect x="2.5" y="5" width="19" height="14" rx="1.5" /><path d="M12 5v14" /><circle cx="12" cy="12" r="2.6" /><path d="M2.5 9.5h3v5h-3M21.5 9.5h-3v5h3" /></>) },
   { id: "stats", label: "Stats", icon: ic(<path d="M5 20V11M12 20V5M19 20v-6M3 20h18" />) },
-  { id: "timeline", label: "Timeline", icon: ic(<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />) },
-  { id: "commentary", label: "Commentary", icon: ic(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>) },
+  { id: "h2h", label: "Head to head", icon: ic(<><circle cx="8" cy="8" r="3" /><circle cx="16" cy="8" r="3" /><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5M10.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" /></>) },
+  { id: "table", label: "Standings", icon: ic(<><rect x="3" y="4" width="18" height="4" rx="1" /><rect x="3" y="10" width="18" height="4" rx="1" /><rect x="3" y="16" width="18" height="4" rx="1" /></>) },
+  { id: "timeline", label: "Timeline", icon: ic(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>) },
   { id: "lineups", label: "Line-ups", icon: ic(JERSEY) },
 ];
 
-export function MatchView({ m }: { m: TCMatch }) {
+export function MatchView({ m, flat }: { m: TCMatch; flat?: boolean }) {
   const [panel, setPanel] = useState<Panel>("pitch");
+  const info = useMatchInfo(m.id);
   return (
-    <section aria-label="Match view" style={card}>
+    <section aria-label="Match view" style={shell(flat)}>
       {/* Capped width so it stays a sensible size in the wide desktop column. */}
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         <MomentumGraph m={m} />
@@ -41,9 +47,10 @@ export function MatchView({ m }: { m: TCMatch }) {
           {panel === "pitch" ? <LivePitch m={m} /> : (
             <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "0 2px 4px" }}>
               {panel === "stats" && <StatsPager m={m} />}
-              {panel === "timeline" && <><Head title="Timeline" /><Timeline m={m} bare /></>}
-              {panel === "commentary" && <><Head title="Commentary" /><Commentary m={m} /></>}
-              {panel === "lineups" && <><Head title="Line-ups" /><Lineups m={m} /></>}
+              {panel === "h2h" && <HeadToHead m={m} info={info} />}
+              {panel === "table" && <Standings m={m} info={info} />}
+              {panel === "timeline" && <MatchTimeline m={m} />}
+              {panel === "lineups" && <Lineups m={m} info={info} />}
             </div>
           )}
         </div>
@@ -127,8 +134,6 @@ function CardsLine({ m }: { m: TCMatch }) {
 
 function StatsPager({ m }: { m: TCMatch }) {
   const picks = usePickShares(m.id);
-  const [page, setPage] = useState(0);
-  const touch = useRef<number | null>(null);
   const st = m.stats;
   const pages: { title: string; body: ReactNode }[] = [];
   if (st) {
@@ -148,14 +153,37 @@ function StatsPager({ m }: { m: TCMatch }) {
       <StatLine label="Total shots" v={st.shots} />
     </> });
   }
-  if (m.o[0] > 0 || picks) pages.push({ title: "Win chances", body: <>
-    {m.o[0] > 0 && <SplitLine label="Odds say" v={impliedPct(m.o)} />}
-    {picks && <SplitLine label="Players picked" v={picks.shares} />}
+  if (picks) pages.push({ title: "Players' picks", body: <>
+    <SplitLine label="Players picked" v={picks.shares} />
     <span style={{ fontSize: 11, color: "var(--tc-label)", textAlign: "center" }}>
-      {m.home} left · {m.away} right{picks ? ` · ${picks.total.toLocaleString("en-US")} picks` : ""}
+      {m.home} left · {m.away} right · {picks.total.toLocaleString("en-US")} picks today
     </span>
   </> });
   if (!pages.length) return <><Head title="Statistics" /><p style={{ margin: 0, fontSize: 13, color: "var(--tc-label)" }}>No stats for this match yet.</p></>;
+  return <Pager pages={pages} />;
+}
+
+// ---------- match info (head-to-head, table, line-ups), refreshed every minute ----------
+type Info = MatchInfo | null;
+function useMatchInfo(id: string): Info {
+  const [info, setInfo] = useState<Info>(null);
+  useEffect(() => {
+    let live = true;
+    const load = () => api.getMatchInfo(id).then((r) => live && setInfo(r)).catch(() => {});
+    load();
+    const t = setInterval(() => { if (!document.hidden) load(); }, 60000);
+    return () => { live = false; clearInterval(t); };
+  }, [id]);
+  return info;
+}
+const Note = ({ children }: { children: ReactNode }) => <p style={{ margin: "18px 0 0", fontSize: 13, color: "var(--tc-label)", textAlign: "center" }}>{children}</p>;
+const caps: CSSProperties = { fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--tc-label)" };
+const big = (color: string, size = 30): CSSProperties => ({ fontFamily: "'Barlow Condensed', sans-serif", fontSize: size, fontWeight: 700, lineHeight: 1, color });
+
+// Paged box with ‹ 1/3 › (and swipe), shared by Stats-style tabs.
+function Pager({ pages }: { pages: { title: string; body: ReactNode }[] }) {
+  const [page, setPage] = useState(0);
+  const touch = useRef<number | null>(null);
   const i = Math.min(page, pages.length - 1);
   const go = (d: number) => setPage((i + d + pages.length) % pages.length);
   const arrow = (d: number, label: string, path: string) => (
@@ -168,7 +196,7 @@ function StatsPager({ m }: { m: TCMatch }) {
       onTouchEnd={(e) => { const x = touch.current; touch.current = null; if (x !== null && Math.abs(e.changedTouches[0].clientX - x) > 40) go(e.changedTouches[0].clientX < x ? 1 : -1); }}>
       <Head title={pages[i].title}>
         {pages.length > 1 && <span style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 700, color: "var(--tc-soft)" }}>
-          {arrow(-1, "Previous stats", "m15 18-6-6 6-6")}{i + 1}/{pages.length}{arrow(1, "Next stats", "m9 18 6-6-6-6")}
+          {arrow(-1, "Previous", "m15 18-6-6 6-6")}{i + 1}/{pages.length}{arrow(1, "Next", "m9 18 6-6-6-6")}
         </span>}
       </Head>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 4px" }}>{pages[i].body}</div>
@@ -176,60 +204,224 @@ function StatsPager({ m }: { m: TCMatch }) {
   );
 }
 
-// ---------- commentary: written from the match events ----------
-function Commentary({ m }: { m: TCMatch }) {
-  const minute = m.momentum.length;
-  const name = (side: "home" | "away") => (side === "home" ? m.home : m.away);
-  const lines: { minute: number; text: string; strong?: boolean }[] = [{ minute: 0, text: `Kick-off! ${m.home} v ${m.away} is under way.` }];
-  let hs = 0, as = 0;
-  let halfDone = false;
-  const half = () => {
-    if (halfDone || (minute < 45 && m.clock !== "HT")) return;
-    halfDone = true;
-    lines.push({ minute: 45, text: `Half time: ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
-    if (m.clock !== "HT" && minute > 45) lines.push({ minute: 46, text: "The second half is under way." });
-  };
-  for (const e of [...(m.events ?? [])].sort((a, b) => a.minute - b.minute)) {
-    if (e.minute > 45) half();
-    if (e.type === "goal") {
-      if (e.side === "home") hs++; else as++;
-      lines.push({ minute: e.minute, text: `GOAL! ${name(e.side)} score. ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
-    } else if (e.type === "red") lines.push({ minute: e.minute, text: `Red card! ${name(e.side)} are down to ten men.`, strong: true });
-    else if (e.type === "yellow") lines.push({ minute: e.minute, text: `Yellow card for ${name(e.side)}.` });
-    else lines.push({ minute: e.minute, text: `Corner to ${name(e.side)}.` });
-  }
-  half();
+// Big three-way numbers over a split bar (win probability, previous meetings).
+function ThreeWay({ caption, v, labels, pct }: { caption: string; v: number[]; labels: string[]; pct?: boolean }) {
+  const unit = pct ? <span style={{ fontSize: "0.6em" }}>%</span> : null;
   return (
-    <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", maxHeight: 340, overflowY: "auto" }}>
-      {lines.reverse().map((l, i) => (
-        <li key={i} style={{ display: "flex", gap: 12, padding: "9px 0", borderTop: i ? "1px solid var(--tc-line)" : "none" }}>
-          <span style={{ width: 32, flexShrink: 0, fontSize: 13, fontWeight: 800, color: "var(--tc-soft)" }}>{l.minute}'</span>
-          <span style={{ flex: 1, fontSize: 14, fontWeight: l.strong ? 800 : 500, color: l.strong ? "var(--tc-text)" : "var(--tc-soft)" }}>{l.text}</span>
-        </li>
-      ))}
-    </ol>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <span style={{ ...caps, textAlign: "center" }}>{caption}</span>
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+        <span style={{ display: "flex", flexDirection: "column", gap: 2 }}><span style={big(HOME)}>{v[0]}{unit}</span><span style={{ ...caps, color: HOME }}>{labels[0]}</span></span>
+        <span style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}><span style={big("var(--tc-muted)", 24)}>{v[1]}{unit}</span><span style={caps}>{labels[1]}</span></span>
+        <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}><span style={big(AWAY)}>{v[2]}{unit}</span><span style={{ ...caps, color: AWAY }}>{labels[2]}</span></span>
+      </div>
+      <div style={{ display: "flex", gap: 4, height: 5 }}>
+        {v[0] + v[1] + v[2] === 0 ? <span style={{ flex: 1, borderRadius: 3, background: "var(--tc-track)" }} />
+          : [HOME, "var(--tc-outline-strong)", AWAY].map((c, k) => v[k] > 0 && <span key={k} style={{ flex: v[k], borderRadius: 3, background: c }} />)}
+      </div>
+    </div>
   );
 }
 
-// ---------- line-ups ----------
-// Needs official team sheets from a data provider; until then say so rather than invent players.
-function Lineups({ m }: { m: TCMatch }) {
-  const side = (name: string, color: string) => (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
-      <svg width="40" height="40" viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1.2" strokeLinejoin="round" aria-hidden="true">{JERSEY}</svg>
-      <span style={{ maxWidth: "100%", fontSize: 14, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
-    </div>
+const RESULT_BG = { W: "#2AB572", D: "var(--tc-outline-strong)", L: "#E5484D" } as const;
+function HeadToHead({ m, info }: { m: TCMatch; info: Info }) {
+  const codes = [teamCode(m.home), teamCode(m.away)];
+  const pages: { title: string; body: ReactNode }[] = [];
+  if (m.o[0] > 0) pages.push({ title: "Head to head", body: <ThreeWay caption="Win probability" v={impliedPct(m.o)} labels={[codes[0], "Draw", codes[1]]} pct /> });
+  if (info?.available) {
+    const r = info.meetings.map((x) => { const [f, a] = x.home === m.home ? [x.hg, x.ag] : [x.ag, x.hg]; return f > a ? 0 : f === a ? 1 : 2; });
+    pages.push({ title: "Head to head", body: info.meetings.length ? <>
+      <ThreeWay caption={`Last ${info.meetings.length} meeting${info.meetings.length === 1 ? "" : "s"}`} v={[0, 1, 2].map((k) => r.filter((x) => x === k).length)} labels={["Wins", "Draws", "Wins"]} />
+      <div style={{ display: "flex", justifyContent: "center", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+        {info.meetings.map((x, k) => (
+          <span key={k} title={`${x.home} ${x.hg}-${x.ag} ${x.away}`} style={{ padding: "3px 8px", borderRadius: 6, background: "var(--tc-raise)", fontSize: 12, fontWeight: 800 }}>
+            {teamCode(x.home)} {x.hg}-{x.ag} {teamCode(x.away)}
+          </span>
+        ))}
+      </div>
+    </> : <Note>{m.home} and {m.away} haven't met in the last 30 days.</Note> });
+    const row = (name: string, code: string, color: string, form: typeof info.form.home) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 40, fontSize: 13, fontWeight: 800, color }}>{code}</span>
+        <span style={{ flex: 1, display: "flex", gap: 6 }} aria-label={`${name} last results: ${form.map((f) => f.result).join(" ") || "none"}`}>
+          {form.length ? form.map((f, k) => (
+            <span key={k} title={`${f.home} ${f.hg}-${f.ag} ${f.away}`} style={{ width: 26, height: 26, borderRadius: 6, background: RESULT_BG[f.result], color: f.result === "D" ? "var(--tc-text)" : "#fff", fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{f.result}</span>
+          )) : <span style={{ fontSize: 12, color: "var(--tc-label)" }}>No games yet</span>}
+        </span>
+      </div>
+    );
+    pages.push({ title: "Form", body: <>
+      <span style={{ ...caps, textAlign: "center" }}>Last 5 matches · newest first</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 6 }}>
+        {row(m.home, codes[0], HOME, info.form.home)}
+        {row(m.away, codes[1], AWAY, info.form.away)}
+      </div>
+    </> });
+  }
+  if (!pages.length) return <><Head title="Head to head" /><Note>{info ? "Head-to-head isn't available for this match yet." : "Loading…"}</Note></>;
+  return <Pager pages={pages} />;
+}
+
+// ---------- standings: this league's table, overall / home / away, with or without live scores ----------
+function Standings({ m, info }: { m: TCMatch; info: Info }) {
+  const [mode, setMode] = useState<"overall" | "home" | "away">("overall");
+  const [withLive, setWithLive] = useState(false);
+  if (!info?.available) return <><Head title="Standings" /><Note>{info ? "The table isn't available for this match yet." : "Loading…"}</Note></>;
+  const t = info.table;
+  const rows = new Map(t.teams.map((team) => [team, { team, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0 }]));
+  const add = (team: string, f: number, a: number) => {
+    const r = rows.get(team);
+    if (!r) return;
+    r.p++; r.gf += f; r.ga += a;
+    if (f > a) r.w++; else if (f === a) r.d++; else r.l++;
+  };
+  for (const [h, a, hg, ag] of [...t.games, ...(withLive ? t.live : [])]) {
+    if (mode !== "away") add(h, hg, ag);
+    if (mode !== "home") add(a, ag, hg);
+  }
+  const table = [...rows.values()].map((r) => ({ ...r, pts: r.w * 3 + r.d, diff: r.gf - r.ga }))
+    .sort((x, y) => y.pts - x.pts || y.diff - x.diff || y.gf - x.gf || x.team.localeCompare(y.team));
+  const num: CSSProperties = { width: 22, textAlign: "center", flexShrink: 0 };
+  const seg = (id: typeof mode, label: string) => (
+    <button onClick={() => setMode(id)} aria-pressed={mode === id} style={{ height: 24, padding: "0 10px", border: "none", borderRadius: 6, background: mode === id ? "var(--tc-raise)" : "transparent", color: mode === id ? "var(--tc-text)" : "var(--tc-label)", fontSize: 11, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>{label}</button>
   );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "6px 0" }}>
-      <div style={{ display: "flex", gap: 12 }}>{side(m.home, HOME)}{side(m.away, AWAY)}</div>
-      <p style={{ margin: 0, fontSize: 13, color: "var(--tc-label)", textAlign: "center" }}>Line-ups aren't available for this match yet.</p>
-    </div>
+    <>
+      <Head title="Standings"><span style={{ ...caps, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.league} · last {t.days} days</span></Head>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+        <span style={{ display: "flex", gap: 2, padding: 2, borderRadius: 8, border: "1px solid var(--tc-line)" }}>{seg("overall", "Overall")}{seg("home", "Home")}{seg("away", "Away")}</span>
+        {t.live.length > 0 && (
+          <button onClick={() => setWithLive((v) => !v)} aria-pressed={withLive} title="Count the live scores as if the games ended now" style={{ height: 24, padding: "0 4px 0 10px", borderRadius: 12, border: `1px solid ${withLive ? "#E5484D" : "var(--tc-outline)"}`, background: "transparent", color: withLive ? "#E5484D" : "var(--tc-label)", display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800 }}>
+            LIVE<span style={{ width: 16, height: 16, borderRadius: 8, background: withLive ? "#E5484D" : "var(--tc-outline-strong)" }} />
+          </button>
+        )}
+      </div>
+      <div role="table" aria-label={`${t.league} table`} style={{ fontSize: 12.5 }}>
+        <div role="row" style={{ display: "flex", alignItems: "center", gap: 4, height: 24, ...caps, fontSize: 10 }}>
+          <span style={num}>#</span><span style={{ flex: 1 }}>Team</span>
+          {["P", "W", "D", "L"].map((h) => <span key={h} style={num}>{h}</span>)}<span style={{ ...num, width: 32 }}>+/-</span><span style={{ ...num, width: 28 }}>Pts</span>
+        </div>
+        {table.map((r, k) => {
+          const mine = r.team === m.home ? HOME : r.team === m.away ? AWAY : null;
+          return (
+            <div role="row" key={r.team} style={{ display: "flex", alignItems: "center", gap: 4, height: 27, borderTop: "1px solid var(--tc-line)", background: mine ? "var(--tc-raise)" : "transparent", boxShadow: mine ? `inset 3px 0 0 ${mine}` : "none", fontWeight: mine ? 800 : 600 }}>
+              <span style={num}>{k + 1}</span>
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.team}</span>
+              <span style={num}>{r.p}</span><span style={num}>{r.w}</span><span style={num}>{r.d}</span><span style={num}>{r.l}</span>
+              <span style={{ ...num, width: 32 }}>{r.diff > 0 ? `+${r.diff}` : r.diff}</span><span style={{ ...num, width: 28, fontWeight: 800 }}>{r.w * 3 + r.d}</span>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ---------- timeline: what happened, by half, newest first (written from the match events) ----------
+const BALL = <svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fff" stroke="#13171C" strokeWidth="1.5" /><path d="m12 7 4 3-1.5 4.5h-5L8 10z" fill="#13171C" /></svg>;
+const CARD = (c: string) => <span aria-hidden="true" style={{ width: 10, height: 14, borderRadius: 2, background: c, display: "inline-block" }} />;
+const FLAG = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M5 21V3" /><path d="M5 4h11l-2 4 2 4H5" fill="#E5484D" stroke="#E5484D" /></svg>;
+const WHISTLE = <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="9" cy="14" r="5" /><path d="M13 11h8V8h-9" /></svg>;
+function MatchTimeline({ m }: { m: TCMatch }) {
+  const [closed, setClosed] = useState<Set<number>>(new Set());
+  const minute = m.momentum.length;
+  const name = (side: "home" | "away") => (side === "home" ? m.home : m.away);
+  type Line = { minute: number; side?: "home" | "away"; icon: ReactNode; text: string; strong?: boolean };
+  const halves: { label: string; score: string; lines: Line[] }[] = [{ label: "1st Half", score: "", lines: [{ minute: 0, icon: WHISTLE, text: `Kick-off! ${m.home} v ${m.away} is under way.` }] }];
+  let hs = 0, as = 0;
+  const closeFirst = () => {
+    if (halves.length > 1) return;
+    halves[0].score = `${hs} - ${as}`;
+    halves[0].lines.push({ minute: 45, icon: WHISTLE, text: `Half time: ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
+    if (m.clock !== "HT") halves.push({ label: "2nd Half", score: "", lines: [{ minute: 46, icon: WHISTLE, text: "The second half is under way." }] });
+  };
+  for (const e of [...(m.events ?? [])].sort((a, b) => a.minute - b.minute)) {
+    if (e.minute > 45) closeFirst();
+    const cur = halves[halves.length - 1].lines;
+    if (e.type === "goal") {
+      if (e.side === "home") hs++; else as++;
+      cur.push({ minute: e.minute, side: e.side, icon: BALL, text: `GOAL! ${name(e.side)} score. ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
+    } else if (e.type === "red") cur.push({ minute: e.minute, side: e.side, icon: CARD("#E5484D"), text: `Red card! ${name(e.side)} are down to ten men.`, strong: true });
+    else if (e.type === "yellow") cur.push({ minute: e.minute, side: e.side, icon: CARD("#F5C518"), text: `Yellow card for ${name(e.side)}.` });
+    else cur.push({ minute: e.minute, side: e.side, icon: FLAG, text: `Corner to ${name(e.side)}.` });
+  }
+  if (minute >= 45 || m.clock === "HT") closeFirst();
+  halves[halves.length - 1].score ||= `${hs} - ${as}`;
+  const toggle = (k: number) => setClosed((c) => { const n = new Set(c); if (n.has(k)) n.delete(k); else n.add(k); return n; });
+  return (
+    <>
+      <Head title="Timeline" />
+      {halves.map((h, k) => ({ h, k })).reverse().map(({ h, k }) => (
+        <section key={h.label}>
+          <button onClick={() => toggle(k)} aria-expanded={!closed.has(k)} style={{ width: "100%", height: 30, padding: "0 2px", border: "none", borderBottom: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 14, fontWeight: 800 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 6 }}>{h.label}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true" style={{ transform: closed.has(k) ? "rotate(180deg)" : "none" }}><path d="m6 15 6-6 6 6" /></svg>
+            </span>
+            <span>{h.score}</span>
+          </button>
+          {!closed.has(k) && [...h.lines].reverse().map((l, j) => (
+            <div key={j} style={{ padding: "7px 2px", borderBottom: "1px solid var(--tc-line)", display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, fontWeight: 800, color: "var(--tc-soft)" }}>
+                <span style={{ width: 28 }}>{l.minute}'</span>
+                {l.side && <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill={l.side === "home" ? HOME : AWAY} aria-hidden="true">{JERSEY}</svg>{teamCode(name(l.side))}
+                </span>}
+                <span style={{ display: "flex", color: "var(--tc-soft)" }}>{l.icon}</span>
+              </span>
+              <span style={{ fontSize: 13.5, lineHeight: 1.35, fontWeight: l.strong ? 800 : 500, color: l.strong ? "var(--tc-text)" : "var(--tc-soft)" }}>{l.text}</span>
+            </div>
+          ))}
+        </section>
+      ))}
+    </>
+  );
+}
+
+// ---------- line-ups: formations and shirt numbers on a pitch (no player names until a real provider) ----------
+function Lineups({ m, info }: { m: TCMatch; info: Info }) {
+  if (!info?.available || !info.lineups) return <><Head title="Line-ups" /><Note>{info ? "Line-ups aren't available for this match yet." : "Loading…"}</Note></>;
+  const { home, away } = info.lineups;
+  const W = 360, H = 172, R = 11;
+  const spots = (l: Lineup, side: "home" | "away") => {
+    const lines = l.formation.split("-").map(Number);
+    return l.players.map((p) => {
+      const count = p.line === 0 ? 1 : lines[p.line - 1];
+      const j = l.players.filter((q) => q.line === p.line).indexOf(p);
+      const x = p.line === 0 ? 18 : 18 + (p.line * (W / 2 - 34)) / lines.length;
+      const y = 8 + ((j + 0.5) * (H - 16)) / count;
+      return { p, x: side === "home" ? x : W - x, y: side === "home" ? y : H - y };
+    });
+  };
+  const player = ({ p, x, y }: { p: Lineup["players"][number]; x: number; y: number }, side: "home" | "away") => (
+    <g key={`${side}-${p.n}`}>
+      <circle cx={x} cy={y} r={R} fill={side === "home" ? HOME : AWAY} opacity={p.red ? 0.45 : 1} />
+      <text x={x} y={y + 3.6} textAnchor="middle" fontSize={10.5} fontWeight={800} fill={side === "home" ? "#13171C" : "#fff"}>{p.n}</text>
+      {(p.yellow > 0 || p.red) && <rect x={x + 6} y={y - R - 1} width={6} height={8} rx={1} fill={p.red ? "#E5484D" : "#F5C518"} />}
+      {p.goals > 0 && <g transform={`translate(${x + 8} ${y + 7})`}><circle r={4.2} fill="#fff" stroke="#13171C" strokeWidth={0.8} />{p.goals > 1 && <text x={6} y={3} fontSize={8} fontWeight={800} fill="#fff">{p.goals}</text>}</g>}
+    </g>
+  );
+  return (
+    <>
+      <Head title="Line-ups">
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800 }}>
+          <span style={{ color: HOME }}>{home.formation}</span><span style={{ ...caps, fontSize: 9.5 }}>Formation</span><span style={{ color: AWAY }}>{away.formation}</span>
+        </span>
+      </Head>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={`${m.home} ${home.formation}, ${m.away} ${away.formation}`} style={{ display: "block", borderRadius: 8 }}>
+        {Array.from({ length: 10 }, (_, i) => <rect key={i} x={(W / 10) * i} y={0} width={W / 10} height={H} fill={i % 2 ? "#2B6E2E" : "#2F7732"} />)}
+        <g fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={1.2}>
+          <rect x={3} y={3} width={W - 6} height={H - 6} /><line x1={W / 2} x2={W / 2} y1={3} y2={H - 3} /><circle cx={W / 2} cy={H / 2} r={22} />
+          <rect x={3} y={H / 2 - 38} width={36} height={76} /><rect x={W - 39} y={H / 2 - 38} width={36} height={76} />
+        </g>
+        {spots(home, "home").map((s) => player(s, "home"))}
+        {spots(away, "away").map((s) => player(s, "away"))}
+      </svg>
+    </>
   );
 }
 
 // ---------- live chat: its own card under the match view (like Bet9ja) ----------
-export function LiveChat({ m }: { m: TCMatch }) {
+export function LiveChat({ m, flat }: { m: TCMatch; flat?: boolean }) {
   const [open, setOpen] = useState(false);
   // Hide the phone's bottom nav while chatting, so it doesn't cover the message box.
   useEffect(() => {
@@ -238,7 +430,7 @@ export function LiveChat({ m }: { m: TCMatch }) {
     return () => document.documentElement.classList.remove("tc-chat-open");
   }, [open]);
   return (
-    <section aria-label="Live chat" style={{ ...card, padding: 12 }}>
+    <section aria-label="Live chat" style={{ ...shell(flat), padding: 12 }}>
       <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: open ? 12 : 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <span style={{ fontSize: 15, fontWeight: 800 }}>Live chat</span>
@@ -461,6 +653,10 @@ function LivePitch({ m }: { m: TCMatch }) {
           <rect x={W - 56} y={H / 2 - 48} width={48} height={96} /><rect x={W - 26} y={H / 2 - 22} width={18} height={44} />
         </g>
         <circle cx={W / 2} cy={H / 2} r={2} fill="rgba(255,255,255,0.75)" />
+        {/* Poccabet mark painted on the grass, like a sponsor's logo */}
+        <text x={W * 0.28} y={H - 20} textAnchor="middle" fontFamily="'Barlow Condensed', sans-serif" fontStyle="italic" fontWeight={700} fontSize={24} letterSpacing={-0.3} opacity={0.42}>
+          <tspan fill="#fff">Pocca</tspan><tspan fill={ACCENT}>bet</tspan>
+        </text>
         {p && (
           <g style={{ transition: "transform 1.2s ease-in-out", transform: `translate(${8 + p.bx * (W - 16)}px, ${8 + p.by * (H - 16)}px)` }}>
             <circle r={p.kind === "danger" || p.kind === "goal" ? 16 : 11} fill={color} opacity={0.35}>

@@ -113,6 +113,7 @@ export const api = {
     request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
   getChat: (matchId: string, after?: string) =>
     request<{ messages: ChatMessage[] }>(`/api/chat/${encodeURIComponent(matchId)}${after ? `?after=${encodeURIComponent(after)}` : ""}`),
+  getMatchInfo: (matchId: string) => request<MatchInfo>(`/api/live/info/${encodeURIComponent(matchId)}`),
   sendChat: (matchId: string, text: string, replyTo?: string) =>
     request<ChatMessage>(`/api/chat/${encodeURIComponent(matchId)}`, { method: "POST", body: JSON.stringify({ text, replyTo }) }),
   getMatchPicks: (matchId: string) =>
@@ -148,6 +149,19 @@ export const api = {
   // Old Theme D slip (database events).
   placeLegacyBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
+};
+
+// Match view extras (head-to-head, form, league table, line-ups). available=false until the data
+// provider supplies them (only the simulation does for now).
+export interface MatchResult { home: string; away: string; hg: number; ag: number; at: string }
+export interface LineupPlayer { n: number; line: number; yellow: number; red: boolean; goals: number }
+export interface Lineup { formation: string; players: LineupPlayer[] }
+export type MatchInfo = { available: false } | {
+  available: true;
+  meetings: MatchResult[];
+  form: { home: (MatchResult & { result: "W" | "D" | "L" })[]; away: (MatchResult & { result: "W" | "D" | "L" })[] };
+  table: { league: string; teams: string[]; days: number; games: [string, string, number, number][]; live: [string, string, number, number][] };
+  lineups: { home: Lineup; away: Lineup } | null;
 };
 
 // name is masked by the server ("and***016"); reply.text is null when the quoted message was removed.

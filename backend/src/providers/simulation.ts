@@ -518,3 +518,83 @@ export function simResult(matchId: string, kickoff: Date, now = Date.now()) {
   const ht = scoreAt(m, 45);
   return { status: "FINISHED" as const, home: ft.home, away: ft.away, htHome: ht.home, htAway: ht.away };
 }
+
+// ---------- match info: head-to-head, form, league table, line-ups ----------
+// Built from the simulation's own past results (every day's matches can be recreated from the
+// date), so it all agrees with the scores shown. Line-ups are formations and shirt numbers only.
+type Played = { league: number; home: string; away: string; hg: number; ag: number; kickoff: number };
+const pastCache = new Map<string, Played[]>();
+function playedOn(day: string, now: number): Played[] {
+  const done = Date.parse(`${day}T00:00:00Z`) + 86400000 + 2 * 3600000 < now; // every match that day is over
+  const hit = done ? pastCache.get(day) : undefined;
+  if (hit) return hit;
+  const out = scheduleFor(day).filter((m) => clock(m, now).status === "FT").map((m) => {
+    const s = scoreAt(m, 90);
+    return { league: m.league.id, home: m.home, away: m.away, hg: s.home, ag: s.away, kickoff: m.kickoff };
+  });
+  if (done) {
+    pastCache.set(day, out);
+    if (pastCache.size > 40) pastCache.delete(pastCache.keys().next().value!);
+  }
+  return out;
+}
+function playedSince(days: number, now: number) {
+  const out: Played[] = [];
+  for (let d = 0; d <= days; d++) out.push(...playedOn(isoDay(now - d * 86400000), now));
+  return out.sort((a, b) => b.kickoff - a.kickoff);
+}
+
+const FORMATIONS = ["4-4-2", "4-3-3", "4-2-3-1", "3-5-2", "4-1-4-1", "3-4-3", "5-3-2"];
+function lineup(m: SimMatch, side: "home" | "away", minute: number) {
+  const team = side === "home" ? m.home : m.away;
+  const rand = rng(hash(`pocca-lineup-${team}-${isoDay(m.kickoff)}`));
+  const formation = FORMATIONS[Math.floor(rand() * FORMATIONS.length)];
+  // Shirt numbers stay the same for a club; lower numbers play further back.
+  const squad = rng(hash(`pocca-squad-${team}`));
+  const pool = Array.from({ length: 34 }, (_, i) => i + 2);
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(squad() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  pool.splice(10);
+  pool.sort((a, b) => a - b);
+  const lines = formation.split("-").map(Number);
+  const players: { n: number; line: number; yellow: number; red: boolean; goals: number }[] = [{ n: squad() < 0.8 ? 1 : 13, line: 0, yellow: 0, red: false, goals: 0 }];
+  let k = 0;
+  lines.forEach((size, li) => { for (let j = 0; j < size; j++) players.push({ n: pool[k++], line: li + 1, yellow: 0, red: false, goals: 0 }); });
+  // Who scored or was booked: goals mostly from the front, cards mostly from the back and middle.
+  const pick = (seed: string, front: boolean) => {
+    const r = rng(hash(seed));
+    const weights = players.map((p) => (p.line === 0 ? 0 : front ? p.line ** 2 : lines.length + 1 - p.line));
+    let x = r() * weights.reduce((a, b) => a + b, 0);
+    return players.find((_, i) => (x -= weights[i]) < 0) ?? players[players.length - 1];
+  };
+  m.goals.forEach((g, i) => { if (g.side === side && g.minute <= minute) pick(`pocca-scorer-${m.id}-${i}`, true).goals++; });
+  extraEvents(m).forEach((e, i) => { if (e.type === "yellow" && e.side === side && e.minute <= minute) pick(`pocca-booked-${m.id}-${i}`, false).yellow++; });
+  if (m.redCard && m.redCard.side === side && m.redCard.minute <= minute) pick(`pocca-sentoff-${m.id}`, false).red = true;
+  return { formation, players };
+}
+
+export function simMatchInfo(matchId: string, now = Date.now()) {
+  const id = Number(matchId.replace(/^(sim|af)-/, ""));
+  const m = [...scheduleFor(isoDay(now)), ...scheduleFor(isoDay(now + 86400000)), ...scheduleFor(isoDay(now - 86400000))].find((x) => x.id === id);
+  if (!m) return null;
+  const history = playedSince(30, now);
+  const before = history.filter((p) => p.kickoff < m.kickoff);
+  const meetings = before.filter((p) => (p.home === m.home && p.away === m.away) || (p.home === m.away && p.away === m.home)).slice(0, 5);
+  const form = (team: string) => before.filter((p) => p.home === team || p.away === team).slice(0, 5).map((p) => {
+    const [f, a] = p.home === team ? [p.hg, p.ag] : [p.ag, p.hg];
+    return { result: f > a ? "W" : f < a ? "L" : "D", home: p.home, away: p.away, hg: p.hg, ag: p.ag, at: new Date(p.kickoff) };
+  });
+  // League table: the last 7 days of this league; live games separately (the table's Live switch).
+  const since = now - 7 * 86400000;
+  const games = history.filter((p) => p.league === m.league.id && p.kickoff >= since).map((p) => [p.home, p.away, p.hg, p.ag] as const);
+  const live = [...scheduleFor(isoDay(now - 86400000)), ...scheduleFor(isoDay(now))]
+    .filter((x) => x.league.id === m.league.id && ["1H", "HT", "2H"].includes(clock(x, now).status))
+    .map((x) => { const s = scoreAt(x, clock(x, now).minute ?? 0); return [x.home, x.away, s.home, s.away] as const; });
+  const c = clock(m, now);
+  const minute = c.status === "NS" ? 0 : c.minute ?? 0;
+  return {
+    meetings: meetings.map((p) => ({ home: p.home, away: p.away, hg: p.hg, ag: p.ag, at: new Date(p.kickoff) })),
+    form: { home: form(m.home), away: form(m.away) },
+    table: { league: m.league.name, teams: m.league.teams, days: 7, games, live },
+    lineups: c.status === "NS" ? null : { home: lineup(m, "home", minute), away: lineup(m, "away", minute) },
+  };
+}

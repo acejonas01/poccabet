@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getUpcomingMerged } from "../providers/aggregate";
 import { getApiFootballUsage, getLiveFixtures, getUpcomingAndResults } from "../providers/apifootball";
-import { simLive, simResults, simUpcoming, simWinners } from "../providers/simulation";
+import { simLive, simMatchInfo, simResults, simUpcoming, simWinners } from "../providers/simulation";
 import { SIMULATE } from "../lib/feedMode";
 import { recentWins } from "../betting/winners";
 import { requireAdminKey } from "../middleware/admin";
@@ -25,6 +25,15 @@ router.get("/", async (_req, res) => {
   } catch (err: any) {
     res.status(502).json({ error: err.message });
   }
+});
+
+// GET /api/live/info/:matchId — head-to-head, form, league table and line-ups for the match view.
+// Only the simulation has these for now; with a real provider it says they're not available.
+router.get("/info/:matchId", (req, res) => {
+  if (!SIMULATE) return res.json({ available: false });
+  const info = simMatchInfo(String(req.params.matchId).slice(0, 64));
+  if (!info) return res.status(404).json({ error: "Unknown match", code: "BAD_MATCH" });
+  res.json({ available: true, ...info });
 });
 
 // GET /api/live/upcoming — not-yet-played games from every provider, merged (each provider cached)

@@ -12,6 +12,9 @@ import { ChanceAndPicks, LiveStats, Timeline } from "./matchstats";
 import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, useMinLoading } from "./shared";
 
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 };
+// Phones: sections run the full width of the screen (no rounded corners or side borders), like
+// BetKing; the page's 16px side padding is cancelled out. Desktop keeps rounded cards.
+const flat: CSSProperties = { background: "var(--tc-card)", borderTop: "1px solid var(--tc-card-line)", borderBottom: "1px solid var(--tc-card-line)", margin: "0 -16px" };
 const sectionTitle: CSSProperties = { margin: "0 0 12px", fontSize: 15, fontWeight: 800 };
 const barlow = "'Barlow Condensed', sans-serif";
 
@@ -24,13 +27,14 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
   const [tab, setTab] = useState<"markets" | "stats">("markets");
   useEffect(() => { window.scrollTo(0, 0); setTab("markets"); }, [code]);
 
+  const box = desktop ? card : flat;
   const go = (href: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(href); };
   const back = () => (canGoBack() ? navigate(-1) : navigate("/"));
 
   if (busy) return <Loader1X2 label="Loading match…" />;
   if (!m) {
     return (
-      <div style={{ ...card, padding: "32px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
+      <div style={{ ...box, padding: "32px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 14, textAlign: "center" }}>
         <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>This match isn't on the board</h1>
         <p style={{ margin: 0, fontSize: 14, color: "var(--tc-muted)" }}>It may have finished, or the link is wrong. Today's matches are on the home page.</p>
         <a href="/" onClick={go("/")} style={{ height: 44, padding: "0 22px", borderRadius: 10, background: ACCENT, color: "#13171C", fontSize: 15, fontWeight: 800, display: "flex", alignItems: "center", textDecoration: "none" }}>See today's matches</a>
@@ -47,7 +51,7 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14, minWidth: 0, flex: 1 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: desktop ? 14 : 8, minWidth: 0, flex: 1 }}>
       {/* Back + where this match belongs */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-label)", minWidth: 0 }}>
         <button onClick={back} aria-label="Back" style={{ width: 36, height: 36, marginLeft: -8, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -59,27 +63,34 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
           style={{ color: "var(--tc-soft)", fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.league}</a>
       </div>
 
-      <MatchHeader m={m} />
+      <MatchHeader m={m} box={box} />
       {m.live && (m.momentum?.length ?? 0) > 0 ? <>
         {/* Live: match view with Pitch / Stats / Timeline / Commentary / Line-ups, live chat, then the markets. */}
-        <MatchView m={m} />
-        <LiveChat m={m} />
-        <div style={{ ...card, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div>
+        <MatchView m={m} flat={!desktop} />
+        <LiveChat m={m} flat={!desktop} />
+        <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div>
       </> : <>
         <div role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--tc-line)" }}>
           {tabBtn("markets", "Markets")}
           {tabBtn("stats", m.live ? "Stats & timeline" : "Stats")}
         </div>
-        {tab === "markets" ? <div style={{ ...card, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div> : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {m.live && <><Timeline m={m} boxed /><LiveStats m={m} boxed /></>}
-            <ChanceAndPicks m={m} boxed />
-          </div>
+        {tab === "markets" ? <div style={{ ...box, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div> : (
+          desktop ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {m.live && <><Timeline m={m} boxed /><LiveStats m={m} boxed /></>}
+              <ChanceAndPicks m={m} boxed />
+            </div>
+          ) : (
+            <div style={{ ...box, padding: "12px 16px" }}>
+              {m.live && <><Timeline m={m} /><LiveStats m={m} /></>}
+              <ChanceAndPicks m={m} />
+            </div>
+          )
         )}
       </>}
 
       {more.length > 0 && (
-        <section aria-label={`More from ${m.league}`} style={{ ...card, overflow: "hidden" }}>
+        <section aria-label={`More from ${m.league}`} style={{ ...box, overflow: "hidden" }}>
           <h2 style={{ ...sectionTitle, margin: 0, padding: "14px 16px 10px" }}>More from {m.league}</h2>
           {more.map((x) => (
             <a key={x.id} href={matchHref(x)} onClick={go(matchHref(x))} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderTop: "1px solid var(--tc-line)", color: "var(--tc-text)", textDecoration: "none" }}>
@@ -103,7 +114,7 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
 }
 
 // ---------- header: league, crests, score or kick-off, match ID, share ----------
-function MatchHeader({ m }: { m: TCMatch }) {
+function MatchHeader({ m, box }: { m: TCMatch; box: CSSProperties }) {
   const [shared, setShared] = useState(false);
   const share = async () => {
     const when = m.live ? `Live now, ${m.hs}-${m.as} (${m.clock})` : `${dayLabel(m.start)} ${hhmm(m.start)}`;
@@ -120,7 +131,7 @@ function MatchHeader({ m }: { m: TCMatch }) {
     </div>
   );
   return (
-    <header style={{ ...card, padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
+    <header style={{ ...box, padding: "16px 16px 14px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           <Flag country={m.country} size={14} />{m.country ? `${m.country} · ` : ""}{m.league}
