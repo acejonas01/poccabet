@@ -232,6 +232,16 @@ function Tabs({ name, options }: { name: string; options: [string, string][] }) 
   );
 }
 
+// Small copy button next to an ID.
+function CopyBtn({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1500); } catch { /* clipboard blocked */ }
+  };
+  return <button type="button" className="adm-copy" onClick={copy} aria-label={`Copy ${text}`}>{done ? "Copied" : "Copy"}</button>;
+}
+
 // The site's 1 X 2 loading animation (chips lighting up in turn).
 function Loader1X2({ label = "Loading…" }: { label?: string }) {
   return (
@@ -469,15 +479,15 @@ function UsersPage() {
       {!data ? <Loading error={error} /> : (
         <div className="adm-table-wrap">
           <table className="adm-table">
-            <thead><tr><th>Name</th><th>Customer ID</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
+            <thead><tr><th>Name</th><th>Customer ID</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th>System ID</th><th /></tr></thead>
             <tbody>
               {data.users.map((u) => (
                 <tr key={u.id} className="click" onClick={() => router.push(`/office/users/${u.id}`)}>
                   <td style={{ fontWeight: 700 }}>{u.name}</td><td style={{ fontVariantNumeric: "tabular-nums" }}>{u.customerNo}</td><td>{u.phone ?? "—"}</td><td>{u.email ?? "—"}</td>
-                  <td className="adm-num">{naira(u.balance)}</td><td className="adm-num">{u.bets}</td><td>{day(u.createdAt)}</td><td>{userBadges(u)}</td>
+                  <td className="adm-num">{naira(u.balance)}</td><td className="adm-num">{u.bets}</td><td>{day(u.createdAt)}</td><td className="adm-mono">{u.id}</td><td>{userBadges(u)}</td>
                 </tr>
               ))}
-              {!data.users.length && <tr><td colSpan={8} className="adm-empty">No users found.</td></tr>}
+              {!data.users.length && <tr><td colSpan={9} className="adm-empty">No users found.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -593,7 +603,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal" };
   return (
     <>
-      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Customer ID <b style={{ color: "var(--text)" }}>{u.customerNo}</b> · joined {day(u.createdAt)} · system ID {u.id}</>}>
+      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Joined {day(u.createdAt)}</>}>
         {!u.deleted && <>
           <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
           <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
@@ -629,6 +639,10 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
         </div>
       )}
       <div className="adm-section adm-card">
+        <div className="adm-ids">
+          <div><div className="k">Customer ID</div><div className="v">{u.customerNo}<CopyBtn text={u.customerNo} /></div></div>
+          <div><div className="k">System ID</div><div className="v mono">{u.id}<CopyBtn text={u.id} /></div></div>
+        </div>
         <div className="adm-kv">
           {[["Phone", u.phone ? `${u.phone}${u.phoneVerified ? " ✓" : ""}` : "—"], ["Email", u.email ? `${u.email}${u.emailVerified ? " ✓ verified" : " (not verified)"}` : "—"],
             ["Date of birth", u.dateOfBirth ?? "—"], ["Promo code", u.referralCode ?? "—"], ["Welcome bonus", u.bonusClaimed ? "Claimed" : "Not claimed"],
