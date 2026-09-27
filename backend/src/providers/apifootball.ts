@@ -49,7 +49,10 @@ export interface LiveFixture {
   startTime: Date;
   markets: OddsMarket[];
   // Only the simulation fills these for now (real stats need extra API calls).
-  stats?: { possession: [number, number]; shots: [number, number]; corners: [number, number] };
+  stats?: {
+    possession: [number, number]; shots: [number, number]; corners: [number, number];
+    onTarget?: [number, number]; offTarget?: [number, number]; blocked?: [number, number]; attacks?: [number, number]; dangerous?: [number, number];
+  };
   redCard?: "home" | "away" | null;
   // Goals, cards and corners so far, for the match page timeline and match view (simulation only for now).
   events?: { minute: number; type: "goal" | "red" | "yellow" | "corner"; side: "home" | "away" }[];

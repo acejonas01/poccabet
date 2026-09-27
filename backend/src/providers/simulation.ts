@@ -266,6 +266,30 @@ function momentumOf(m: SimMatch, extra: SimEvent[], upTo: number): number[] {
   return smooth.slice(0, Math.min(upTo, 90)).map((v) => Math.round(Math.max(-1, Math.min(1, v)) * 100) / 100);
 }
 
+// Live stats at a minute. Shots split into on target (never fewer than the goals), blocked and
+// off target; attacks follow possession, and roughly two in five are dangerous.
+function shotStats(m: SimMatch, minute: number, hg: number, ag: number, ch: number, ca: number) {
+  const pair = (h: number, a: number) => [h, a] as [number, number];
+  const side = (rate: number, goals: number, poss: number) => {
+    const onTarget = Math.max(goals, Math.round((rate * minute * 0.36) / 90));
+    const shots = Math.max(onTarget, Math.round((rate * minute) / 90));
+    const blocked = Math.round((shots - onTarget) * 0.3);
+    const attacks = Math.round(minute * 1.1 * (poss / 50));
+    return { shots, onTarget, blocked, offTarget: shots - onTarget - blocked, attacks, dangerous: Math.round(attacks * (0.3 + rate / 60)) };
+  };
+  const h = side(m.shotRate[0], hg, m.possessionHome), a = side(m.shotRate[1], ag, 100 - m.possessionHome);
+  return {
+    possession: pair(m.possessionHome, 100 - m.possessionHome),
+    shots: pair(h.shots, a.shots),
+    onTarget: pair(h.onTarget, a.onTarget),
+    offTarget: pair(h.offTarget, a.offTarget),
+    blocked: pair(h.blocked, a.blocked),
+    corners: pair(ch, ca),
+    attacks: pair(h.attacks, a.attacks),
+    dangerous: pair(h.dangerous, a.dangerous),
+  };
+}
+
 export function simLive(now = Date.now()): LiveFixture[] {
   const candidates = [...scheduleFor(isoDay(now - 86400000)), ...scheduleFor(isoDay(now))];
   return candidates
@@ -297,11 +321,7 @@ export function simLive(now = Date.now()): LiveFixture[] {
         startTime: new Date(m.kickoff),
         // Markets lock after a goal and in the last minutes.
         markets: justScored || minute >= 88 ? [] : markets(m, minute, score.home, score.away, Math.floor(now / 30000)),
-        stats: {
-          possession: [m.possessionHome, 100 - m.possessionHome] as [number, number],
-          shots: [Math.round((m.shotRate[0] * minute) / 90), Math.round((m.shotRate[1] * minute) / 90)] as [number, number],
-          corners: [cornersBy("home"), cornersBy("away")] as [number, number],
-        },
+        stats: shotStats(m, minute, score.home, score.away, cornersBy("home"), cornersBy("away")),
         redCard: m.redCard && m.redCard.minute <= minute ? m.redCard.side : null,
         events: [
           ...m.goals.filter((g) => g.minute <= minute).map((g) => ({ minute: g.minute, type: "goal" as const, side: g.side })),

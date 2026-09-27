@@ -18,7 +18,10 @@ export interface TCMatch {
   hs: number;
   as: number;
   red: "home" | "away" | null;
-  stats: { possession: [number, number]; shots: [number, number]; corners: [number, number] } | null;
+  stats: {
+    possession: [number, number]; shots: [number, number]; corners: [number, number];
+    onTarget?: [number, number]; offTarget?: [number, number]; blocked?: [number, number]; attacks?: [number, number]; dangerous?: [number, number];
+  } | null;
   events: { minute: number; type: "goal" | "red" | "yellow" | "corner"; side: "home" | "away" }[]; // so far (live)
   momentum: number[]; // attack momentum per minute played, -1 (away) … +1 (home) (live)
   o: number[]; // 1X2 (0 = unavailable)

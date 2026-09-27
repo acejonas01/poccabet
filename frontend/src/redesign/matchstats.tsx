@@ -58,25 +58,23 @@ function StatRow({ label, home, away, unit = "" }: { label: string; home: number
   );
 }
 
-export function Timeline({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
+// bare: just the list (the live match view gives it its own heading).
+export function Timeline({ m, boxed, bare }: { m: TCMatch; boxed?: boolean; bare?: boolean }) {
   const events = (m.events ?? []).filter((e) => e.type !== "corner").reverse(); // goals and cards, newest first
-  return (
-    <Block title="Timeline" boxed={boxed}>
-      {events.length ? (
-        <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" }}>
-          {events.map((e, i) => (
-            <li key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderTop: i ? "1px solid var(--tc-line)" : "none", flexDirection: e.side === "away" ? "row-reverse" : "row", textAlign: e.side === "away" ? "right" : "left" }}>
-              <span style={{ width: 36, flexShrink: 0, fontSize: 13, fontWeight: 800, color: "var(--tc-soft)", textAlign: "center" }}>{e.minute}'</span>
-              {e.type === "goal"
-                ? <span aria-hidden="true" style={{ fontSize: 16 }}>⚽</span>
-                : <span aria-hidden="true" style={{ width: 10, height: 14, borderRadius: 2, background: e.type === "red" ? "#E5484D" : "#F5C518", flexShrink: 0 }} />}
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{e.type === "goal" ? "Goal" : e.type === "red" ? "Red card" : "Yellow card"} · {e.side === "home" ? m.home : m.away}</span>
-            </li>
-          ))}
-        </ol>
-      ) : <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)" }}>No goals or cards yet.</p>}
-    </Block>
-  );
+  const list = events.length ? (
+    <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" }}>
+      {events.map((e, i) => (
+        <li key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 0", borderTop: i ? "1px solid var(--tc-line)" : "none", flexDirection: e.side === "away" ? "row-reverse" : "row", textAlign: e.side === "away" ? "right" : "left" }}>
+          <span style={{ width: 36, flexShrink: 0, fontSize: 13, fontWeight: 800, color: "var(--tc-soft)", textAlign: "center" }}>{e.minute}'</span>
+          {e.type === "goal"
+            ? <span aria-hidden="true" style={{ fontSize: 16 }}>⚽</span>
+            : <span aria-hidden="true" style={{ width: 10, height: 14, borderRadius: 2, background: e.type === "red" ? "#E5484D" : "#F5C518", flexShrink: 0 }} />}
+          <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{e.type === "goal" ? "Goal" : e.type === "red" ? "Red card" : "Yellow card"} · {e.side === "home" ? m.home : m.away}</span>
+        </li>
+      ))}
+    </ol>
+  ) : <p style={{ margin: 0, fontSize: 14, color: "var(--tc-label)" }}>No goals or cards yet.</p>;
+  return bare ? list : <Block title="Timeline" boxed={boxed}>{list}</Block>;
 }
 
 export function LiveStats({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
@@ -92,11 +90,12 @@ export function LiveStats({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
   );
 }
 
-export function ChanceAndPicks({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
+// What players are picking on the 1X2 (share of picks for 1, X, 2), or null until there are some.
+export function usePickShares(matchId: string) {
   const [picks, setPicks] = useState<{ total: number; shares: number[] } | null>(null);
   useEffect(() => {
     let live = true;
-    api.getMatchPicks(m.id).then((r) => {
+    api.getMatchPicks(matchId).then((r) => {
       const c = ["1", "X", "2"].map((sel) => r.picks.find((p) => p.market === "1x2" && p.selection === sel)?.count ?? 0);
       const t = c[0] + c[1] + c[2];
       if (!live || !t) return;
@@ -105,7 +104,12 @@ export function ChanceAndPicks({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
       setPicks({ total: r.total, shares: pct });
     }).catch(() => {});
     return () => { live = false; };
-  }, [m.id]);
+  }, [matchId]);
+  return picks;
+}
+
+export function ChanceAndPicks({ m, boxed }: { m: TCMatch; boxed?: boolean }) {
+  const picks = usePickShares(m.id);
   const labels = [m.home, "Draw", m.away];
   return (
     <>

@@ -7,12 +7,14 @@ import { useNavigate } from "react-router-dom";
 import { api, type ChatMessage } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { type TCMatch, teamCode } from "./data";
-import { ChanceAndPicks, LiveStats, Timeline } from "./matchstats";
+import { Timeline, usePickShares } from "./matchstats";
+import { impliedPct } from "./markets";
 import { ACCENT } from "./shared";
 
 const HOME = ACCENT;
 const AWAY = "#4C9EEB";
 const QUOTE = "#2AB572"; // reply quote bar in chat
+const PITCH_W = 360, PITCH_H = 220; // match view box (pitch and every tab)
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
 
 type Panel = "pitch" | "stats" | "timeline" | "commentary" | "lineups";
@@ -34,8 +36,18 @@ export function MatchView({ m }: { m: TCMatch }) {
       {/* Capped width so it stays a sensible size in the wide desktop column. */}
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         <MomentumGraph m={m} />
-        {panel === "pitch" && <LivePitch m={m} />}
-        <div role="tablist" aria-label="Match view" style={{ display: "flex", margin: "0 12px", borderBottom: "1px solid var(--tc-line)" }}>
+        {/* Every tab opens in the same pitch-sized box, so switching tabs doesn't move the page. */}
+        <div role="tabpanel" style={{ position: "relative", margin: "4px 12px 12px", aspectRatio: `${PITCH_W} / ${PITCH_H}`, borderRadius: 10, overflow: "hidden" }}>
+          {panel === "pitch" ? <LivePitch m={m} /> : (
+            <div style={{ position: "absolute", inset: 0, overflowY: "auto", padding: "0 2px 4px" }}>
+              {panel === "stats" && <StatsPager m={m} />}
+              {panel === "timeline" && <><Head title="Timeline" /><Timeline m={m} bare /></>}
+              {panel === "commentary" && <><Head title="Commentary" /><Commentary m={m} /></>}
+              {panel === "lineups" && <><Head title="Line-ups" /><Lineups m={m} /></>}
+            </div>
+          )}
+        </div>
+        <div role="tablist" aria-label="Match view" style={{ display: "flex", margin: "0 12px 4px", borderBottom: "1px solid var(--tc-line)" }}>
           {PANELS.map((p) => (
             <button key={p.id} role="tab" aria-selected={panel === p.id} aria-label={p.label} title={p.label} onClick={() => setPanel(p.id)} style={{
               flex: 1, height: 46, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center",
@@ -43,14 +55,124 @@ export function MatchView({ m }: { m: TCMatch }) {
             }}>{p.icon}</button>
           ))}
         </div>
-        <div style={{ padding: panel === "pitch" ? 0 : "14px 12px 12px" }}>
-          {panel === "stats" && <><LiveStats m={m} /><ChanceAndPicks m={m} /></>}
-          {panel === "timeline" && <Timeline m={m} />}
-          {panel === "commentary" && <Commentary m={m} />}
-          {panel === "lineups" && <Lineups m={m} />}
-        </div>
       </div>
     </section>
+  );
+}
+
+// Small caps heading at the top of a tab, with room for controls on the right.
+function Head({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minHeight: 24, marginBottom: 6, borderBottom: "1px solid var(--tc-line)" }}>
+      <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 0.8, textTransform: "uppercase", color: "var(--tc-soft)" }}>{title}</span>
+      {children}
+    </div>
+  );
+}
+
+// ---------- stats: compact pages, like BetKing (arrows or swipe) ----------
+type Pair = [number, number];
+function StatLine({ label, v, unit = "" }: { label: string; v: Pair; unit?: string }) {
+  const [h, a] = v;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 15, fontWeight: 800 }}>{h}{unit}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--tc-label)", whiteSpace: "nowrap" }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 800 }}>{a}{unit}</span>
+      </div>
+      <div style={{ display: "flex", gap: 3, height: 3 }}>
+        {h + a === 0 ? <span style={{ flex: 1, borderRadius: 2, background: "var(--tc-track)" }} /> : <>
+          {h > 0 && <span style={{ flex: h, borderRadius: 2, background: HOME }} />}
+          {a > 0 && <span style={{ flex: a, borderRadius: 2, background: AWAY }} />}
+        </>}
+      </div>
+    </div>
+  );
+}
+
+// Three-way split (home / draw / away) on one line: home % left, away % right, draw in the label.
+function SplitLine({ label, v }: { label: string; v: number[] }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <span style={{ fontSize: 15, fontWeight: 800 }}>{v[0]}%</span>
+        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", color: "var(--tc-label)", whiteSpace: "nowrap" }}>{label} · Draw {v[1]}%</span>
+        <span style={{ fontSize: 15, fontWeight: 800 }}>{v[2]}%</span>
+      </div>
+      <div style={{ display: "flex", gap: 3, height: 3 }}>
+        {[HOME, "var(--tc-outline-strong)", AWAY].map((c, i) => v[i] > 0 && <span key={i} style={{ flex: v[i], borderRadius: 2, background: c }} />)}
+      </div>
+    </div>
+  );
+}
+
+function CardsLine({ m }: { m: TCMatch }) {
+  const n = (side: "home" | "away", type: "yellow" | "red") => (m.events ?? []).filter((e) => e.side === side && e.type === type).length;
+  const chip = (color: string) => <span aria-hidden="true" style={{ width: 9, height: 12, borderRadius: 2, background: color, display: "inline-block" }} />;
+  const team = (side: "home" | "away") => (
+    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 800 }}>
+      {chip("#F5C518")}{n(side, "yellow")}<span style={{ width: 4 }} />{chip("#E5484D")}{n(side, "red")}
+    </span>
+  );
+  return (
+    <div aria-label={`Cards: ${m.home} ${n("home", "yellow")} yellow ${n("home", "red")} red, ${m.away} ${n("away", "yellow")} yellow ${n("away", "red")} red`}
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+      {team("home")}
+      <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, color: "var(--tc-label)" }}>CARDS</span>
+      {team("away")}
+    </div>
+  );
+}
+
+function StatsPager({ m }: { m: TCMatch }) {
+  const picks = usePickShares(m.id);
+  const [page, setPage] = useState(0);
+  const touch = useRef<number | null>(null);
+  const st = m.stats;
+  const pages: { title: string; body: ReactNode }[] = [];
+  if (st) {
+    pages.push({ title: "Statistics", body: <>
+      <CardsLine m={m} />
+      {st.onTarget && st.offTarget && st.blocked ? <>
+        <StatLine label="Shots on target" v={st.onTarget} />
+        <StatLine label="Shots off target" v={st.offTarget} />
+        <StatLine label="Shots blocked" v={st.blocked} />
+      </> : <StatLine label="Shots" v={st.shots} />}
+      <StatLine label="Corner kicks" v={st.corners} />
+    </> });
+    pages.push({ title: "Attacks", body: <>
+      <StatLine label="Possession" v={st.possession} unit="%" />
+      {st.attacks && <StatLine label="Attacks" v={st.attacks} />}
+      {st.dangerous && <StatLine label="Dangerous attacks" v={st.dangerous} />}
+      <StatLine label="Total shots" v={st.shots} />
+    </> });
+  }
+  if (m.o[0] > 0 || picks) pages.push({ title: "Win chances", body: <>
+    {m.o[0] > 0 && <SplitLine label="Odds say" v={impliedPct(m.o)} />}
+    {picks && <SplitLine label="Players picked" v={picks.shares} />}
+    <span style={{ fontSize: 11, color: "var(--tc-label)", textAlign: "center" }}>
+      {m.home} left · {m.away} right{picks ? ` · ${picks.total.toLocaleString("en-US")} picks` : ""}
+    </span>
+  </> });
+  if (!pages.length) return <><Head title="Statistics" /><p style={{ margin: 0, fontSize: 13, color: "var(--tc-label)" }}>No stats for this match yet.</p></>;
+  const i = Math.min(page, pages.length - 1);
+  const go = (d: number) => setPage((i + d + pages.length) % pages.length);
+  const arrow = (d: number, label: string, path: string) => (
+    <button onClick={() => go(d)} aria-label={label} style={{ width: 28, height: 24, border: "none", background: "transparent", color: "var(--tc-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={path} /></svg>
+    </button>
+  );
+  return (
+    <div onTouchStart={(e) => { touch.current = e.touches[0].clientX; }}
+      onTouchEnd={(e) => { const x = touch.current; touch.current = null; if (x !== null && Math.abs(e.changedTouches[0].clientX - x) > 40) go(e.changedTouches[0].clientX < x ? 1 : -1); }}>
+      <Head title={pages[i].title}>
+        {pages.length > 1 && <span style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 700, color: "var(--tc-soft)" }}>
+          {arrow(-1, "Previous stats", "m15 18-6-6 6-6")}{i + 1}/{pages.length}{arrow(1, "Next stats", "m9 18 6-6-6-6")}
+        </span>}
+      </Head>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "0 4px" }}>{pages[i].body}</div>
+    </div>
   );
 }
 
@@ -324,9 +446,9 @@ function LivePitch({ m }: { m: TCMatch }) {
   const p = t === null || ht ? null : phaseAt(m, t);
   const color = p ? (p.side === "home" ? HOME : AWAY) : "#fff";
   const team = p ? (p.side === "home" ? m.home : m.away) : "";
-  const W = 360, H = 210;
+  const W = PITCH_W, H = PITCH_H;
   return (
-    <div style={{ position: "relative", margin: "4px 12px 12px", borderRadius: 10, overflow: "hidden" }}>
+    <div style={{ position: "relative" }}>
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" aria-hidden="true" style={{ display: "block" }}>
         {Array.from({ length: 10 }, (_, i) => <rect key={i} x={(W / 10) * i} y={0} width={W / 10} height={H} fill={i % 2 ? "#2F7D32" : "#34873A"} />)}
         {/* the attacking side's half glows in its colour */}
