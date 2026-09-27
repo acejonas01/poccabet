@@ -18,7 +18,7 @@ const PITCH_W = 360, PITCH_H = 220; // match view box (pitch and every tab)
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
 // flat: full screen width on phones (see matchpage.tsx), cancelling the page's 16px side padding.
 const shell = (flat?: boolean): CSSProperties => flat
-  ? { background: "var(--tc-card)", margin: "0 -16px", borderTop: "8px solid var(--tc-league)", overflow: "hidden" }
+  ? { background: "var(--tc-card)", margin: "0 -16px", borderTop: "8px solid var(--tc-league)", borderBottom: "0.5px solid var(--tc-line)", boxShadow: "inset 0 0.5px 0 var(--tc-line)", overflow: "hidden" }
   : card;
 
 type Panel = "pitch" | "stats" | "h2h" | "table" | "timeline" | "lineups";

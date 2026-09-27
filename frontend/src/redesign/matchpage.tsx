@@ -14,8 +14,9 @@ import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, us
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 };
 // Phones: sections run the full width of the screen (no rounded corners or side borders), like
 // BetKing; the page's 16px side padding is cancelled out. Desktop keeps rounded cards.
-// The 8px band on top is the gap between sections, in the date-row colour (--tc-league).
-const flat: CSSProperties = { background: "var(--tc-card)", margin: "0 -16px", borderTop: "8px solid var(--tc-league)" };
+// The 8px band on top is the gap between sections, in the date-row colour (--tc-league), with a
+// very fine hairline on each side of it (this section's bottom edge and just under the band).
+const flat: CSSProperties = { background: "var(--tc-card)", margin: "0 -16px", borderTop: "8px solid var(--tc-league)", borderBottom: "0.5px solid var(--tc-line)", boxShadow: "inset 0 0.5px 0 var(--tc-line)" };
 const sectionTitle: CSSProperties = { margin: "0 0 12px", fontSize: 15, fontWeight: 800 };
 const barlow = "'Barlow Condensed', sans-serif";
 
