@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ComponentType, type ReactElement } from "react";
 import { Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { zoned } from "../lib/browser";
-import { type TCMatch, dayHeading, leagueRank, leagueSlug } from "./data";
+import { MONTHS, type TCMatch, WEEKDAYS, dayHeading, leagueRank, leagueSlug } from "./data";
 import {
   AmFootballIcon, BaseballIcon, BasketballIcon, BoxingIcon, CheckIcon, ChevronRight, CricketIcon, DartsIcon,
   IceHockeyIcon, SportsIcon, TableTennisIcon, TennisIcon, VirtualsIcon, VolleyballIcon,
@@ -51,7 +51,7 @@ const HOUR_STOPS = [0, 1, 3, 6, 12, 24, 72, 168];
 const STOP_LABELS = ["Any", "1h", "3h", "6h", "12h", "1d", "3d", "1w"];
 const isYmd = (v: string | null): v is string => !!v && /^\d{4}-\d{2}-\d{2}$/.test(v);
 const fromYmd = (v: string) => { const [y, mo, d] = v.split("-").map(Number); return new Date(y, mo - 1, d).getTime(); };
-const shortDate = (v: string) => new Date(fromYmd(v)).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+const shortDate = (v: string) => { const d = new Date(fromYmd(v)); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 
 function passes(w: When, m: TCMatch) {
   if (w.kind === "day") return ymd(m.start) === w.id;
@@ -175,7 +175,7 @@ function FootballFilter({ upcoming, loaded, desktop }: { upcoming: TCMatch[]; lo
   const days = useMemo(() => Array.from({ length: 7 }, (_, i) => {
     const t = Date.now() + i * 24 * HOUR;
     const id = ymd(t);
-    return { id, label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : zoned(t).toLocaleDateString("en-GB", { weekday: "long" }), count: upcoming.filter((m) => ymd(m.start) === id).length };
+    return { id, label: i === 0 ? "Today" : i === 1 ? "Tomorrow" : WEEKDAYS[zoned(t).getDay()], count: upcoming.filter((m) => ymd(m.start) === id).length };
   }), [upcoming]);
 
   // Leagues (and countries) that have matches in the chosen time window.

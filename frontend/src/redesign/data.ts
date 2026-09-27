@@ -226,6 +226,10 @@ export function useTCData() {
 
 // ---------- formatting ----------
 const pad = (n: number) => String(n).padStart(2, "0");
+// Day and month names spelled out here, not with toLocaleDateString: browsers and the server
+// disagree ("Sep" vs "Sept"), which made server-rendered pages differ from the phone's.
+export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export const hhmm = (t: number) => {
   const d = zoned(t);
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -234,7 +238,7 @@ export function dayLabel(t: number) {
   const d = zoned(t);
   const today = zoned();
   if (d.toDateString() === today.toDateString()) return "Today";
-  return d.toLocaleDateString("en-GB", { weekday: "short" });
+  return WEEKDAYS[d.getDay()].slice(0, 3);
 }
 export const kickoff = (t: number) => `${dayLabel(t)} ${hhmm(t)}`;
 
@@ -268,7 +272,7 @@ export function dateOptions() {
   base.setHours(0, 0, 0, 0);
   for (let i = 0; i < 4; i++) {
     const d = new Date(base.getTime() + i * 86400000);
-    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : `${d.toLocaleDateString("en-GB", { weekday: "short" })} ${d.getDate()}`;
+    const label = i === 0 ? "Today" : i === 1 ? "Tomorrow" : `${WEEKDAYS[d.getDay()].slice(0, 3)} ${d.getDate()}`;
     opts.push({ id: d.toDateString(), label });
   }
   return opts;
@@ -286,5 +290,5 @@ export function dayHeading(t: number) {
   const today = zoned();
   if (d.toDateString() === today.toDateString()) return "Today";
   if (d.toDateString() === new Date(today.getTime() + 86400000).toDateString()) return "Tomorrow";
-  return d.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "short" });
+  return `${WEEKDAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }

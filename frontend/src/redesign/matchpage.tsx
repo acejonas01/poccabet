@@ -14,7 +14,7 @@ import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, us
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 };
 // Phones: sections run the full width of the screen (no rounded corners or side borders), like
 // BetKing; the page's 16px side padding is cancelled out. Desktop keeps rounded cards.
-const flat: CSSProperties = { background: "var(--tc-card)", borderTop: "1px solid var(--tc-card-line)", borderBottom: "1px solid var(--tc-card-line)", margin: "0 -16px" };
+const flat: CSSProperties = { background: "var(--tc-card)", margin: "0 -16px" };
 const sectionTitle: CSSProperties = { margin: "0 0 12px", fontSize: 15, fontWeight: 800 };
 const barlow = "'Barlow Condensed', sans-serif";
 

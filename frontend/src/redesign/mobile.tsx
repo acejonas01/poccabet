@@ -289,9 +289,10 @@ function LiveRow({ m, market, index }: { m: TCMatch; market: string; index: numb
   );
 }
 
-// Each league / day group is its own full-width block with a gutter above it (like the match
-// page's markets and BetKing's lists).
-const LIST_SECTION: CSSProperties = { marginTop: 8, background: "var(--tc-card)", borderTop: "1px solid var(--tc-card-line)", borderBottom: "1px solid var(--tc-card-line)" };
+// League / day groups run full width on the card colour; the dark league/day header is the only
+// divider between them (a gap as well made a double band). redesign.css adds a hairline above
+// every header after the first (.tc-list-group + .tc-list-group).
+const LIST_SECTION: CSSProperties = { background: "var(--tc-card)" };
 
 // Theme A: darker headers (var(--tc-league)) so each league reads as a block.
 // Theme B: lighter, compact headers (var(--tc-panel)) — the original Live-tab look.
@@ -376,9 +377,10 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
   const m = p.m;
   const id = `${m.id}|${p.marketId}|${p.col}`;
   return (
-    <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+    // The whole card opens the match page, except the pick row (that adds the pick to the betslip).
+    <section aria-label="Pick of the day" onClick={() => navigate(matchHref(m))} style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12, cursor: "pointer", position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
-      <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} style={{ display: "flex", flexDirection: "column", gap: 2, color: "var(--tc-text)", textDecoration: "none" }}>
+      <a href={matchHref(m)} onClick={(e) => e.preventDefault()} style={{ display: "flex", flexDirection: "column", gap: 2, color: "var(--tc-text)", textDecoration: "none" }}>
         {/* Title with small crests: [crest] Home vs [crest] Away (opens the match page) */}
         {/* Each team is one unbreakable unit (crest + name), so a long title can only wrap
             between the teams — a crest never gets separated from its name. */}
@@ -389,11 +391,15 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-muted)" }}><Flag country={m.country} size={14} />{p.sub}</div>
       </a>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "var(--tc-page)", borderRadius: 10 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "var(--tc-page)", borderRadius: 10, cursor: "default" }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</div>
         <OddButton variant="home" value={p.odds} on={isOn(id)} aria={p.label} onPick={() => pick(m, p.marketId, p.marketLabel, p.col, p.odds)} style={{ minWidth: 64, height: 44, fontSize: 20 }} />
       </div>
-      <div style={{ fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>{p.note}</div>
+      <div style={{ paddingRight: 18, fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>{p.note}</div>
+      {/* » in the bottom-right corner tells players the card opens the match */}
+      <span aria-hidden="true" style={{ position: "absolute", right: 10, bottom: 10, width: 20, height: 20, borderRadius: 10, background: "rgba(245,197,24,0.14)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"><path d="m6 17 5-5-5-5M13 17l5-5-5-5" /></svg>
+      </span>
     </section>
   );
 }
@@ -487,7 +493,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
       </div>
 
       {!listLoading && leagues.map((lg) => (
-        <section key={lg.key} style={{ ...LIST_SECTION, display: "flex", flexDirection: "column" }}>
+        <section key={lg.key} className="tc-list-group" style={{ ...LIST_SECTION, display: "flex", flexDirection: "column" }}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => isLive
             ? <LiveRow key={m.id} m={m} market={market} index={liveIndex++} />
@@ -628,23 +634,23 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
 
       {busy ? <Loader1X2 label="Loading matches…" /> : <>
       {liveList.length > 0 && (group === "day" ? (
-        <section style={LIST_SECTION}>
+        <section className="tc-list-group" style={LIST_SECTION}>
           <GroupHeader title="Live now" live market={market} />
           {liveList.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       ) : groupByLeague(liveList).map((lg) => (
-        <section key={`live-${lg.key}`} style={LIST_SECTION}>
+        <section key={`live-${lg.key}`} className="tc-list-group" style={LIST_SECTION}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m, i) => <LiveRow key={m.id} m={m} market={market} index={i} />)}
         </section>
       )))}
       {group === "day" ? days.map((d) => (
-        <section key={d.key} style={LIST_SECTION}>
+        <section key={d.key} className="tc-list-group" style={LIST_SECTION}>
           <GroupHeader title={d.title} market={market} />
           {d.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} timeOnly />)}
         </section>
       )) : groupByLeague(shown).map((lg) => (
-        <section key={lg.key} style={LIST_SECTION}>
+        <section key={lg.key} className="tc-list-group" style={LIST_SECTION}>
           <LeagueHeader country={lg.country} name={lg.name} market={market} />
           {lg.matches.map((m) => <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>

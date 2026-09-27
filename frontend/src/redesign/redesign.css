@@ -219,3 +219,6 @@
 
 /* Live chat open on a match page: move the bottom nav out of the way of the message box. */
 .tc-chat-open .tc-bottom-nav { transform: translateY(110%); pointer-events: none; }
+
+/* Phone match lists: hairline above each league/day header too (not the first, which sits under the market tabs' line). */
+.tc-list-group + .tc-list-group { border-top: 1px solid var(--tc-line); }
