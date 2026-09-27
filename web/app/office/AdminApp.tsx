@@ -78,17 +78,16 @@ export function AdminApp() {
   const check = useCallback(() => {
     if (!token()) return setState("login");
     setState("loading");
-    const since = Date.now();
+    // The frame and the page (with its own 1X2 loader) show while this runs, so there's one loader.
     api<{ id: string; displayName: string; mode: string }>("/admin/me")
-      .then(async (m) => { await onePass(since); setMe(m); setState("ok"); })
-      .catch(async (e: ApiError) => { await onePass(since); setState(e.status === 401 ? "login" : "denied"); });
+      .then((m) => { setMe(m); setState("ok"); })
+      .catch((e: ApiError) => setState(e.status === 401 ? "login" : "denied"));
   }, []);
   useEffect(check, [check]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
 
   const logout = () => { localStorage.removeItem("token"); localStorage.removeItem("user"); setMe(null); setState("login"); };
 
-  if (state === "loading") return <div className="adm"><div style={{ margin: "auto" }}><Loader1X2 /></div></div>;
   if (state === "login") return <div className="adm"><Login onDone={check} /></div>;
   if (state === "denied") {
     return (
@@ -121,7 +120,7 @@ export function AdminApp() {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
         </button>
         <div className="adm-logo">Pocca<span>bet</span><small>ADMIN</small></div>
-        <Badge tone={me?.mode === "live" ? "green" : "yellow"}>{me?.mode === "live" ? "LIVE" : "SIM"}</Badge>
+        {me && <Badge tone={me.mode === "live" ? "green" : "yellow"}>{me.mode === "live" ? "LIVE" : "SIM"}</Badge>}
       </header>
       {menu && <div className="adm-scrim" onClick={() => setMenu(false)} />}
       <aside className={`adm-side${menu ? " open" : ""}`}>
@@ -137,7 +136,7 @@ export function AdminApp() {
         })}
         <div className="adm-side-foot">
           <span>Signed in as <b style={{ color: "var(--text)" }}>{me?.displayName}</b></span>
-          <Badge tone={me?.mode === "live" ? "green" : "yellow"}>{me?.mode === "live" ? "LIVE FEED" : "SIMULATION"}</Badge>
+          {me && <Badge tone={me.mode === "live" ? "green" : "yellow"}>{me.mode === "live" ? "LIVE FEED" : "SIMULATION"}</Badge>}
           <a href="/" target="_blank" rel="noopener" style={{ color: "var(--muted)" }}>View site ↗</a>
           <button className="adm-btn sm" onClick={logout}>Log out</button>
         </div>
@@ -316,8 +315,11 @@ function Stat({ k, v, s, tone }: { k: string; v: ReactNode; s?: ReactNode; tone?
 }
 function Dashboard() {
   const { data: s, error, reload } = useApi<Stats>("/admin/stats");
+  // The charts load at the same time as the numbers, so the page shows one loader, once.
+  const [days, setDays] = useState(30);
+  const breakdown = useApi<BreakdownData>(`/admin/reports/breakdown?days=${days}`);
   useEffect(() => { const t = setInterval(reload, 60_000); return () => clearInterval(t); }, [reload]);
-  if (!s) return <><Head title="Dashboard" /><Loading error={error} /></>;
+  if (!s || (!breakdown.data && !breakdown.error)) return <><Head title="Dashboard" /><Loading error={error} /></>;
   const max = Math.max(1, ...s.byDay.map((d) => d.stake));
   const green = (v: number) => (v >= 0 ? "#5BD69A" : "#FF8A8E");
   return (
@@ -347,7 +349,7 @@ function Dashboard() {
           </div>
         ) : <div className="adm-empty">No bets in the last 14 days.</div>}
       </div>
-      <Breakdown />
+      <Breakdown days={days} setDays={setDays} data={breakdown.data} error={breakdown.error} />
     </>
   );
 }
@@ -432,9 +434,8 @@ function SplitBar({ parts, unit }: { parts: Part[]; unit: string }) {
 }
 
 type Split = { name: string; bets?: number; players?: number; stake_ngn?: number };
-function Breakdown() {
-  const [days, setDays] = useState(30);
-  const { data, error } = useApi<{ outcomes: Split[]; types: Split[]; leagues: Split[]; markets: Split[]; sources: Split[] }>(`/admin/reports/breakdown?days=${days}`);
+type BreakdownData = { outcomes: Split[]; types: Split[]; leagues: Split[]; markets: Split[]; sources: Split[] };
+function Breakdown({ days, setDays, data, error }: { days: number; setDays: (d: number) => void; data: BreakdownData | null; error: string }) {
   const known = (map: Record<string, { label: string; color: string }>, rows: Split[]): Part[] =>
     Object.entries(map).map(([k, m]) => ({ label: m.label, color: m.color, value: Number(rows.find((r) => r.name === k)?.bets ?? 0) })).filter((p) => p.value > 0);
   const outcomes = data ? known(STATUS, data.outcomes) : [];

@@ -1,6 +1,7 @@
 // Recent Winners + site footer for the redesign (Themes A, B and C).
 import { useEffect, useState, type ReactElement } from "react";
 import { api } from "../api/client";
+import { poll } from "./data";
 import { ACCENT } from "./shared";
 import { AviatorIcon, CasinoIcon, JackpotIcon, SportsIcon, VirtualsIcon } from "./icons";
 
@@ -53,10 +54,9 @@ export function WinnersStrip({ desktop = false }: { desktop?: boolean }) {
 
   useEffect(() => {
     const load = () => api.getWinners().then((r) => setWinners(r.winners)).catch(() => {});
-    load();
-    const poll = setInterval(load, 60000);
+    const stop = poll(load, 60000); // paused while the tab is hidden
     const tick = setInterval(() => setNow(Date.now()), 30000); // keep "x min ago" fresh
-    return () => { clearInterval(poll); clearInterval(tick); };
+    return () => { stop(); clearInterval(tick); };
   }, []);
 
   if (!winners.length) return null;

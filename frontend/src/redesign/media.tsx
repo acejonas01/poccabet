@@ -1,8 +1,25 @@
 // Imagery for Theme C: promo slider, hot-games strip, country flags.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ImgHTMLAttributes } from "react";
 import { teamCode } from "./data";
 import { ChevronLeft, ChevronRight } from "./icons";
 import { ACCENT } from "./shared";
+import { IMAGE_VERSIONS } from "./imageVersions.gen";
+
+// ---------- images: version-stamped URLs, WebP with a JPG fallback ----------
+// The stamp changes whenever the image does (see scripts/optimize-images.mjs), so browsers can
+// keep these images for a long time and still get a replaced one on the next visit.
+export const imageUrl = (path: string) => (IMAGE_VERSIONS[path] ? `${path}?v=${IMAGE_VERSIONS[path].v}` : path);
+const webpUrl = (path: string) => (IMAGE_VERSIONS[path]?.webp ? `${path.replace(/\.jpe?g$/i, ".webp")}?v=${IMAGE_VERSIONS[path].v}` : null);
+
+export function Pic({ src, ...img }: { src: string } & ImgHTMLAttributes<HTMLImageElement>) {
+  const webp = webpUrl(src);
+  return (
+    <picture style={{ display: "contents" }}>
+      {webp && <source type="image/webp" srcSet={webp} />}
+      <img src={imageUrl(src)} {...img} />
+    </picture>
+  );
+}
 
 // ---------- promo slider (1080×400 mobile artwork; 2120×400 wide artwork on desktop) ----------
 // Infinite loop: three copies of the slides side by side; you always sit in the middle copy.
@@ -91,7 +108,7 @@ export function PromoSlider({ desktop = false }: { desktop?: boolean }) {
               flex: desktop ? "0 0 100%" : "0 0 calc(100% - 24px)", scrollSnapAlign: "start", borderRadius: 14,
               overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)", display: "block",
             }}>
-            <img src={src} alt="" width={desktop ? 2120 : 1080} height={400} loading={i === N || i === N + 1 ? "eager" : "lazy"} style={{ width: "100%", height: "auto", display: "block" }} />
+            <Pic src={src} alt="" width={desktop ? 2120 : 1080} height={400} loading={i === N || i === N + 1 ? "eager" : "lazy"} fetchPriority={i === N ? "high" : undefined} style={{ width: "100%", height: "auto", display: "block" }} />
           </a>
         ))}
       </div>
@@ -137,7 +154,7 @@ export function HotGamesStrip({ desktop = false }: { desktop?: boolean }) {
         {GAMES.map((g) => (
           <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ flex: desktop ? undefined : "0 0 148px", minWidth: 0, scrollSnapAlign: "start", display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
             <span style={{ display: "block", borderRadius: 12, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
-              <img src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
+              <Pic src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
             </span>
             <span style={{ display: "flex", flexDirection: "column", gap: 1, padding: "0 2px" }}>
               <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>

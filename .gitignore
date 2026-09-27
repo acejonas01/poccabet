@@ -17,3 +17,8 @@ raw/
 *.pptx
 generate_ip_pptx.js
 *.psd
+
+# generated before each dev/build by frontend/scripts/optimize-images.mjs
+frontend/public/slides/*.webp
+frontend/public/games/*.webp
+frontend/src/redesign/imageVersions.gen.ts

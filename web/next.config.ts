@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${BACKEND}/api/:path*` }];
   },
+  // Slides and game tiles are always linked with a version stamp (?v=…) that changes with the
+  // image, so browsers may keep them for a year: a replaced image gets a new address.
+  async headers() {
+    const keep = [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }];
+    return [{ source: "/slides/:path*", headers: keep }, { source: "/games/:path*", headers: keep }];
+  },
   webpack(config, { webpack, dev }) {
     config.resolve.alias = {
       ...config.resolve.alias,

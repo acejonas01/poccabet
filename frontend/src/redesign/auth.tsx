@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons";
-import { Flag } from "./media";
+import { Flag, imageUrl } from "./media";
 import { PlayResponsibly } from "./footer";
 import { SUPPORT_EMAIL } from "./shortcuts";
 import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
@@ -494,7 +494,7 @@ export function RedesignLogin() {
   }
 
   return (
-    <Shell onClose={close} image="/slides/Slide-1-m.jpg" banner={<LoginHero />}>
+    <Shell onClose={close} image={imageUrl("/slides/Slide-1-m.jpg")} banner={<LoginHero />}>
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800 }}>Log in</h1>
         {/* Log in with either: the phone number or the email on the account. */}

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { type TCMatch, TOP_LEAGUES, kickoff } from "./data";
 import { AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, CloseIcon, JackpotIcon, SearchIcon, VirtualsIcon } from "./icons";
-import { Crest, Flag, GAMES } from "./media";
+import { Crest, Flag, GAMES, Pic } from "./media";
 import { type ListViewProps, MatchListPage } from "./mobile";
 import {
   type SearchIndex, clearRecentSearches, highlightParts, normalize, recentSearches, rememberSearch, scoreText, search, searchMatches,
@@ -26,7 +26,7 @@ const SPORT_WORDS: Record<string, string[]> = {
   efootball: ["fifa", "ea fc", "esports", "virtual football"],
 };
 const iconBox = (icon: ReactNode) => <span style={{ width: 30, height: 30, borderRadius: 15, background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</span>;
-const thumb = (src: string) => <img src={src} alt="" width={30} height={30} loading="lazy" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover" }} />;
+const thumb = (src: string) => <Pic src={src} alt="" width={30} height={30} loading="lazy" style={{ width: 30, height: 30, borderRadius: 8, objectFit: "cover" }} />;
 // Built on first use: sports.tsx imports this file indirectly, so SPORTS isn't ready at load time.
 let CATALOG: CatalogEntry[] | null = null;
 const catalog = (): CatalogEntry[] => CATALOG ??= [

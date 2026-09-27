@@ -139,6 +139,19 @@ function withDirs(next: TCMatch[], prev: Map<string, TCMatch>) {
 export interface InitialFeed { live: any[]; upcoming: any[]; simulated?: boolean; topPick?: any | null }
 export const InitialFeedContext = createContext<InitialFeed | null>(null);
 
+// Runs `load` every `ms` while the page is visible. Hidden tabs don't poll; coming back refreshes
+// at once if the data is older than one interval. `fresh`: the server just sent this data with the
+// page, so the first load waits one interval instead of downloading it again straight away.
+export function poll(load: () => void, ms: number, fresh = false) {
+  let last = fresh ? Date.now() : 0;
+  const run = () => { if (!document.hidden) { last = Date.now(); load(); } };
+  if (!fresh) run();
+  const id = setInterval(run, ms);
+  const onShow = () => { if (!document.hidden && Date.now() - last >= ms) run(); };
+  document.addEventListener("visibilitychange", onShow);
+  return () => { clearInterval(id); document.removeEventListener("visibilitychange", onShow); };
+}
+
 export function useTCData() {
   const initial = useContext(InitialFeedContext);
   const [live, setLive] = useState<TCMatch[]>(() => (initial ? initial.live.map(fromLive) : readCache("pocca-c-live", 5 * 60000)));
@@ -163,9 +176,7 @@ export function useTCData() {
         })
         .catch(() => {})
         .finally(() => setLiveLoaded(true));
-    load();
-    const id = setInterval(load, 30000);
-    return () => clearInterval(id);
+    return poll(load, 30000, !!initial);
   }, []);
 
   useEffect(() => {
@@ -180,10 +191,8 @@ export function useTCData() {
         })
         .catch(() => {})
         .finally(() => setUpcomingLoaded(true));
-    load();
     // Every minute: prices move pre-match too (the server caches, so this costs no API calls).
-    const id = setInterval(load, 60000);
-    return () => clearInterval(id);
+    return poll(load, 60000, !!initial);
   }, []);
 
   // Drop upcoming games once they kick off (the feed is cached for a while).

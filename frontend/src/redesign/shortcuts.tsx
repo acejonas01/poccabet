@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { leagueSlug } from "./data";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import { ChevronRight, CloseIcon, HeadsetIcon, MoonIcon, VirtualsIcon } from "./icons";
-import { Flag, GAMES } from "./media";
+import { Flag, GAMES, Pic } from "./media";
 import { ACCENT, Sheet, SheetTitle, useThemeButton } from "./shared";
 import { SPORTS } from "./sports";
 
@@ -150,7 +150,7 @@ export function ShortcutsPanel({ onClose }: { onClose: () => void }) {
                 {GAMES.map((g) => (
                   <a key={g.name} href="#" onClick={(e) => e.preventDefault()} style={{ display: "flex", flexDirection: "column", gap: 6, textDecoration: "none", color: "var(--tc-text)" }}>
                     <span style={{ display: "block", borderRadius: 10, overflow: "hidden", border: "1px solid var(--tc-card-line)", background: "var(--tc-card)" }}>
-                      <img src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
+                      <Pic src={g.img} alt="" width={600} height={380} loading="lazy" style={{ width: "100%", height: "auto", display: "block" }} />
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{g.name}</span>
                   </a>
