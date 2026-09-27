@@ -785,7 +785,7 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
         return (
           <button key={c} className="tc-odd-btn" disabled={!v} aria-label={v ? `${on ? "Remove" : "Add"} ${mk.label} ${c} at ${v.toFixed(2)}` : `${mk.label} ${c} suspended`}
             onClick={() => v && pick(m, mk.id, mk.label, c, v)} style={{
-              height: 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
+              height: section ? 44 : 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
             }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
@@ -823,8 +823,9 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
         {MARKET_GROUPS.flatMap((g) => byGroup(g.id)).filter((mk) => !only || only.includes(mk.id)).map((mk) => {
           const open = !folded.has(mk.id);
           return (
-            <section key={mk.id} aria-label={mk.label} style={{ ...section, padding: open ? "4px 16px 16px" : "4px 16px" }}>
-              <button onClick={() => toggle(mk.id)} aria-expanded={open} style={{ width: "100%", height: 44, padding: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 15, fontWeight: 800 }}>
+            // Compact on phones: 36px title row, odds right under it (fits another market per screen).
+            <section key={mk.id} aria-label={mk.label} style={{ ...section, padding: open ? "4px 16px 14px" : "4px 16px" }}>
+              <button onClick={() => toggle(mk.id)} aria-expanded={open} style={{ width: "100%", height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 15, fontWeight: 800 }}>
                 {mk.label}
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "var(--tc-label)", transform: open ? "none" : "rotate(180deg)", transition: "transform .2s" }}><path d="m6 15 6-6 6 6" /></svg>
               </button>
