@@ -51,8 +51,10 @@ export interface LiveFixture {
   // Only the simulation fills these for now (real stats need extra API calls).
   stats?: { possession: [number, number]; shots: [number, number]; corners: [number, number] };
   redCard?: "home" | "away" | null;
-  // Goals and red cards so far, for the match page timeline (simulation only for now).
-  events?: { minute: number; type: "goal" | "red"; side: "home" | "away" }[];
+  // Goals, cards and corners so far, for the match page timeline and match view (simulation only for now).
+  events?: { minute: number; type: "goal" | "red" | "yellow" | "corner"; side: "home" | "away" }[];
+  // Attack momentum per minute played, -1 (away pressing) … +1 (home pressing), for the match view.
+  momentum?: number[];
 }
 
 let usage = { day: "", calls: 0, remaining: Infinity };

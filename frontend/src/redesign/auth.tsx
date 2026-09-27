@@ -8,7 +8,7 @@ import { CheckIcon, ChevronLeft, CloseIcon, EyeIcon, EyeOffIcon } from "./icons"
 import { Flag, imageUrl } from "./media";
 import { PlayResponsibly } from "./footer";
 import { SUPPORT_EMAIL } from "./shortcuts";
-import { ACCENT, WELCOME_BONUS_AMOUNT } from "./shared";
+import { ACCENT, WELCOME_BONUS_AMOUNT, canGoBack } from "./shared";
 
 const barlow = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -204,7 +204,7 @@ export function RedesignSignup() {
   const valid = Object.values(problems).every((p) => !p); // the details step
   const phoneOk = validLocal(f.digits);
   const shown = (k: keyof typeof problems) => (touched[k] ? problems[k] : null);
-  const close = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+  const close = () => (canGoBack() ? navigate(-1) : navigate("/"));
 
   async function sendCode(e?: FormEvent) {
     e?.preventDefault();
@@ -474,7 +474,7 @@ export function RedesignLogin() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [suspended, setSuspended] = useState(false);
-  const close = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+  const close = () => (canGoBack() ? navigate(-1) : navigate("/"));
   const ready = (useEmail ? email.includes("@") : validLocal(digits)) && password.length > 0;
 
   async function submit(e: FormEvent) {

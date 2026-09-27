@@ -19,7 +19,8 @@ export interface TCMatch {
   as: number;
   red: "home" | "away" | null;
   stats: { possession: [number, number]; shots: [number, number]; corners: [number, number] } | null;
-  events: { minute: number; type: "goal" | "red"; side: "home" | "away" }[]; // goals & red cards so far (live)
+  events: { minute: number; type: "goal" | "red" | "yellow" | "corner"; side: "home" | "away" }[]; // so far (live)
+  momentum: number[]; // attack momentum per minute played, -1 (away) … +1 (home) (live)
   o: number[]; // 1X2 (0 = unavailable)
   ou: number[]; // Over / Under 2.5
   dirs: { "1x2": Dir[]; ou: Dir[] }; // last price movement, drives the flashing arrows
@@ -82,6 +83,7 @@ function fromLive(f: any): TCMatch {
     red: f.redCard ?? null,
     stats: f.stats ?? null,
     events: f.events ?? [],
+    momentum: f.momentum ?? [],
     o: oneXTwo(f.markets),
     ou: overUnder25(f.markets),
     dirs: noDirs(),
@@ -105,6 +107,7 @@ function fromUpcoming(e: any): TCMatch {
     red: null,
     stats: null,
     events: [],
+    momentum: [],
     o: oneXTwo(e.markets),
     ou: overUnder25(e.markets),
     dirs: noDirs(),

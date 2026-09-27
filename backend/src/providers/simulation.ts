@@ -238,6 +238,34 @@ function markets(m: SimMatch, minute: number, homeGoals: number, awayGoals: numb
 }
 
 // ---------- public feeds (same shapes as the real providers) ----------
+// ---------- match view: yellow cards, corners and attack momentum (simulation only) ----------
+type SimEvent = { minute: number; type: "yellow" | "corner"; side: "home" | "away" };
+// Yellow cards and corners at fixed minutes of each match (same for everyone, every time).
+function extraEvents(m: SimMatch): SimEvent[] {
+  const rand = rng(hash(`pocca-extra-${m.id}`));
+  const out: SimEvent[] = [];
+  for (const side of ["home", "away"] as const) {
+    const i = side === "home" ? 0 : 1;
+    for (let k = poissonSample(1.7, rand); k > 0; k--) out.push({ minute: 5 + Math.floor(rand() * 85), type: "yellow", side });
+    for (let k = Math.round(m.cornerRate[i]); k > 0; k--) out.push({ minute: 1 + Math.floor(rand() * 90), type: "corner", side });
+  }
+  return out;
+}
+// Attack momentum per minute, -1 (away pressing) … +1 (home pressing): possession and team
+// strength set the base, random swings on top, and pressure builds before goals and corners.
+function momentumOf(m: SimMatch, extra: SimEvent[], upTo: number): number[] {
+  const rand = rng(hash(`pocca-momentum-${m.id}`));
+  const base = (m.possessionHome - 50) / 60 + (m.lambdaHome - m.lambdaAway) * 0.15;
+  const raw = Array.from({ length: 90 }, () => base + (rand() - 0.5) * 1.1);
+  const press = (minute: number, side: "home" | "away", weight: number) => {
+    for (let d = 0; d < 4; d++) { const j = minute - 1 - d; if (j >= 0 && j < 90) raw[j] += (side === "home" ? 1 : -1) * weight * (1 - d / 4); }
+  };
+  m.goals.forEach((g) => press(g.minute, g.side, 1.2));
+  extra.filter((e) => e.type === "corner").forEach((c) => press(c.minute, c.side, 0.5));
+  const smooth = raw.map((_, i) => { const w = raw.slice(Math.max(0, i - 2), i + 3); return w.reduce((a, b) => a + b, 0) / w.length; });
+  return smooth.slice(0, Math.min(upTo, 90)).map((v) => Math.round(Math.max(-1, Math.min(1, v)) * 100) / 100);
+}
+
 export function simLive(now = Date.now()): LiveFixture[] {
   const candidates = [...scheduleFor(isoDay(now - 86400000)), ...scheduleFor(isoDay(now))];
   return candidates
@@ -246,6 +274,8 @@ export function simLive(now = Date.now()): LiveFixture[] {
     .map(({ m, c }) => {
       const minute = c.minute ?? 0;
       const score = scoreAt(m, minute);
+      const extra = extraEvents(m);
+      const cornersBy = (side: "home" | "away") => extra.filter((e) => e.type === "corner" && e.side === side && e.minute <= minute).length;
       const sinceKickoff = (now - m.kickoff) / 60000;
       const justScored = m.goals.some((g) => {
         const d = sinceKickoff - realMinuteOfGoal(g.minute);
@@ -270,13 +300,15 @@ export function simLive(now = Date.now()): LiveFixture[] {
         stats: {
           possession: [m.possessionHome, 100 - m.possessionHome] as [number, number],
           shots: [Math.round((m.shotRate[0] * minute) / 90), Math.round((m.shotRate[1] * minute) / 90)] as [number, number],
-          corners: [Math.round((m.cornerRate[0] * minute) / 90), Math.round((m.cornerRate[1] * minute) / 90)] as [number, number],
+          corners: [cornersBy("home"), cornersBy("away")] as [number, number],
         },
         redCard: m.redCard && m.redCard.minute <= minute ? m.redCard.side : null,
         events: [
           ...m.goals.filter((g) => g.minute <= minute).map((g) => ({ minute: g.minute, type: "goal" as const, side: g.side })),
           ...(m.redCard && m.redCard.minute <= minute ? [{ minute: m.redCard.minute, type: "red" as const, side: m.redCard.side }] : []),
+          ...extra.filter((e) => e.minute <= minute),
         ].sort((a, b) => a.minute - b.minute),
+        momentum: momentumOf(m, extra, minute),
       };
     })
     .sort((a, b) => (b.minute ?? 0) - (a.minute ?? 0));

@@ -9,7 +9,8 @@ import { type TCMatch, codeFromMatchSlug, dayLabel, hhmm, leagueSlug, matchCode,
 import { CheckIcon, ChevronLeft, ChevronRight, ShareIcon } from "./icons";
 import { impliedPct } from "./markets";
 import { Crest, Flag } from "./media";
-import { ACCENT, Loader1X2, MatchMarkets, publicOrigin, shareText, useMinLoading } from "./shared";
+import { MatchView } from "./matchview";
+import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, useMinLoading } from "./shared";
 
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 };
 const sectionTitle: CSSProperties = { margin: "0 0 12px", fontSize: 15, fontWeight: 800 };
@@ -25,7 +26,7 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
   useEffect(() => { window.scrollTo(0, 0); setTab("markets"); }, [code]);
 
   const go = (href: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(href); };
-  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+  const back = () => (canGoBack() ? navigate(-1) : navigate("/"));
 
   if (busy) return <Loader1X2 label="Loading match…" />;
   if (!m) {
@@ -60,6 +61,7 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
       </div>
 
       <MatchHeader m={m} />
+      {m.live && (m.momentum?.length ?? 0) > 0 && <MatchView m={m} />}
 
       <div role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--tc-line)" }}>
         {tabBtn("markets", "Markets")}
@@ -196,7 +198,7 @@ function MatchStats({ m }: { m: TCMatch }) {
 
   const colors = [ACCENT, "var(--tc-outline-strong)", "#4C9EEB"];
   const labels = [m.home, "Draw", m.away];
-  const events = [...(m.events ?? [])].reverse(); // newest first
+  const events = (m.events ?? []).filter((e) => e.type !== "corner").reverse(); // goals and cards, newest first
   const box = (title: string, body: ReactNode, sub?: string) => (
     <section style={{ ...card, padding: 16 }}>
       <h2 style={{ ...sectionTitle, marginBottom: sub ? 2 : 12 }}>{title}</h2>
@@ -213,8 +215,8 @@ function MatchStats({ m }: { m: TCMatch }) {
               <span style={{ width: 36, flexShrink: 0, fontSize: 13, fontWeight: 800, color: "var(--tc-soft)", textAlign: "center" }}>{e.minute}'</span>
               {e.type === "goal"
                 ? <span aria-hidden="true" style={{ fontSize: 16 }}>⚽</span>
-                : <span aria-hidden="true" style={{ width: 10, height: 14, borderRadius: 2, background: "#E5484D", flexShrink: 0 }} />}
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{e.type === "goal" ? "Goal" : "Red card"} · {e.side === "home" ? m.home : m.away}</span>
+                : <span aria-hidden="true" style={{ width: 10, height: 14, borderRadius: 2, background: e.type === "red" ? "#E5484D" : "#F5C518", flexShrink: 0 }} />}
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700 }}>{e.type === "goal" ? "Goal" : e.type === "red" ? "Red card" : "Yellow card"} · {e.side === "home" ? m.home : m.away}</span>
             </li>
           ))}
         </ol>

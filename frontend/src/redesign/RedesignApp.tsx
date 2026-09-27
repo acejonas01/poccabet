@@ -9,7 +9,7 @@ import { type TCMatch, matchHref, useTCData } from "./data";
 import { DesktopHeader, DesktopHome, DesktopListPage, Rail, Sidebar } from "./desktop";
 import { SiteFooter } from "./footer";
 import { BottomNav, type HomeTab, MatchListPage, MobileHeader, MobileHome, type SectionKey, SectionsNav } from "./mobile";
-import { ACCENT, BetSlipBody, MarketsSheet, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
+import { ACCENT, BetSlipBody, MarketsSheet, canGoBack, trackPage, useBookingLink, useIsDesktop, useStoredState, useSyncSlipWithFeed } from "./shared";
 import { MatchPage } from "./matchpage";
 import { SUPPORT_EMAIL, ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
@@ -27,21 +27,21 @@ function useScrollMemory(path: string) {
   const positions = useRef(new Map<string, number>());
   const current = useRef(path);
   const popped = useRef(false);
+  // Leaving a page: note how far down it was. This runs while the next page is being prepared,
+  // before it replaces this one on screen, so the old page's scroll position is still there.
+  if (current.current !== path && typeof window !== "undefined") positions.current.set(current.current, window.scrollY);
   useEffect(() => {
     const onPop = () => { popped.current = true; };
-    let frame = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => positions.current.set(current.current, window.scrollY));
-    };
     window.addEventListener("popstate", onPop);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
   useLayoutEffect(() => {
+    trackPage(path, popped.current);
     if (current.current === path) return;
     current.current = path;
-    if (!popped.current) return;
+    // A new page starts at the top. (Not "return scrollTo(…)": newer browsers return a promise
+    // from scrollTo, and React would treat it as a clean-up function and crash.)
+    if (!popped.current) { window.scrollTo(0, 0); return; }
     popped.current = false;
     const y = positions.current.get(path) ?? 0;
     // Twice: once now, once after the page has laid out (images, lists).
@@ -109,7 +109,7 @@ export function RedesignApp() {
   const onAuth = ["/login", "/signup", "/forgot-password"].includes(location.pathname);
   // The bet slip is its own page on phones: full screen under the header, no bottom nav.
   const onSlipPage = location.pathname === "/betslip";
-  const back = () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+  const back = () => (canGoBack() ? navigate(-1) : navigate("/"));
   const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
   const navActive = onRoot ? (tab === "live" ? "live" : "home")
     : location.pathname === "/my-bets" ? "mybets" : location.pathname === "/account" ? "account" : "home";

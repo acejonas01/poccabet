@@ -11,8 +11,10 @@ export function useNavigate() {
   return (to: To, opts?: { replace?: boolean }) => {
     if (typeof to === "number") return to < 0 ? router.back() : router.forward();
     const url = typeof to === "string" ? to : `${to.pathname ?? window.location.pathname}${to.search ?? ""}`;
-    if (opts?.replace) router.replace(url);
-    else router.push(url);
+    // scroll: false — the app places the scroll itself (top for new pages, the remembered spot on
+    // Back). Next's own scrolling would jump to where the page segment sits: the bottom of the layout.
+    if (opts?.replace) router.replace(url, { scroll: false });
+    else router.push(url, { scroll: false });
   };
 }
 

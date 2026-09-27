@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, Loader1X2, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader1X2, canGoBack, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
@@ -565,7 +565,7 @@ function GroupHeader({ title, live, market }: { title: string; live?: boolean; m
 // Back returns to where you came from; opened from a shared link, it goes home.
 export function useBack() {
   const navigate = useNavigate();
-  return () => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate("/"));
+  return () => (canGoBack() ? navigate(-1) : navigate("/"));
 }
 
 // Sticky title bar for inner pages: back arrow, optional flag, title and a small line under it.

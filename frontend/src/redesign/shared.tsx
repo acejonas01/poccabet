@@ -242,6 +242,18 @@ export function MarketsSheet({ active, onPick, onClose }: { active: string; onPi
 const hidden: CSSProperties = { position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" };
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// ---------- in-site history ----------
+// Pages visited on the site during this visit, so Back arrows know whether there's one of our
+// pages to go back to (react-router's history.state.idx doesn't exist on the Next.js site).
+// Opened straight from a shared link, Back goes Home instead of leaving the site.
+const visited: string[] = [];
+export function trackPage(path: string, popped: boolean) {
+  if (visited[visited.length - 1] === path) return;
+  if (popped && visited[visited.length - 2] === path) visited.pop();
+  else visited.push(path);
+}
+export const canGoBack = () => visited.length > 1;
+
 // ---------- loading ----------
 // Once the loader shows, it stays until the yellow has lit 1, X and 2 at least once (one full
 // pass, ~1.7s), even if the data arrives sooner. Nothing loading at first = it never shows.

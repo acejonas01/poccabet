@@ -77,11 +77,14 @@ export default async function Page({ params }: Props) {
       })),
     }] : []),
   ];
+  // Wrapped in a zero-size fixed box: Next.js skips fixed elements when it scrolls to a page on
+  // Back/Forward, so the app keeps control of the scroll (the remembered spot) instead of Next
+  // jumping to where this invisible block sits, at the bottom of the layout.
   return (
-    <>
+    <div style={{ position: "fixed", top: 0, left: 0, width: 0, height: 0, overflow: "hidden" }}>
       {path.length === 0 && <h1 style={hidden}>Poccabet: football betting odds, live scores and booking codes</h1>}
       {match && <h1 style={hidden}>{`${match.home} vs ${match.away}: odds, live score and stats`}</h1>}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />
-    </>
+    </div>
   );
 }
