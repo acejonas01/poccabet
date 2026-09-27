@@ -827,7 +827,10 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
             <section key={mk.id} aria-label={mk.label} style={{ ...section, padding: open ? "4px 16px 14px" : "4px 16px" }}>
               <button onClick={() => toggle(mk.id)} aria-expanded={open} style={{ width: "100%", height: 36, padding: 0, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 15, fontWeight: 800 }}>
                 {mk.label}
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: "var(--tc-label)", transform: open ? "none" : "rotate(180deg)", transition: "transform .2s" }}><path d="m6 15 6-6 6 6" /></svg>
+                {/* Fold arrow in a small round chip, so it reads as a control */}
+                <span aria-hidden="true" style={{ width: 26, height: 26, borderRadius: 13, background: "var(--tc-raise)", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" style={{ transform: open ? "none" : "rotate(180deg)", transition: "transform .2s" }}><path d="m6 15 6-6 6 6" /></svg>
+                </span>
               </button>
               {open && grid(mk)}
             </section>
