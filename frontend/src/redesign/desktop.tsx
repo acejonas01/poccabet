@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchesDate } from "./data";
+import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchCode, matchesDate } from "./data";
 import {
   AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SportsIcon, StarIcon, VirtualsIcon,
 } from "./icons";
@@ -232,11 +232,15 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
           {lg.matches.map((m) => (
             <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 16, height: 64, padding: "0 20px", borderTop: "1px solid var(--tc-line)" }}>
               {live ? (
-                <div style={{ width: 40, flexShrink: 0, fontSize: 14, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>{m.clock}</div>
+                <div style={{ width: 52, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: m.clock === "HT" ? "var(--tc-muted)" : "#E5484D" }}>{m.clock}</span>
+                  <span title="Match ID" style={{ fontSize: 10, fontWeight: 700, color: ACCENT, whiteSpace: "nowrap" }}>{matchCode(m.id)}</span>
+                </div>
               ) : (
                 <div style={{ width: 52, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>{dayLabel(m.start)}</span>
                   <span style={{ fontSize: 14, fontWeight: 800 }}>{hhmm(m.start)}</span>
+                  <span title="Match ID" style={{ fontSize: 10, fontWeight: 700, color: ACCENT, whiteSpace: "nowrap" }}>{matchCode(m.id)}</span>
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>

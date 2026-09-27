@@ -16,7 +16,8 @@ const STATUS: Record<string, { label: string; color: string }> = {
   VOID: { label: "Void", color: "var(--tc-label)" },
   CASHED_OUT: { label: "Cashed out", color: "var(--tc-label)" },
 };
-const RESULT_DOT: Record<string, string> = { WON: "#2AB572", LOST: "#E5484D", VOID: "var(--tc-label)", PENDING: "var(--tc-outline-strong)" };
+// Yellow = still to finish / not settled yet (same yellow as the "Open" pill).
+const RESULT_DOT: Record<string, string> = { WON: "#2AB572", LOST: "#E5484D", VOID: "var(--tc-label)", PENDING: ACCENT };
 
 // "2" in 1X2 reads better as the team: Arsenal. Other markets keep their label (Over, GG, 1X…).
 function pickName(s: BetSelectionInfo) {
@@ -80,7 +81,7 @@ function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
             </div>
             <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
               <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: RESULT_DOT[s.result] === RESULT_DOT.PENDING ? "var(--tc-label)" : RESULT_DOT[s.result] }}>{RESULT_TEXT[s.result] ?? s.result}</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: RESULT_DOT[s.result] ?? "var(--tc-label)" }}>{RESULT_TEXT[s.result] ?? s.result}</span>
             </div>
           </div>
         );

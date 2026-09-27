@@ -1,7 +1,7 @@
 // Search over the feed: live and upcoming matches, teams, leagues (and divisions) and countries.
 // Words match from their start ("ars" → Arsenal), every typed word must match, small typos are
 // forgiven ("arsnal"), and common nicknames work ("man utd", "spurs", "barca", "epl"…).
-import { type TCMatch, leagueRank, leagueSlug } from "./data";
+import { type TCMatch, leagueRank, leagueSlug, matchCode } from "./data";
 import { POPULAR_CLUBS } from "./potd";
 
 export const normalize = (s: string) =>
@@ -102,7 +102,7 @@ export function buildIndex(live: TCMatch[], upcoming: TCMatch[]) {
 }
 export type SearchIndex = ReturnType<typeof buildIndex>;
 
-const matchText = (m: TCMatch) => `${m.home} ${m.away} ${m.league} ${m.country}`;
+const matchText = (m: TCMatch) => `${m.home} ${m.away} ${m.league} ${m.country} ${matchCode(m.id)}`;
 const popular = (name: string) => (POPULAR_CLUBS.includes(name) ? 2 : 0);
 
 export function search(index: SearchIndex, query: string, limits = { teams: 5, leagues: 4, live: 4, upcoming: 6 }): SearchResults {

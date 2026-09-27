@@ -33,6 +33,9 @@ const COUNTRY: Record<string, string> = {
   "UEFA Champions League": "Europe", EPL: "England",
 };
 
+// The number players can quote for a match (support, shops): the feed id without its source prefix.
+export const matchCode = (id: string) => id.replace(/^[a-z]+-/i, "");
+
 export function leagueRank(league: string) {
   const i = LEAGUE_ORDER.indexOf(league);
   return i === -1 ? LEAGUE_ORDER.length : i;
