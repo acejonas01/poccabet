@@ -622,6 +622,16 @@ router.post("/users/:id/unmute", async (req: AuthedRequest, res) => {
   } catch (err) { fail(res, err); }
 });
 
+// ---------- error alerts ----------
+// "Send test alert" in the office: a deliberate error, to check the alerts arrive (email / app).
+router.post("/test-alert", async (req: AuthedRequest, res) => {
+  const on = !!process.env.SENTRY_DSN;
+  const { Sentry } = await import("../instrument");
+  const id = Sentry.captureException(new Error(`Test alert from the Poccabet office (${new Date().toISOString()})`));
+  await Sentry.flush(3000);
+  res.json({ ok: on, id: on ? id : null, message: on ? "Test alert sent. It should reach you within a minute." : "Error alerts are off: SENTRY_DSN isn't set on the server." });
+});
+
 // ---------- withdrawals ----------
 // Requests to review (pending first), with who's asking and whether the bank name matches them.
 router.get("/withdrawals", async (req, res) => {
@@ -679,6 +689,7 @@ router.post("/withdrawals/:id/reject", async (req: AuthedRequest, res) => {
 // Ask Paystack about a payout that's still on its way.
 router.post("/withdrawals/:id/check", async (req: AuthedRequest, res) => {
   try {
+    if (!(await prisma.withdrawal.findUnique({ where: { id: String(req.params.id) }, select: { id: true } }))) throw new AdminError("NOT_FOUND", "Withdrawal not found", 404);
     const w = await checkWithdrawal(String(req.params.id));
     res.json({ ok: true, status: w.status, note: w.note });
   } catch (err) { wFail(res, err); }

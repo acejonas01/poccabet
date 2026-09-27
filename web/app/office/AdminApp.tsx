@@ -3,6 +3,7 @@
 // (the same login as the site), then Dashboard, Users, Bets, Matches and the Audit log.
 // Everything goes through /api/admin (see backend/src/routes/admin.ts); every change asks for a reason.
 import Link from "next/link";
+import * as Sentry from "@sentry/nextjs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
@@ -357,7 +358,34 @@ function Dashboard() {
         ) : <div className="adm-empty">No bets in the last 14 days.</div>}
       </div>
       <Breakdown days={days} setDays={setDays} data={breakdown.data} error={breakdown.error} />
+      <AlertsCard />
     </>
+  );
+}
+
+// Error alerts (Sentry): send a test to check the alerts reach you (email / Sentry app).
+function AlertsCard() {
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+  const server = async () => {
+    setBusy(true); setMsg("");
+    try { setMsg((await api<{ message: string }>("/admin/test-alert", {})).message); } catch (e) { setMsg((e as Error).message); } finally { setBusy(false); }
+  };
+  const site = () => {
+    if (!process.env.NEXT_PUBLIC_SENTRY_DSN) return setMsg("Site alerts are off: NEXT_PUBLIC_SENTRY_DSN isn't set on Vercel.");
+    Sentry.captureException(new Error(`Test alert from the site, in the browser (${new Date().toISOString()})`));
+    setMsg("Test site alert sent. It should reach you within a minute.");
+  };
+  return (
+    <div className="adm-section adm-card">
+      <h2 className="adm-h2row">Error alerts</h2>
+      <p style={{ margin: "0 0 12px", color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>When the server or the site hits an error, Sentry emails you (and notifies its phone app). Send a test to check it works.</p>
+      <div className="adm-actions">
+        <button className="adm-btn" disabled={busy} onClick={server}>{busy ? "Sending…" : "Send test alert (server)"}</button>
+        <button className="adm-btn" onClick={site}>Send test alert (site)</button>
+      </div>
+      {msg && <p style={{ margin: "10px 0 0", fontSize: 13 }}>{msg}</p>}
+    </div>
   );
 }
 

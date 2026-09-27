@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "./instrument"; // error alerts: must load before the app
 import app from "./app";
 import { startSettlementLoop } from "./betting/settle";
 import { purgeExpiredArchives } from "./lib/closeAccount";
