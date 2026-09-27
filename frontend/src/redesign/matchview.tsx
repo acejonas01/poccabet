@@ -430,21 +430,23 @@ export function LiveChat({ m, flat }: { m: TCMatch; flat?: boolean }) {
     return () => document.documentElement.classList.remove("tc-chat-open");
   }, [open]);
   return (
-    <section aria-label="Live chat" style={{ ...shell(flat), padding: 12 }}>
-      <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: open ? 12 : 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <span style={{ fontSize: 15, fontWeight: 800 }}>Live chat</span>
-          <button onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{
-            height: 36, padding: "0 14px 0 6px", borderRadius: 18, border: "none", background: ACCENT, color: "#13171C",
-            display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 800, flexShrink: 0,
-          }}>
-            <span style={{ width: 26, height: 26, borderRadius: 13, background: "#13171C", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{CHAT_ICON}</svg>
-            </span>
-            {open ? "Close chat" : "Open chat"}
-          </button>
-        </div>
-        {open && <ChatPanel m={m} />}
+    // One slim row (tap anywhere to open or close); the chat opens underneath.
+    <section aria-label="Live chat" style={shell(flat)}>
+      <div style={{ maxWidth: 560, margin: "0 auto" }}>
+        <button onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{
+          width: "100%", height: 44, padding: "0 16px", border: "none", background: "transparent", color: "var(--tc-text)",
+          display: "flex", alignItems: "center", gap: 10, textAlign: "left",
+        }}>
+          <span style={{ width: 24, height: 24, borderRadius: 12, background: ACCENT, color: "#13171C", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{CHAT_ICON}</svg>
+          </span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: 800 }}>Live chat</span>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 800, color: ACCENT }}>
+            {open ? "Close" : "Open"}
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform .2s" }}><path d="m6 9 6 6 6-6" /></svg>
+          </span>
+        </button>
+        {open && <div style={{ padding: "0 12px 12px" }}><ChatPanel m={m} /></div>}
       </div>
     </section>
   );
