@@ -14,7 +14,8 @@ import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, us
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14 };
 // Phones: sections run the full width of the screen (no rounded corners or side borders), like
 // BetKing; the page's 16px side padding is cancelled out. Desktop keeps rounded cards.
-const flat: CSSProperties = { background: "var(--tc-card)", margin: "0 -16px" };
+// The 8px band on top is the gap between sections, in the date-row colour (--tc-league).
+const flat: CSSProperties = { background: "var(--tc-card)", margin: "0 -16px", borderTop: "8px solid var(--tc-league)" };
 const sectionTitle: CSSProperties = { margin: "0 0 12px", fontSize: 15, fontWeight: 800 };
 const barlow = "'Barlow Condensed', sans-serif";
 
@@ -53,7 +54,7 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: desktop ? 14 : 8, minWidth: 0, flex: 1 }}>
+    <div className={desktop ? undefined : "tc-match-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 14 : 0, minWidth: 0, flex: 1 }}>
       {/* Back + where this match belongs */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-label)", minWidth: 0 }}>
         <button onClick={back} aria-label="Back" style={{ width: 36, height: 36, marginLeft: -8, border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>

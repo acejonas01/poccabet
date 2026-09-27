@@ -222,3 +222,7 @@
 
 /* Phone match lists: hairline above each league/day header too (not the first, which sits under the market tabs' line). */
 .tc-list-group + .tc-list-group { border-top: 1px solid var(--tc-line); }
+
+/* Phone match page: the whole background is the gap colour (date-row colour), so the top area and
+   the gaps between sections are one tone. */
+.tc-root[data-layout="phone"]:has(.tc-match-page) { background: var(--tc-league); }

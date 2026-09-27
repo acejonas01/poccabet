@@ -785,7 +785,7 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
   if (section) {
     const toggle = (id: string) => setFolded((f) => { const n = new Set(f); if (n.has(id)) n.delete(id); else n.add(id); return n; });
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {MARKET_GROUPS.flatMap((g) => byGroup(g.id)).map((mk) => {
           const open = !folded.has(mk.id);
           return (
