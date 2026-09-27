@@ -113,8 +113,8 @@ export const api = {
     request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
   getChat: (matchId: string, after?: string) =>
     request<{ messages: ChatMessage[] }>(`/api/chat/${encodeURIComponent(matchId)}${after ? `?after=${encodeURIComponent(after)}` : ""}`),
-  sendChat: (matchId: string, text: string) =>
-    request<ChatMessage>(`/api/chat/${encodeURIComponent(matchId)}`, { method: "POST", body: JSON.stringify({ text }) }),
+  sendChat: (matchId: string, text: string, replyTo?: string) =>
+    request<ChatMessage>(`/api/chat/${encodeURIComponent(matchId)}`, { method: "POST", body: JSON.stringify({ text, replyTo }) }),
   getMatchPicks: (matchId: string) =>
     request<{ total: number; picks: { market: string; selection: string; count: number }[]; simulated?: boolean }>(`/api/picks/match/${encodeURIComponent(matchId)}`),
   getTopPick: () => request<{ top: any | null; totalToday: number }>("/api/picks/top"),
@@ -150,7 +150,8 @@ export const api = {
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
 };
 
-export interface ChatMessage { id: string; name: string; text: string; at: string }
+// name is masked by the server ("and***016"); reply.text is null when the quoted message was removed.
+export interface ChatMessage { id: string; name: string; text: string; at: string; reply: { name: string; text: string | null } | null }
 
 export interface Profile {
   id: string; customerNo: string; firstName: string | null; lastName: string | null; displayName: string;

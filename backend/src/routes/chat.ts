@@ -22,9 +22,23 @@ const BAD = ["fuck", "shit", "bitch", "bastard", "asshole", "dick", "pussy", "cu
 const BAD_RE = new RegExp(`\\b(${BAD.join("|")})\\w*`, "gi");
 const clean = (t: string) => t.replace(BAD_RE, (w) => w[0] + "*".repeat(w.length - 1));
 
-const nameOf = (u: { firstName: string | null; displayName: string }) => u.firstName || u.displayName;
-const dto = (m: { id: string; text: string; createdAt: Date; user: { firstName: string | null; displayName: string } }) =>
-  ({ id: m.id, name: nameOf(m.user), text: m.text, at: m.createdAt });
+// Names are masked before they leave the server ("and***016", "Tu***e"), like other betting sites.
+export function maskName(raw: string) {
+  const n = raw.replace(/\s+/g, "");
+  if (n.length >= 7) return `${n.slice(0, 3)}***${n.slice(-3)}`;
+  if (n.length >= 4) return `${n.slice(0, 2)}***${n.slice(-1)}`;
+  return `${n.slice(0, 1)}***`;
+}
+const who = { select: { displayName: true } } as const;
+const pick = {
+  id: true, text: true, createdAt: true, user: who,
+  replyTo: { select: { text: true, deletedAt: true, user: who } },
+} as const;
+type Row = { id: string; text: string; createdAt: Date; user: { displayName: string }; replyTo: { text: string; deletedAt: Date | null; user: { displayName: string } } | null };
+const dto = (m: Row) => ({
+  id: m.id, name: maskName(m.user.displayName), text: m.text, at: m.createdAt,
+  reply: m.replyTo ? { name: maskName(m.replyTo.user.displayName), text: m.replyTo.deletedAt ? null : m.replyTo.text } : null,
+});
 
 // GET /api/chat/:matchId?after=<ISO time> — the latest 50 messages, or only newer ones (polling).
 router.get("/:matchId", limit("chat-read", 600, 10), async (req, res) => {
@@ -34,12 +48,12 @@ router.get("/:matchId", limit("chat-read", 600, 10), async (req, res) => {
   const where = { matchId: id.data, deletedAt: null, ...(after && !isNaN(after.getTime()) ? { createdAt: { gt: after } } : {}) };
   const rows = await prisma.chatMessage.findMany({
     where, orderBy: { createdAt: "desc" }, take: 50,
-    select: { id: true, text: true, createdAt: true, user: { select: { firstName: true, displayName: true } } },
+    select: pick,
   });
   res.json({ messages: rows.reverse().map(dto) });
 });
 
-// POST /api/chat/:matchId { text }
+// POST /api/chat/:matchId { text, replyTo? } — replyTo is the id of a message in the same match.
 router.post("/:matchId", requireAuth, limit("chat-post", 20, 5, byUser), async (req: AuthedRequest, res) => {
   const id = matchId.safeParse(req.params.matchId);
   if (!id.success) return res.status(400).json({ error: "Unknown match", code: "BAD_MATCH" });
@@ -53,10 +67,15 @@ router.post("/:matchId", requireAuth, limit("chat-post", 20, 5, byUser), async (
   if (me.chatMutedUntil && me.chatMutedUntil > new Date()) {
     return res.status(403).json({ error: `You can't post in chat until ${me.chatMutedUntil.toISOString()}`, code: "CHAT_MUTED", until: me.chatMutedUntil });
   }
+  const replyTo = typeof req.body?.replyTo === "string" ? req.body.replyTo : null;
+  if (replyTo) {
+    const q = await prisma.chatMessage.findFirst({ where: { id: replyTo, matchId: id.data, deletedAt: null }, select: { id: true } });
+    if (!q) return res.status(400).json({ error: "That message is no longer in the chat", code: "BAD_REPLY" });
+  }
   if (hit("chat-gap", req.userId!, 1, 3000).over) return res.status(429).json({ error: "Slow down a little", code: "TOO_FAST" });
   const m = await prisma.chatMessage.create({
-    data: { matchId: id.data, userId: req.userId!, text: clean(text) },
-    select: { id: true, text: true, createdAt: true, user: { select: { firstName: true, displayName: true } } },
+    data: { matchId: id.data, userId: req.userId!, text: clean(text), replyToId: replyTo },
+    select: pick,
   });
   res.status(201).json(dto(m));
 });

@@ -12,6 +12,7 @@ import { ACCENT } from "./shared";
 
 const HOME = ACCENT;
 const AWAY = "#4C9EEB";
+const QUOTE = "#2AB572"; // reply quote bar in chat
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
 
 type Panel = "pitch" | "stats" | "timeline" | "commentary" | "lineups";
@@ -139,7 +140,9 @@ function ChatPanel({ m }: { m: TCMatch }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const list = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLInputElement>(null);
   const last = useRef<string | undefined>(undefined);
 
   const add = (more: ChatMessage[]) => {
@@ -169,11 +172,13 @@ function ChatPanel({ m }: { m: TCMatch }) {
     const t = text.trim();
     if (!t || sending) return;
     setSending(true); setError("");
-    try { add([await api.sendChat(m.id, t)]); setText(""); }
+    try { add([await api.sendChat(m.id, t, replyTo?.id)]); setText(""); setReplyTo(null); }
     catch (err) { setError(err instanceof Error ? err.message : "Couldn't send"); }
     finally { setSending(false); }
   };
   const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+  const reply = (x: ChatMessage) => { setReplyTo(x); input.current?.focus(); };
+  const clip: CSSProperties = { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -181,15 +186,37 @@ function ChatPanel({ m }: { m: TCMatch }) {
         {messages === null ? <p style={{ margin: "auto", fontSize: 13, color: "var(--tc-label)" }}>Loading chat…</p>
           : !messages.length ? <p style={{ margin: "auto", fontSize: 13, color: "var(--tc-label)", textAlign: "center" }}>No messages yet. Say something about the match!</p>
           : messages.map((x) => (
-            <div key={x.id} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 12, color: "var(--tc-label)" }}><strong style={{ color: ACCENT }}>{x.name}</strong> · {time(x.at)}</span>
-              <span style={{ fontSize: 14, lineHeight: 1.4, wordBreak: "break-word" }}>{x.text}</span>
+            // Bubble: masked name, the quoted message (if a reply), the text; time and Reply under it.
+            <div key={x.id} style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+              <div style={{ maxWidth: "88%", padding: "9px 13px 10px", borderRadius: 16, background: "var(--tc-raise)", display: "flex", flexDirection: "column", gap: 5 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: "var(--tc-soft)" }}>{x.name}</span>
+                {x.reply && (
+                  <div style={{ borderLeft: `3px solid ${QUOTE}`, borderRadius: 6, background: "var(--tc-page)", padding: "5px 9px", display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                    <span style={{ fontSize: 12, fontWeight: 800, color: QUOTE }}>↩ {x.reply.name}</span>
+                    <span style={{ ...clip, paddingRight: 2, fontSize: 13, color: "var(--tc-label)", fontStyle: x.reply.text === null ? "italic" : "normal" }}>{x.reply.text ?? "Message removed"}</span>
+                  </div>
+                )}
+                <span style={{ fontSize: 14, lineHeight: 1.4, wordBreak: "break-word" }}>{x.text}</span>
+              </div>
+              <span style={{ display: "flex", alignItems: "center", gap: 12, paddingLeft: 6, fontSize: 11.5, color: "var(--tc-label)" }}>
+                {time(x.at)}
+                {isAuthenticated && <button onClick={() => reply(x)} style={{ border: "none", background: "transparent", padding: "2px 0", color: "var(--tc-soft)", fontSize: 12, fontWeight: 800 }}>Reply</button>}
+              </span>
             </div>
           ))}
       </div>
+      {isAuthenticated && replyTo && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, borderLeft: `3px solid ${QUOTE}`, borderRadius: 6, background: "var(--tc-page)", padding: "6px 6px 6px 10px" }}>
+          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: QUOTE }}>Replying to {replyTo.name}</span>
+            <span style={{ ...clip, fontSize: 13, color: "var(--tc-label)" }}>{replyTo.text}</span>
+          </span>
+          <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" style={{ width: 32, height: 32, border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 18, flexShrink: 0 }}>×</button>
+        </div>
+      )}
       {isAuthenticated ? (
         <form onSubmit={send} style={{ display: "flex", gap: 8 }}>
-          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={200} placeholder="Say something…" aria-label="Chat message"
+          <input ref={input} value={text} onChange={(e) => setText(e.target.value)} maxLength={200} placeholder="Say something…" aria-label="Chat message"
             style={{ flex: 1, minWidth: 0, height: 42, padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, outline: "none" }} />
           <button disabled={sending || !text.trim()} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14, opacity: sending || !text.trim() ? 0.6 : 1 }}>Send</button>
         </form>

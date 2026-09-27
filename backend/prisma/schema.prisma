@@ -32,13 +32,13 @@ model User {
   wallet Wallet?
   bets   Bet[]
 
-  signupSource  String?        @map("signup_source") // where they came from: utm_source / ref from the first visit
-  lastLoginAt   DateTime?      @map("last_login_at")
-  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
-  loginEvents   LoginEvent[]
-  closedAccount ClosedAccount? // identity archive, kept after the account is deleted
-  chatMessages  ChatMessage[]
-  chatMutedUntil DateTime?    @map("chat_muted_until") // set by an admin: can read match chat but not post until then
+  signupSource   String?        @map("signup_source") // where they came from: utm_source / ref from the first visit
+  lastLoginAt    DateTime?      @map("last_login_at")
+  updatedAt      DateTime       @default(now()) @updatedAt @map("updated_at")
+  loginEvents    LoginEvent[]
+  closedAccount  ClosedAccount? // identity archive, kept after the account is deleted
+  chatMessages   ChatMessage[]
+  chatMutedUntil DateTime?      @map("chat_muted_until") // set by an admin: can read match chat but not post until then
 
   @@map("users")
 }
@@ -381,14 +381,17 @@ model ClosedAccount {
 // numbers blocked, bad words masked). Admins can delete messages and mute players (audited).
 // Messages are purged after 7 days.
 model ChatMessage {
-  id        String    @id @default(cuid())
-  matchId   String    @map("match_id") // feed match id, e.g. "sim-12202684"
-  userId    String    @map("user_id")
-  user      User      @relation(fields: [userId], references: [id])
+  id        String        @id @default(cuid())
+  matchId   String        @map("match_id") // feed match id, e.g. "sim-12202684"
+  userId    String        @map("user_id")
+  user      User          @relation(fields: [userId], references: [id])
   text      String
-  createdAt DateTime  @default(now()) @map("created_at")
-  deletedAt DateTime? @map("deleted_at")
-  deletedBy String?   @map("deleted_by") // admin id
+  createdAt DateTime      @default(now()) @map("created_at")
+  deletedAt DateTime?     @map("deleted_at")
+  deletedBy String?       @map("deleted_by") // admin id
+  replyToId String?       @map("reply_to_id") // the message this one quotes
+  replyTo   ChatMessage?  @relation("ChatReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   ChatMessage[] @relation("ChatReplies")
 
   @@index([matchId, createdAt])
   @@index([createdAt])
