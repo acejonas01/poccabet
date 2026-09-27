@@ -329,8 +329,12 @@ export function FeaturedCard({ m, width = 300 }: { m: TCMatch; width?: number | 
       <span style={{ fontSize: 14, fontWeight: 800, ...ellipsis, maxWidth: "100%" }}>{name}</span>
     </div>
   );
+  const navigate = useNavigate();
   return (
     <article style={{ width, flexShrink: 0, scrollSnapAlign: "start", padding: 16, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14, boxSizing: "border-box", minWidth: 0 }}>
+      {/* League, crests and names open the match page; the odds below add to the slip. */}
+      <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} aria-label={`${m.home} vs ${m.away}: match page`}
+        style={{ display: "flex", flexDirection: "column", gap: 14, color: "var(--tc-text)", textDecoration: "none", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: 12, fontWeight: 600, color: "var(--tc-label)" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}><Flag country={m.country} size={14} /><span style={ellipsis}>{m.country ? `${m.country} · ` : ""}{m.league}</span></span>
         <span style={{ flexShrink: 0, fontWeight: 800, color: "var(--tc-soft)" }}>{kickoff(m.start)}</span>
@@ -340,6 +344,7 @@ export function FeaturedCard({ m, width = 300 }: { m: TCMatch; width?: number | 
         <span style={{ paddingTop: 14, fontSize: 12, fontWeight: 700, color: "var(--tc-faint)" }}>VS</span>
         {side(m.away, m.awayLogo)}
       </div>
+      </a>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10, fontWeight: 800, letterSpacing: 1, color: "var(--tc-label)" }}>CHANCE IMPLIED BY ODDS</span>
         <div style={{ display: "flex", gap: 6 }}>
@@ -362,13 +367,14 @@ function TeamUnit({ name, logo }: { name: string; logo: string }) {
 
 function PickOfDayCard({ p }: { p: PickOfDay }) {
   const { isOn, pick } = usePicker();
+  const navigate = useNavigate();
   const m = p.m;
   const id = `${m.id}|${p.marketId}|${p.col}`;
   return (
     <section aria-label="Pick of the day" style={{ width: 300, flexShrink: 0, scrollSnapAlign: "start", boxSizing: "border-box", padding: 16, background: "var(--tc-card)", border: `1px solid ${ACCENT}`, borderRadius: 14, display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-        {/* Title with small crests: [crest] Home vs [crest] Away */}
+      <a href={matchHref(m)} onClick={(e) => { e.preventDefault(); navigate(matchHref(m)); }} style={{ display: "flex", flexDirection: "column", gap: 2, color: "var(--tc-text)", textDecoration: "none" }}>
+        {/* Title with small crests: [crest] Home vs [crest] Away (opens the match page) */}
         {/* Each team is one unbreakable unit (crest + name), so a long title can only wrap
             between the teams — a crest never gets separated from its name. */}
         <div aria-label={p.title} style={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 6, rowGap: 2, fontSize: 18, fontWeight: 800, minWidth: 0 }}>
@@ -377,7 +383,7 @@ function PickOfDayCard({ p }: { p: PickOfDay }) {
           <TeamUnit name={m.away} logo={m.awayLogo} />
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--tc-muted)" }}><Flag country={m.country} size={14} />{p.sub}</div>
-      </div>
+      </a>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 12px", background: "var(--tc-page)", borderRadius: 10 }}>
         <div style={{ fontSize: 14, fontWeight: 700 }}>{p.label}</div>
         <OddButton variant="home" value={p.odds} on={isOn(id)} aria={p.label} onPick={() => pick(m, p.marketId, p.marketLabel, p.col, p.odds)} style={{ minWidth: 64, height: 44, fontSize: 20 }} />

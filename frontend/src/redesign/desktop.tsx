@@ -338,10 +338,10 @@ export function DesktopHome({ upcoming, live, tab, setTab, loaded = true }: {
         {potd && p && (
           <section aria-label="Pick of the day" style={{ flex: 2, padding: 20, background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, display: "flex", flexDirection: "column", gap: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, color: ACCENT, fontSize: 11, fontWeight: 800, letterSpacing: 1.2 }}><StarIcon />PICK OF THE DAY</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <a href={matchHref(potd)} onClick={(e) => { e.preventDefault(); navigate(matchHref(potd)); }} style={{ display: "flex", flexDirection: "column", gap: 4, color: "var(--tc-text)", textDecoration: "none" }}>
               <span style={{ fontSize: 22, fontWeight: 800 }}>{p.title}</span>
               <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{p.sub}</span>
-            </div>
+            </a>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 14px", background: "var(--tc-page)", borderRadius: 10 }}>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
                 <span style={{ fontSize: 15, fontWeight: 800 }}>{p.label}</span>
