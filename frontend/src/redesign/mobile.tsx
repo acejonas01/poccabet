@@ -48,7 +48,7 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         <MobileSearchButton index={searchIndex} onOpenMatch={onOpenMatch} />
         {isAuthenticated ? (
           <>
-            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toFixed(2)}</span>
+            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
             <button onClick={logout} style={{ height: 38, padding: "0 12px", borderRadius: 9, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
           </>
         ) : (

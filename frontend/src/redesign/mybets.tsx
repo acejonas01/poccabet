@@ -94,42 +94,48 @@ function TicketSheet({ bet, onClose }: { bet: Bet; onClose: () => void }) {
   );
 }
 
+// Compact card: the essentials only. Tapping it opens the full ticket (TicketSheet).
 function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
   const multi = bet.type === "ACCUMULATOR";
+  const legs = bet.selections;
+  // "Draw" (or Over, GG…) says little alone, so those picks name their match.
+  const picks = legs.map((l) => { const p = pickName(l); return p === l.home || p === l.away ? p : `${p} (${l.home} v ${l.away})`; });
+  const shown = picks.slice(0, 3).join(", ") + (picks.length > 3 ? ` +${picks.length - 3}` : "");
+  const single = !multi && legs[0];
+  const count = (r: string) => legs.filter((l) => l.result === r).length;
+  const progress = [[count("WON"), "won"], [count("LOST"), "lost"], [count("VOID"), "void"], [count("PENDING"), "to play"]]
+    .filter(([n]) => n).map(([n, w]) => `${n} ${w}`).join(" · ");
+  const started = count("PENDING") < legs.length;
+  const nextKickoff = legs.filter((l) => l.result === "PENDING" && l.kickoff).map((l) => new Date(l.kickoff!).getTime()).sort((a, b) => a - b)[0];
   // The whole card is one button: tapping anywhere (the "Open" pill too) opens the ticket.
   return (
     <button onClick={onOpen} aria-label={`Ticket ${bet.ticket}, ${statusOf(bet).label}. Show details`} style={{
       width: "100%", padding: 0, textAlign: "left", font: "inherit", color: "inherit", cursor: "pointer",
       background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden", display: "block",
     }}>
-      {/* Header: type + status, then ticket and when it was placed */}
-      <div style={{ padding: "14px 16px 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ padding: "14px 16px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
-          <span style={{ fontSize: 15, fontWeight: 800 }}>{multi ? `Multiple · ${bet.selections.length} selections` : "Single"}</span>
+          <span style={{ fontSize: 15, fontWeight: 800 }}>{multi ? `Multiple · ${legs.length} selections` : "Single"}</span>
           <Pill bet={bet} />
         </div>
-        <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
+        {/* What was picked, in one line */}
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--tc-soft)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {single ? `${pickName(single)} · ${single.home} vs ${single.away}` : shown}
+        </span>
+        {/* One dot per selection: green won, red lost, grey still to play */}
+        {multi && (
+          <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--tc-label)" }}>
+            <span aria-hidden="true" style={{ display: "flex", gap: 4 }}>
+              {legs.map((l, i) => <span key={i} style={{ width: 8, height: 8, borderRadius: 4, background: RESULT_DOT[l.result] ?? RESULT_DOT.PENDING }} />)}
+            </span>
+            {started ? progress : nextKickoff ? `First match ${dayLabel(nextKickoff)} ${hhmm(nextKickoff)}` : ""}
+          </span>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
+          <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: ACCENT }}>Details ›</span>
+        </div>
       </div>
-
-      {/* Selections */}
-      {bet.selections.map((s, i) => {
-        const kickoff = s.kickoff ? new Date(s.kickoff).getTime() : null;
-        return (
-          <div key={i} style={{ display: "flex", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
-            <span aria-hidden="true" style={{ width: 8, height: 8, flexShrink: 0, marginTop: 6, borderRadius: 4, background: RESULT_DOT[s.result] ?? RESULT_DOT.PENDING }} />
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 14, fontWeight: 800 }}>{pickName(s)}</span>
-              <span style={{ fontSize: 12, color: "var(--tc-soft)" }}>{s.marketLabel}</span>
-              <span style={{ fontSize: 12, color: "var(--tc-label)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {s.home} vs {s.away}{kickoff ? ` · ${dayLabel(kickoff)} ${hhmm(kickoff)}` : ""}
-              </span>
-            </div>
-            <span style={{ flexShrink: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 20, fontWeight: 700 }}>{s.odds.toFixed(2)}</span>
-          </div>
-        );
-      })}
-
-      {/* Stake · odds · to win */}
       <Totals bet={bet} />
     </button>
   );
