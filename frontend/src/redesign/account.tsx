@@ -21,7 +21,7 @@ const rowStyle: CSSProperties = {
   borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", textAlign: "left", font: "inherit",
 };
 
-// Small "Copy" button for the customer number (quoted when contacting support).
+// Small "Copy" button for the customer ID (quoted when contacting support).
 function CopyChip({ text }: { text: string }) {
   const [done, setDone] = useState(false);
   return (
@@ -257,7 +257,7 @@ function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose:
     <Sheet label="Personal details" onClose={onClose}>
       <SheetTitle title="Personal details" onClose={onClose} />
       <div style={{ paddingBottom: 8 }}>
-        {row("Customer number", me.customerNo, <CopyChip text={me.customerNo} />)}
+        {row("Customer ID", me.customerNo, <CopyChip text={me.customerNo} />)}
         {row("Name", me.firstName ?? me.displayName)}
         {row("Surname", me.lastName ?? "—")}
         {row("Email", me.email ?? "—", me.email && (me.emailVerified

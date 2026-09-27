@@ -77,7 +77,7 @@ export function AdminApp() {
 
   const logout = () => { localStorage.removeItem("token"); localStorage.removeItem("user"); setMe(null); setState("login"); };
 
-  if (state === "loading") return <div className="adm"><p style={{ margin: "auto", color: "var(--label)" }}>Loading…</p></div>;
+  if (state === "loading") return <div className="adm"><div style={{ margin: "auto" }}><Loader1X2 /></div></div>;
   if (state === "login") return <div className="adm"><Login onDone={check} /></div>;
   if (state === "denied") {
     return (
@@ -232,8 +232,17 @@ function Tabs({ name, options }: { name: string; options: [string, string][] }) 
   );
 }
 
+// The site's 1 X 2 loading animation (chips lighting up in turn).
+function Loader1X2({ label = "Loading…" }: { label?: string }) {
+  return (
+    <span role="status" aria-live="polite" className="adm-loading">
+      <span className="adm-loader" aria-hidden="true"><i>1</i><i>X</i><i>2</i></span>
+      <span>{label}</span>
+    </span>
+  );
+}
 function Loading({ error }: { error?: string }) {
-  return <div className="adm-card adm-empty">{error ? <span className="adm-error">{error}</span> : "Loading…"}</div>;
+  return <div className="adm-card adm-empty">{error ? <span className="adm-error">{error}</span> : <Loader1X2 />}</div>;
 }
 
 // A confirm dialog that always asks for a reason (it goes in the audit log).
@@ -455,12 +464,12 @@ function UsersPage() {
   const { data, error } = useApi<{ total: number; pageSize: number; users: UserRow[] }>(`/admin/users${qs ? `?${qs}` : ""}`);
   return (
     <>
-      <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or customer no." /></Head>
+      <Head title="Users" sub={data ? `${data.total} accounts` : ""}><SearchBox placeholder="Name, phone, email or customer ID" /></Head>
       <div style={{ marginBottom: 12 }}><Tabs name="filter" options={[["", "All"], ["active", "Active"], ["suspended", "Suspended"], ["deleted", "Deleted"], ["admins", "Admins"]]} /></div>
       {!data ? <Loading error={error} /> : (
         <div className="adm-table-wrap">
           <table className="adm-table">
-            <thead><tr><th>Name</th><th>Customer no.</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
+            <thead><tr><th>Name</th><th>Customer ID</th><th>Phone</th><th>Email</th><th className="adm-num">Balance</th><th className="adm-num">Bets</th><th>Joined</th><th /></tr></thead>
             <tbody>
               {data.users.map((u) => (
                 <tr key={u.id} className="click" onClick={() => router.push(`/office/users/${u.id}`)}>
@@ -523,7 +532,7 @@ function identityRows(r: Identity): [string, [string, string][]][] {
     ]],
     ["Closure", [
       ["Account deleted on", stamp(c.closedAt)], ["Deleted by", c.closedBy === "ADMIN" ? `Admin: ${c.closedByName ?? "unknown"}` : "The player"],
-      ["Reason", c.reason ?? "—"], ["Record kept until", day(c.retainUntil)], ["Customer number", r.customerNo], ["Account id", r.userId],
+      ["Reason", c.reason ?? "—"], ["Record kept until", day(c.retainUntil)], ["Customer ID", r.customerNo], ["System ID", r.userId],
     ]],
   ];
 }
@@ -584,7 +593,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal" };
   return (
     <>
-      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Customer <b style={{ color: "var(--text)" }}>{u.customerNo}</b> · joined {day(u.createdAt)} · id {u.id}</>}>
+      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Customer ID <b style={{ color: "var(--text)" }}>{u.customerNo}</b> · joined {day(u.createdAt)} · system ID {u.id}</>}>
         {!u.deleted && <>
           <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
           <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
@@ -909,7 +918,7 @@ function ReportTable({ title, sub, rows, cols, file, link }: { title: string; su
               </tr>
             ))}
             {rows && !rows.length && <tr><td colSpan={cols.length} className="adm-empty">No data yet.</td></tr>}
-            {!rows && <tr><td colSpan={cols.length} className="adm-empty">Loading…</td></tr>}
+            {!rows && <tr><td colSpan={cols.length} className="adm-empty"><Loader1X2 /></td></tr>}
           </tbody>
         </table>
       </div>

@@ -89,6 +89,25 @@ a.adm-btn { display: inline-flex; align-items: center; text-decoration: none; }
 .adm-bars .fill { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 2px; }
 .adm-bars .lbl { font-size: 10px; color: var(--label); }
 
+/* loading: the site's 1 X 2 chips lighting up in turn */
+.adm-loading { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; font-size: 13px; color: var(--label); }
+.adm-loader { display: flex; gap: 5px; }
+.adm-loader i {
+  width: 28px; height: 22px; border-radius: 6px; background: var(--raise); color: var(--label); font-style: normal;
+  font: normal 700 12px 'Barlow Condensed', 'Arial Narrow', sans-serif; display: flex; align-items: center; justify-content: center;
+  animation: adm-loader-pick 1.8s infinite;
+}
+.adm-loader i:nth-child(2) { animation-delay: 0.6s; }
+.adm-loader i:nth-child(3) { animation-delay: 1.2s; }
+@keyframes adm-loader-pick {
+  0%, 30%, 100% { background: var(--raise); color: var(--label); }
+  8%, 22% { background: var(--accent); color: var(--on-accent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adm-loader i { animation: none; }
+  .adm-loader i:nth-child(2) { background: var(--accent); color: var(--on-accent); }
+}
+
 .adm-login { margin: auto; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; padding: 24px; }
 
 /* search box in page headers */
