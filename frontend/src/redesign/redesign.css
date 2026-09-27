@@ -192,7 +192,7 @@
 .tc-live-pulse { width: 8px; height: 8px; border-radius: 4px; background: #E5484D; flex-shrink: 0; animation: tc-live-pulse 1.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .tc-live-pulse { animation: none; } }
 
-/* Loading: the splash's 1 X 2 chips lighting up in turn (see Loader in shared.tsx). */
+/* Loading: the splash's 1 X 2 chips lighting up in turn (see Loader1X2 in shared.tsx). */
 .tc-loader { display: flex; gap: 5px; }
 .tc-loader i {
   width: 28px; height: 22px; border-radius: 6px; background: var(--tc-odd); color: var(--tc-label);

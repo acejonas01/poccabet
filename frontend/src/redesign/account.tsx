@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
 import { CheckIcon, ChevronRight, DepositIcon, GiftIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
-import { ACCENT, Loader, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
+import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -285,7 +285,7 @@ function TransactionsSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet label="Transactions" onClose={onClose}>
       <SheetTitle title="Transactions" onClose={onClose} />
-      {loading || (!rows && !error) ? <Loader label="Loading transactions…" compact />
+      {loading || (!rows && !error) ? <Loader1X2 label="Loading transactions…" compact />
         : error ? <p style={{ margin: 0, padding: "16px 20px", color: "var(--tc-label)" }}>{error}</p>
         : !rows!.length ? <p style={{ margin: 0, padding: "16px 20px 28px", color: "var(--tc-label)", textAlign: "center" }}>No transactions yet.</p>
         : <div style={{ paddingBottom: 16 }}>
@@ -340,7 +340,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   }
 
   if (error) return <p style={{ padding: "40px 0", textAlign: "center", color: "var(--tc-label)" }}>{error}</p>;
-  if (loading || !me) return <Loader label="Loading your account…" />;
+  if (loading || !me) return <Loader1X2 label="Loading your account…" />;
 
   const fullName = [me.firstName ?? me.displayName, me.lastName].filter(Boolean).join(" ");
   const initials = fullName.split(/\s+/).map((w) => w.replace(/[^A-Za-z0-9]/g, "")[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "P";

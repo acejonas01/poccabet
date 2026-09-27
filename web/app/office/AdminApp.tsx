@@ -4,7 +4,7 @@
 // Everything goes through /api/admin (see backend/src/routes/admin.ts); every change asks for a reason.
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 // ---------- API ----------
 class ApiError extends Error {
@@ -25,15 +25,25 @@ async function api<T>(path: string, body?: unknown): Promise<T> {
 }
 
 // Load a GET endpoint; `reload` fetches it again (after an action).
+// While the 1 X 2 loader is on screen, it stays until the yellow has lit 1, X and 2 once
+// (one full pass), even when the data arrives sooner. Same rule as the betting site.
+const LOADER_MIN_MS = 1700;
+const onePass = (since: number) => new Promise((r) => setTimeout(r, Math.max(0, LOADER_MIN_MS - (Date.now() - since))));
+
 function useApi<T>(path: string | null) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
+  const shown = useRef(false); // data already on screen: refreshes don't show the loader
   useEffect(() => {
     if (!path) return;
     let live = true;
+    const since = Date.now();
+    const wait = () => (shown.current ? Promise.resolve() : onePass(since));
     setError("");
-    api<T>(path).then((d) => live && setData(d)).catch((e: Error) => live && setError(e.message));
+    api<T>(path)
+      .then(async (d) => { await wait(); if (live) { shown.current = true; setData(d); } })
+      .catch(async (e: Error) => { await wait(); if (live) setError(e.message); });
     return () => { live = false; };
   }, [path, tick]);
   return { data, error, reload: useCallback(() => setTick((t) => t + 1), []) };
@@ -68,9 +78,10 @@ export function AdminApp() {
   const check = useCallback(() => {
     if (!token()) return setState("login");
     setState("loading");
+    const since = Date.now();
     api<{ id: string; displayName: string; mode: string }>("/admin/me")
-      .then((m) => { setMe(m); setState("ok"); })
-      .catch((e: ApiError) => setState(e.status === 401 ? "login" : "denied"));
+      .then(async (m) => { await onePass(since); setMe(m); setState("ok"); })
+      .catch(async (e: ApiError) => { await onePass(since); setState(e.status === 401 ? "login" : "denied"); });
   }, []);
   useEffect(check, [check]);
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 2600); return () => clearTimeout(t); }, [toast]);
@@ -242,7 +253,7 @@ function CopyBtn({ text }: { text: string }) {
   return <button type="button" className="adm-copy" onClick={copy} aria-label={`Copy ${text}`}>{done ? "Copied" : "Copy"}</button>;
 }
 
-// The site's 1 X 2 loading animation (chips lighting up in turn).
+// Loader1X2 ("the 1X2 loader"): the betting site's 1 X 2 animation, same name on both sides.
 function Loader1X2({ label = "Loading…" }: { label?: string }) {
   return (
     <span role="status" aria-live="polite" className="adm-loading">

@@ -12,7 +12,7 @@ import { SPORTS } from "./sports";
 import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
-import { ACCENT, Loader, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader1X2, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import type { SearchIndex } from "./search";
 import { DesktopSearch } from "./searchui";
 
@@ -268,7 +268,7 @@ function LeagueTable({ matches, pill, setPill, live, limit, onMore, loading = fa
           ))}
         </section>
       ))}
-      {busy ? <Loader label={live ? "Loading live games…" : "Loading matches…"} /> : matches.length === 0 && (loading
+      {busy ? <Loader1X2 label={live ? "Loading live games…" : "Loading matches…"} /> : matches.length === 0 && (loading
         ? null
         : <p style={{ padding: "28px 20px", margin: 0, textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{live ? "No live games right now." : "No matches for this filter."}</p>)}
       {onMore && limit !== undefined && matches.length > limit && (

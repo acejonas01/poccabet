@@ -267,8 +267,8 @@ export function useMinLoading(loading: boolean, minMs = LOADER_MIN_MS) {
   return show;
 }
 
-// The splash's 1 X 2 animation, for anything that's loading.
-export function Loader({ label, compact = false }: { label?: string; compact?: boolean }) {
+// Loader1X2 ("the 1X2 loader"): the splash's 1 X 2 animation, for anything that's loading. The office uses the same name.
+export function Loader1X2({ label, compact = false }: { label?: string; compact?: boolean }) {
   return (
     <div role="status" aria-live="polite" style={{ padding: compact ? "16px" : "40px 16px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
       <span className="tc-loader" aria-hidden="true"><i>1</i><i>X</i><i>2</i></span>
@@ -631,7 +631,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
         <button onClick={load} disabled={busy} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800 }}>Load</button>
       </div>
       {/* Loading a booking code: the 1 X 2 loader (one full pass) in place of the selections. */}
-      {showCodeLoader && <div style={{ borderTop: "1px solid var(--tc-line)" }}><Loader label="Loading slip…" compact /></div>}
+      {showCodeLoader && <div style={{ borderTop: "1px solid var(--tc-line)" }}><Loader1X2 label="Loading slip…" compact /></div>}
       <div style={{ display: count || showCodeLoader ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
       {!showCodeLoader && selections.map((s) => (
         <div key={s.outcomeId} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>

@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, Loader, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader1X2, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
@@ -478,7 +478,7 @@ export function MobileHome({ upcoming, live, loaded, liveLoaded, tab, setTab, da
             : <UpcomingRow key={m.id} m={m} market={market} onMore={() => onOpenMatch(m)} />)}
         </section>
       ))}
-      {listLoading && <Loader label={isLive ? "Loading live games…" : "Loading matches…"} />}
+      {listLoading && <Loader1X2 label={isLive ? "Loading live games…" : "Loading matches…"} />}
       {!listLoading && (isLive ? liveLoaded : loaded) && list.length === 0 && (
         <p style={{ padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", margin: 0 }}>
           {isLive ? "No live games right now." : "No matches for this filter."}
@@ -610,7 +610,7 @@ export function MatchListPage({ title, sub, country, liveList, upList, loaded, g
         </div>
       </div>
 
-      {busy ? <Loader label="Loading matches…" /> : <>
+      {busy ? <Loader1X2 label="Loading matches…" /> : <>
       {liveList.length > 0 && (group === "day" ? (
         <section>
           <GroupHeader title="Live now" live market={market} />
