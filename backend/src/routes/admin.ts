@@ -17,6 +17,7 @@ import { settleBet } from "../betting/settle";
 import { forgetSuspensions } from "../betting/suspensions";
 import { recordResult } from "../betting/catalog";
 import { normaliseCode } from "../betting/codes";
+import { OPEN as OPEN_WITHDRAWAL, WithdrawalError, approveWithdrawal, checkWithdrawal, nameMatches, rejectWithdrawal } from "../lib/withdrawals";
 
 const router = Router();
 
@@ -619,6 +620,68 @@ router.post("/users/:id/unmute", async (req: AuthedRequest, res) => {
     });
     res.json({ ok: true });
   } catch (err) { fail(res, err); }
+});
+
+// ---------- withdrawals ----------
+// Requests to review (pending first), with who's asking and whether the bank name matches them.
+router.get("/withdrawals", async (req, res) => {
+  const p = page(req.query.page);
+  const status = String(req.query.status || "open"); // empty = the "Open" tab
+  const where: Prisma.WithdrawalWhereInput = status === "open" ? { status: { in: OPEN_WITHDRAWAL } } : status === "all" ? {} : { status };
+  const [total, rows, waiting] = await Promise.all([
+    prisma.withdrawal.count({ where }),
+    prisma.withdrawal.findMany({
+      where, orderBy: status === "open" ? { createdAt: "asc" } : { createdAt: "desc" }, skip: p * PAGE, take: PAGE,
+      include: { user: { select: { id: true, customerNo: true, displayName: true, firstName: true, lastName: true, wallet: { select: { id: true } } } } },
+    }),
+    prisma.withdrawal.aggregate({ where: { status: "PENDING" }, _count: { _all: true }, _sum: { amount: true } }),
+  ]);
+  // What each player has paid in and taken out (completed only), to judge a request.
+  const walletIds = rows.map((r) => r.user.wallet?.id).filter((x): x is string => !!x);
+  const sums = walletIds.length ? await prisma.transaction.groupBy({ by: ["walletId", "type"], where: { walletId: { in: walletIds }, type: { in: ["DEPOSIT", "WITHDRAWAL"] }, status: "COMPLETED" }, _sum: { amount: true } }) : [];
+  const sum = (walletId: string | undefined, type: string) => Math.abs(sums.find((x) => x.walletId === walletId && x.type === type)?._sum.amount ?? 0);
+  const reviewers = await prisma.user.findMany({ where: { id: { in: rows.map((r) => r.reviewedBy).filter((x): x is string => !!x) } }, select: { id: true, displayName: true } });
+  res.json({
+    total, page: p, pageSize: PAGE,
+    waiting: { count: waiting._count._all, amount: toNaira(waiting._sum.amount ?? 0) },
+    withdrawals: rows.map((w) => ({
+      id: w.id, amount: toNaira(w.amount), status: w.status, reference: w.reference, note: w.note,
+      bankName: w.bankName, accountNumber: w.accountNumber, accountName: w.accountName,
+      createdAt: w.createdAt, reviewedAt: w.reviewedAt, reviewedBy: reviewers.find((r) => r.id === w.reviewedBy)?.displayName ?? null,
+      user: { id: w.user.id, customerNo: w.user.customerNo, name: [w.user.firstName, w.user.lastName].filter(Boolean).join(" ") || w.user.displayName },
+      nameMatch: nameMatches(w.accountName, w.user.firstName, w.user.lastName),
+      deposited: toNaira(sum(w.user.wallet?.id, "DEPOSIT")), withdrawn: toNaira(sum(w.user.wallet?.id, "WITHDRAWAL")),
+    })),
+  });
+});
+
+const wFail = (res: Response, err: unknown) => (err instanceof WithdrawalError ? res.status(err.status).json({ error: err.message, code: err.code }) : fail(res, err));
+
+router.post("/withdrawals/:id/approve", async (req: AuthedRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const w0 = await prisma.withdrawal.findUnique({ where: { id }, select: { userId: true } });
+    if (!w0) throw new AdminError("NOT_FOUND", "Withdrawal not found", 404);
+    if (w0.userId === req.userId) throw new AdminError("OWN_WITHDRAWAL", "Another admin has to approve your own withdrawal", 403);
+    const w = await approveWithdrawal(id, req.userId!, (tx, row) => audit(tx, req, "WITHDRAWAL_APPROVE", "USER", row.userId, { reference: row.reference, amount: toNaira(row.amount), bank: row.bankName, account: row.accountNumber }));
+    res.json({ ok: true, status: w.status, note: w.note });
+  } catch (err) { wFail(res, err); }
+});
+
+router.post("/withdrawals/:id/reject", async (req: AuthedRequest, res) => {
+  try {
+    const why = reason.parse(req.body?.reason);
+    const w = await rejectWithdrawal(String(req.params.id), req.userId!, why, (tx, row) => audit(tx, req, "WITHDRAWAL_REJECT", "USER", row.userId, { reference: row.reference, amount: toNaira(row.amount), reason: why }));
+    res.json({ ok: true, status: w.status });
+  } catch (err) { wFail(res, err); }
+});
+
+// Ask Paystack about a payout that's still on its way.
+router.post("/withdrawals/:id/check", async (req: AuthedRequest, res) => {
+  try {
+    const w = await checkWithdrawal(String(req.params.id));
+    res.json({ ok: true, status: w.status, note: w.note });
+  } catch (err) { wFail(res, err); }
 });
 
 // ---------- audit log ----------

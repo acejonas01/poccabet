@@ -63,6 +63,7 @@ const NAV = [
   { href: "/office/bets", label: "Bets", icon: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" },
   { href: "/office/reports", label: "Reports", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
   { href: "/office/matches", label: "Matches", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4 4 3-1.5 4.5h-5L8 10z" },
+  { href: "/office/withdrawals", label: "Withdrawals", icon: "M12 17V5M6 11l6-6 6 6M4 21h16" },
   { href: "/office/chat", label: "Chat", icon: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" },
   { href: "/office/audit", label: "Audit log", icon: "M12 8v4l3 2M12 3a9 9 0 1 0 9 9" },
 ];
@@ -112,6 +113,7 @@ export function AdminApp() {
   else if (section === "matches") page = <MatchesPage flash={flash} />;
   else if (section === "audit") page = <AuditPage />;
   else if (section === "chat") page = <ChatPage flash={flash} />;
+  else if (section === "withdrawals") page = <WithdrawalsPage flash={flash} />;
   else if (section === "reports") page = <ReportsPage />;
   else page = <Dashboard />;
 
@@ -272,6 +274,7 @@ type DialogSpec = {
   title: string; text?: ReactNode; confirm: string; tone?: "primary" | "danger" | "good";
   fields?: (set: (k: string, v: string) => void, values: Record<string, string>) => ReactNode;
   run: (values: Record<string, string>) => Promise<string>;
+  noReason?: boolean; // a plain confirmation (the action is audited without a typed reason)
 };
 function useDialog(onDone: (msg: string) => void) {
   const [spec, setSpec] = useState<DialogSpec | null>(null);
@@ -291,9 +294,11 @@ function useDialog(onDone: (msg: string) => void) {
         <h3>{spec.title}</h3>
         {spec.text && <div style={{ color: "var(--muted)", fontSize: 13, lineHeight: 1.5 }}>{spec.text}</div>}
         {spec.fields?.(set, values)}
-        <label className="adm-field">Reason (saved in the audit log)
-          <textarea className="adm-textarea" value={values.reason ?? ""} onChange={(e) => set("reason", e.target.value)} required minLength={3} autoFocus />
-        </label>
+        {!spec.noReason && (
+          <label className="adm-field">Reason (saved in the audit log)
+            <textarea className="adm-textarea" value={values.reason ?? ""} onChange={(e) => set("reason", e.target.value)} required minLength={3} autoFocus />
+          </label>
+        )}
         {error && <div className="adm-error">{error}</div>}
         <div className="adm-actions" style={{ justifyContent: "flex-end" }}>
           <button type="button" className="adm-btn" onClick={() => setSpec(null)} disabled={busy}>Cancel</button>
@@ -628,7 +633,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
     text: "Shows who this player was: the sealed record kept for legal and anti-money-laundering requests. Use it only when there's a real need. Your name, the time and the reason are saved in the audit log.",
     run: async (v) => { setIdentity(await api<Identity>(`/admin/users/${u.id}/identity`, { reason: v.reason })); return "Identity revealed (logged in the audit log)"; },
   });
-  const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal" };
+  const TX_LABEL: Record<string, string> = { BET_STAKE: "Bet stake", BET_PAYOUT: "Winnings", BET_REFUND: "Refund", BONUS: "Bonus", DEMO_TOPUP: "Play money", ADJUSTMENT: "Admin adjustment", DEPOSIT: "Deposit", WITHDRAWAL: "Withdrawal", WITHDRAWAL_REVERSAL: "Withdrawal returned" };
   return (
     <>
       <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{u.name} {userBadges(u)}</span>} sub={<>Joined {day(u.createdAt)}</>}>
@@ -881,7 +886,7 @@ function MatchesPage({ flash }: { flash: (m: string) => void }) {
 
 // ---------- audit log ----------
 const ACTION_LABEL: Record<string, string> = {
-  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", IDENTITY_REVEAL: "Revealed identity", CHAT_DELETE: "Deleted chat message", CHAT_MUTE: "Muted in chat", CHAT_UNMUTE: "Unmuted in chat", ARCHIVE_SEARCH: "Searched deleted accounts", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
+  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", IDENTITY_REVEAL: "Revealed identity", CHAT_DELETE: "Deleted chat message", CHAT_MUTE: "Muted in chat", CHAT_UNMUTE: "Unmuted in chat", WITHDRAWAL_APPROVE: "Approved withdrawal", WITHDRAWAL_REJECT: "Rejected withdrawal", ARCHIVE_SEARCH: "Searched deleted accounts", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
   BET_VOID: "Voided bet", BET_SETTLE: "Settled bet", LEG_SETTLE: "Settled leg", MATCH_SUSPEND: "Suspended match", MATCH_UNSUSPEND: "Reopened match",
   MATCH_VOID: "Voided match bets", MATCH_RESULT: "Entered result",
 };
@@ -937,6 +942,82 @@ function ChatPage({ flash }: { flash: (m: string) => void }) {
                 </tr>
               ))}
               {!data.messages.length && <tr><td colSpan={5} className="adm-empty">No chat messages yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data && <Pager total={data.total} pageSize={data.pageSize} />}
+      {dialog.node}
+    </>
+  );
+}
+
+// ---------- withdrawals ----------
+type WithdrawalAdmin = {
+  id: string; amount: number; status: "PENDING" | "PROCESSING" | "PAID" | "REJECTED" | "FAILED" | "CANCELLED"; reference: string; note: string | null;
+  bankName: string; accountNumber: string; accountName: string; createdAt: string; reviewedAt: string | null; reviewedBy: string | null;
+  user: { id: string; customerNo: string; name: string }; nameMatch: boolean | null; deposited: number; withdrawn: number;
+};
+const W_TONE: Record<WithdrawalAdmin["status"], string> = { PENDING: "yellow", PROCESSING: "blue", PAID: "green", REJECTED: "red", FAILED: "red", CANCELLED: "gray" };
+function WithdrawalsPage({ flash }: { flash: (m: string) => void }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const qs = params?.toString() ?? "";
+  const { data, error, reload } = useApi<{ total: number; pageSize: number; waiting: { count: number; amount: number }; withdrawals: WithdrawalAdmin[] }>(`/admin/withdrawals${qs ? `?${qs}` : ""}`);
+  const dialog = useDialog((m) => { flash(m); reload(); });
+  const [checking, setChecking] = useState<string | null>(null);
+  const who = (w: WithdrawalAdmin) => <>{naira(w.amount)} to {w.accountName} ({w.bankName} {w.accountNumber}), requested by {w.user.name} ({w.user.customerNo}).</>;
+  const approve = (w: WithdrawalAdmin) => dialog.open({
+    title: "Approve & pay", confirm: `Pay ${naira(w.amount)}`, tone: "good", noReason: true,
+    text: <>{who(w)} {w.nameMatch === false && <strong style={{ color: "#FF8A8E" }}>The name on the bank account doesn't match the player. </strong>}The money is sent through Paystack straight away.</>,
+    run: async () => {
+      const r = await api<{ status: string; note: string | null }>(`/admin/withdrawals/${w.id}/approve`, {});
+      return r.status === "PAID" ? "Paid" : r.status === "PROCESSING" ? "Sent: waiting for the bank" : r.note ?? `Now ${r.status.toLowerCase()}`;
+    },
+  });
+  const reject = (w: WithdrawalAdmin) => dialog.open({
+    title: "Reject withdrawal", confirm: "Reject", tone: "danger", text: <>{who(w)} The money goes back to the player's wallet. They'll see your reason.</>,
+    run: async (v) => { await api(`/admin/withdrawals/${w.id}/reject`, { reason: v.reason }); return "Rejected: money returned"; },
+  });
+  const check = async (w: WithdrawalAdmin) => {
+    setChecking(w.id);
+    try { const r = await api<{ status: string }>(`/admin/withdrawals/${w.id}/check`, {}); flash(r.status === "PAID" ? "Paid" : r.status === "PROCESSING" ? "Still on its way" : `Now ${r.status.toLowerCase()}`); reload(); }
+    catch (e) { flash((e as Error).message); } finally { setChecking(null); }
+  };
+  return (
+    <>
+      <Head title="Withdrawals" sub={data ? `${data.waiting.count} waiting for review (${naira(data.waiting.amount)}). Oldest first. Approving pays through Paystack; every decision is in the audit log.` : "Withdrawal requests"}>
+        <Tabs name="status" options={[["", "Open"], ["PAID", "Paid"], ["REJECTED", "Rejected"], ["FAILED", "Failed"], ["all", "All"]]} />
+      </Head>
+      {!data ? <Loading error={error} /> : (
+        <div className="adm-table-wrap">
+          <table className="adm-table">
+            <thead><tr><th>Requested</th><th>Player</th><th className="adm-num">Amount</th><th>Bank account</th><th className="adm-num">Paid in / out</th><th>Status</th><th /></tr></thead>
+            <tbody>
+              {data.withdrawals.map((w) => (
+                <tr key={w.id}>
+                  <td>{when(w.createdAt)}</td>
+                  <td><a href={`/office/users/${w.user.id}`} onClick={(e) => { e.preventDefault(); router.push(`/office/users/${w.user.id}`); }} style={{ fontWeight: 700 }}>{w.user.name}</a>
+                    <div className="adm-mono" style={{ fontSize: 11, color: "var(--muted)" }}>{w.user.customerNo}</div></td>
+                  <td className="adm-num" style={{ fontWeight: 800 }}>{naira(w.amount)}</td>
+                  <td style={{ whiteSpace: "normal", minWidth: 180 }}>
+                    <div style={{ fontWeight: 700 }}>{w.accountName} {w.nameMatch === true ? <Badge tone="green">NAME MATCHES</Badge> : w.nameMatch === false ? <Badge tone="red">DIFFERENT NAME</Badge> : <Badge tone="gray">NO NAME ON FILE</Badge>}</div>
+                    <div style={{ fontSize: 12, color: "var(--muted)" }}>{w.bankName} · <span className="adm-mono">{w.accountNumber}</span></div>
+                  </td>
+                  <td className="adm-num" style={{ fontSize: 12 }}>{naira(w.deposited)}<br /><span style={{ color: "var(--muted)" }}>{naira(w.withdrawn)}</span></td>
+                  <td style={{ whiteSpace: "normal", minWidth: 140 }}><Badge tone={W_TONE[w.status]}>{w.status}</Badge>
+                    {w.note && <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 4 }}>{w.note}</div>}
+                    {w.reviewedBy && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>by {w.reviewedBy}</div>}</td>
+                  <td>
+                    {w.status === "PENDING" && <div className="adm-actions" style={{ flexWrap: "nowrap" }}>
+                      <button className="adm-btn sm good" onClick={() => approve(w)}>Approve & pay</button>
+                      <button className="adm-btn sm danger" onClick={() => reject(w)}>Reject</button>
+                    </div>}
+                    {w.status === "PROCESSING" && <button className="adm-btn sm" disabled={checking === w.id} onClick={() => check(w)}>{checking === w.id ? "Checking…" : "Check status"}</button>}
+                  </td>
+                </tr>
+              ))}
+              {!data.withdrawals.length && <tr><td colSpan={7} className="adm-empty">{qs ? "Nothing here." : "No withdrawals waiting. 🎉"}</td></tr>}
             </tbody>
           </table>
         </div>

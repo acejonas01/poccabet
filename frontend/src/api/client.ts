@@ -99,6 +99,17 @@ export const api = {
   getDepositInfo: () => request<{ enabled: boolean; testMode: boolean; min: number; max: number }>("/api/wallet/deposit"),
   startDeposit: (amount: number) =>
     request<{ reference: string; authorizationUrl: string }>("/api/wallet/deposit", { method: "POST", body: JSON.stringify({ amount, returnTo: window.location.origin }) }),
+  // Withdrawals: panel info, banks, look up / save the bank account, request, cancel.
+  getWithdrawInfo: () => request<WithdrawInfo>("/api/wallet/withdraw"),
+  getBanks: () => request<{ banks: { name: string; code: string }[] }>("/api/wallet/banks"),
+  resolveBank: (bankCode: string, accountNumber: string) =>
+    request<BankAccount>("/api/wallet/bank-account/resolve", { method: "POST", body: JSON.stringify({ bankCode, accountNumber }) }),
+  saveBank: (bankCode: string, accountNumber: string) =>
+    request<{ bank: BankAccount }>("/api/wallet/bank-account", { method: "PUT", body: JSON.stringify({ bankCode, accountNumber }) }),
+  requestWithdrawal: (amount: number) =>
+    request<{ withdrawal: WithdrawalRow; balance: number }>("/api/wallet/withdrawals", { method: "POST", body: JSON.stringify({ amount }) }),
+  cancelWithdrawal: (id: string) =>
+    request<{ withdrawal: WithdrawalRow; balance: number }>(`/api/wallet/withdrawals/${encodeURIComponent(id)}/cancel`, { method: "POST" }),
   checkDeposit: (reference: string) =>
     request<{ reference: string; status: "COMPLETED" | "PENDING" | "FAILED" | "UNKNOWN"; amount?: number; balance?: number | null }>(`/api/wallet/deposit/${encodeURIComponent(reference)}`),
   claimBonus: () => request<Profile>("/api/me/bonus", { method: "POST" }),
@@ -156,6 +167,16 @@ export const api = {
   placeLegacyBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
 };
+
+export interface BankAccount { bankCode: string; bankName: string; accountNumber: string; accountName: string }
+export interface WithdrawalRow {
+  id: string; amount: number; status: "PENDING" | "PROCESSING" | "PAID" | "REJECTED" | "FAILED" | "CANCELLED"; reference: string;
+  bankName: string; accountNumber: string; accountName: string; note: string | null; createdAt: string; updatedAt: string;
+}
+export interface WithdrawInfo {
+  enabled: boolean; testMode: boolean; min: number; max: number; balance: number;
+  bank: BankAccount | null; open: WithdrawalRow | null; recent: WithdrawalRow[];
+}
 
 // Match view extras (head-to-head, form, league table, line-ups). available=false until the data
 // provider supplies them (only the simulation does for now).

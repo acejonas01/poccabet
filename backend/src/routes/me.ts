@@ -172,6 +172,10 @@ router.delete("/", limit("delete-account", 10, 15, byUser), async (req: AuthedRe
     if (!(await bcrypt.compare(parsed.data.password, me.passwordHash))) {
       return res.status(401).json({ error: "Wrong password", code: "WRONG_PASSWORD" });
     }
+    // A withdrawal on its way (money held, maybe mid-transfer) has to finish first, play money or not.
+    if (await prisma.withdrawal.count({ where: { userId: me.id, status: { in: ["PENDING", "PROCESSING"] } } })) {
+      return res.status(409).json({ error: "Wait for your withdrawal to finish before deleting your account", code: "WITHDRAWAL_OPEN" });
+    }
     if (!SIMULATE) {
       if ((me.wallet?.balance ?? 0) > 0) return res.status(409).json({ error: "Withdraw your balance before deleting your account", code: "BALANCE_NOT_EMPTY" });
       if (await prisma.bet.count({ where: { userId: me.id, status: "PENDING" } })) {

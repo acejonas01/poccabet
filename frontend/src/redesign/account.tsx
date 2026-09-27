@@ -2,7 +2,7 @@
 // password, log out and delete the account. Edits happen in bottom sheets.
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, api, type Profile } from "../api/client";
+import { ApiError, api, type BankAccount, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
@@ -335,9 +335,167 @@ function DepositSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ---------- withdraw ----------
+// Add a bank account once (the name comes from the bank), then ask for an amount. The money leaves
+// the wallet straight away and is held until an admin pays it (or it comes back).
+const W_STATUS: Record<WithdrawalRow["status"], { label: string; color: string }> = {
+  PENDING: { label: "Waiting for review", color: ACCENT }, PROCESSING: { label: "On its way to your bank", color: ACCENT },
+  PAID: { label: "Paid", color: GREEN }, REJECTED: { label: "Rejected · money returned", color: RED },
+  FAILED: { label: "Not paid · money returned", color: RED }, CANCELLED: { label: "Cancelled · money returned", color: "var(--tc-label)" },
+};
+function BankForm({ current, onSaved, onCancel }: { current: BankAccount | null; onSaved: (b: BankAccount) => void; onCancel?: () => void }) {
+  const [banks, setBanks] = useState<{ name: string; code: string }[] | null>(null);
+  const [bankCode, setBankCode] = useState(current?.bankCode ?? "");
+  const [number, setNumber] = useState("");
+  const [found, setFound] = useState<BankAccount | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { api.getBanks().then((r) => setBanks(r.banks)).catch((e) => setError(errText(e))); }, []);
+  // Look the name up as soon as there's a bank and 10 digits.
+  useEffect(() => {
+    setFound(null);
+    if (!bankCode || number.length !== 10) return;
+    let live = true;
+    setBusy(true); setError(null);
+    api.resolveBank(bankCode, number).then((r) => live && setFound(r)).catch((e) => live && setError(errText(e))).finally(() => live && setBusy(false));
+    return () => { live = false; };
+  }, [bankCode, number]);
+  async function save(e: FormEvent) {
+    e.preventDefault();
+    if (!found) return;
+    setBusy(true); setError(null);
+    try { onSaved((await api.saveBank(found.bankCode, found.accountNumber)).bank); } catch (err) { setError(errText(err)); setBusy(false); }
+  }
+  return (
+    <form onSubmit={save} style={sheetBody}>
+      <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>Withdrawals are paid into a bank account in your own name.</p>
+      <Field label="Bank">
+        <select value={bankCode} onChange={(e) => setBankCode(e.target.value)} disabled={!banks} style={{ ...formInput(false), appearance: "auto" }}>
+          <option value="">{banks ? "Choose your bank" : "Loading banks…"}</option>
+          {banks?.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}
+        </select>
+      </Field>
+      <Field label="Account number">
+        <input inputMode="numeric" autoComplete="off" maxLength={10} placeholder="10 digits" value={number}
+          onChange={(e) => setNumber(e.target.value.replace(/\D/g, "").slice(0, 10))} style={{ ...formInput(false), letterSpacing: 1 }} />
+      </Field>
+      {busy && !found && number.length === 10 && <span style={{ fontSize: 13, color: "var(--tc-label)" }}>Checking the account…</span>}
+      {found && (
+        <p style={{ margin: 0, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 10, background: "rgba(42, 181, 114, 0.12)", fontSize: 14, fontWeight: 800, color: GREEN }}>
+          <CheckIcon size={16} />{found.accountName}
+        </p>
+      )}
+      {errorLine(error)}
+      <button type="submit" disabled={!found || busy} style={primaryBtn(!!found && !busy)}>{busy && found ? "SAVING…" : "SAVE BANK ACCOUNT"}</button>
+      {onCancel && <button type="button" onClick={onCancel} style={{ alignSelf: "center", border: "none", background: "transparent", color: "var(--tc-muted)", fontSize: 14, fontWeight: 700 }}>Keep my current account</button>}
+    </form>
+  );
+}
+
+function WithdrawSheet({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const [info, setInfo] = useState<WithdrawInfo | null>(null);
+  const [editBank, setEditBank] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = () => api.getWithdrawInfo().then(setInfo).catch((e) => setError(errText(e)));
+  useEffect(() => { load(); }, []);
+  const value = Number(amount.replace(/[^0-9]/g, "")) || 0;
+  const max = info ? Math.min(info.max, Math.floor(info.balance)) : 0;
+  const ok = !!info && value >= info.min && value <= max;
+  async function withdraw(e: FormEvent) {
+    e.preventDefault();
+    if (!info) return;
+    if (value > info.balance) return setError("That's more than your balance");
+    if (value < info.min || value > info.max) return setError(`Enter an amount from ₦${info.min.toLocaleString("en-US")} to ₦${info.max.toLocaleString("en-US")}`);
+    setBusy(true); setError(null);
+    try { await api.requestWithdrawal(value); setAmount(""); await load(); onChanged(); } catch (err) { setError(errText(err)); }
+    finally { setBusy(false); }
+  }
+  async function cancel(id: string) {
+    setBusy(true); setError(null);
+    try { await api.cancelWithdrawal(id); await load(); onChanged(); } catch (err) { setError(errText(err)); }
+    finally { setBusy(false); }
+  }
+  const bankLine = (b: { bankName: string; accountNumber: string; accountName: string }) => (
+    <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span style={{ fontSize: 14, fontWeight: 800 }}>{b.accountName}</span>
+      <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{b.bankName} · {b.accountNumber.length > 4 && !b.accountNumber.startsWith("•") ? `••••${b.accountNumber.slice(-4)}` : b.accountNumber}</span>
+    </span>
+  );
+  const boxed: CSSProperties = { padding: "12px 14px", borderRadius: 12, background: "var(--tc-raise)" };
+  return (
+    <Sheet label="Withdraw" onClose={onClose}>
+      <SheetTitle title="Withdraw" onClose={onClose} />
+      {!info && !error ? <Loader1X2 label="Loading…" compact />
+        : !info ? <p style={{ ...sheetBody, margin: 0, color: "var(--tc-label)" }}>{error}</p>
+        : !info.enabled ? <p style={{ ...sheetBody, margin: 0, color: "var(--tc-label)" }}>Withdrawals aren't available yet. Please check back soon.</p>
+        : info.open ? (
+          // One withdrawal at a time: show where it is.
+          <div style={sheetBody}>
+            <div style={{ ...boxed, display: "flex", flexDirection: "column", gap: 10 }}>
+              <span style={{ fontSize: 24, fontWeight: 800 }}>{naira(info.open.amount)}</span>
+              {bankLine(info.open)}
+              <span style={{ fontSize: 13, fontWeight: 800, color: W_STATUS[info.open.status].color }}>{W_STATUS[info.open.status].label}</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: "var(--tc-muted)" }}>
+              {info.open.status === "PENDING" ? "We check every withdrawal before paying it, usually within 24 hours. You can cancel until then and the money goes back to your wallet." : "Your bank should receive it shortly."}
+            </p>
+            {errorLine(error)}
+            {info.open.status === "PENDING" && (
+              <button type="button" onClick={() => cancel(info.open!.id)} disabled={busy} style={{ height: 48, borderRadius: 12, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 15, fontWeight: 800 }}>
+                {busy ? "CANCELLING…" : "CANCEL WITHDRAWAL"}
+              </button>
+            )}
+          </div>
+        )
+        : !info.bank || editBank ? (
+          <BankForm current={info.bank} onCancel={info.bank ? () => setEditBank(false) : undefined} onSaved={(b) => { setInfo({ ...info, bank: b }); setEditBank(false); }} />
+        ) : (
+          <form onSubmit={withdraw} style={sheetBody}>
+            {info.testMode && <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: "rgba(245, 197, 24, 0.12)", fontSize: 12.5, color: "var(--tc-soft)" }}><strong style={{ color: ACCENT }}>Test mode.</strong> No real money is paid out.</p>}
+            <div style={{ ...boxed, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+              {bankLine(info.bank)}
+              <button type="button" onClick={() => setEditBank(true)} style={{ flexShrink: 0, border: "none", background: "transparent", color: ACCENT, fontSize: 13, fontWeight: 800 }}>Change</button>
+            </div>
+            <Field label={`Amount (you have ${naira(info.balance)})`}>
+              <span style={{ position: "relative", display: "block" }}>
+                <span aria-hidden="true" style={{ position: "absolute", left: 14, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 17, fontWeight: 800, color: "var(--tc-muted)" }}>₦</span>
+                <input inputMode="numeric" autoComplete="off" placeholder="0" value={amount ? value.toLocaleString("en-US") : ""}
+                  onChange={(e) => { setAmount(e.target.value); setError(null); }} style={{ ...formInput(false), paddingLeft: 34, fontSize: 17, fontWeight: 800 }} />
+              </span>
+            </Field>
+            {max >= info.min && (
+              <button type="button" onClick={() => { setAmount(String(max)); setError(null); }} style={{ alignSelf: "flex-start", height: 32, padding: "0 12px", borderRadius: 16, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", fontSize: 13, fontWeight: 800 }}>
+                Max ₦{max.toLocaleString("en-US")}
+              </button>
+            )}
+            <span style={{ fontSize: 12, color: "var(--tc-label)" }}>From ₦{info.min.toLocaleString("en-US")} to ₦{info.max.toLocaleString("en-US")}. We check each withdrawal before paying it, usually within 24 hours.</span>
+            {errorLine(error)}
+            <button type="submit" disabled={!ok || busy} style={primaryBtn(ok && !busy)}>{busy ? "SENDING…" : value ? `WITHDRAW ₦${value.toLocaleString("en-US")}` : "WITHDRAW"}</button>
+          </form>
+        )}
+      {info && info.enabled && info.recent.length > 0 && !(info.recent.length === 1 && info.open) && (
+        <div style={{ padding: "0 20px 20px" }}>
+          <h3 style={{ ...sectionTitle, marginBottom: 4 }}>RECENT WITHDRAWALS</h3>
+          {info.recent.filter((w) => w.id !== info.open?.id).map((w) => (
+            <div key={w.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "10px 0", borderTop: "1px solid var(--tc-line)" }}>
+              <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                <span style={{ fontSize: 14, fontWeight: 800 }}>{naira(w.amount)}</span>
+                <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{new Date(w.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}{w.note && w.status === "REJECTED" ? ` · ${w.note}` : ""}</span>
+              </span>
+              <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: W_STATUS[w.status].color, textAlign: "right" }}>{W_STATUS[w.status].label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Sheet>
+  );
+}
+
 const TX_LABEL: Record<string, string> = {
   BET_STAKE: "Bet placed", BET_PAYOUT: "Bet won", BET_REFUND: "Bet refunded", DEPOSIT: "Deposit",
-  WITHDRAWAL: "Withdrawal", BONUS: "Bonus", DEMO_TOPUP: "Demo funds",
+  WITHDRAWAL: "Withdrawal", WITHDRAWAL_REVERSAL: "Withdrawal returned", BONUS: "Bonus", DEMO_TOPUP: "Demo funds",
 };
 function TransactionsSheet({ onClose }: { onClose: () => void }) {
   const [rows, setRows] = useState<Awaited<ReturnType<typeof api.getTransactions>>["transactions"] | null>(null);
@@ -377,7 +535,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   const { setTheme } = useTheme();
   const [me, setMe] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | "deposit" | null>(null);
+  const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | "deposit" | "withdraw" | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const loading = useMinLoading(!me && !error);
 
@@ -483,7 +641,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {action("Deposit", <DepositIcon />, () => setSheet("deposit"))}
-            {action("Withdraw", <WithdrawIcon />, undefined, true)}
+            {action("Withdraw", <WithdrawIcon />, () => setSheet("withdraw"))}
             {action("Transactions", <ListIcon />, () => setSheet("transactions"))}
           </div>
           {note && <span role="status" style={{ fontSize: 12, color: "var(--tc-muted)", textAlign: "center" }}>{note}</span>}
@@ -542,6 +700,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
       {sheet === "email" && <VerifyEmailSheet me={me} onClose={() => setSheet(null)} onVerified={saved} />}
       {sheet === "password" && <PasswordSheet onClose={() => setSheet(null)} />}
       {sheet === "deposit" && <DepositSheet onClose={() => setSheet(null)} />}
+      {sheet === "withdraw" && <WithdrawSheet onClose={() => setSheet(null)} onChanged={() => api.getMe().then(saved).catch(() => {})} />}
       {sheet === "transactions" && <TransactionsSheet onClose={() => setSheet(null)} />}
       {sheet === "delete" && <DeleteSheet onClose={() => setSheet(null)} onDeleted={() => { logout(); navigate("/", { replace: true }); }} />}
     </div>

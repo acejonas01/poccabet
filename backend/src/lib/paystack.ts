@@ -10,6 +10,13 @@ const secret = () => process.env.PAYSTACK_SECRET_KEY || "";
 
 export const paystackReady = () => !!secret();
 export const paystackTestMode = () => secret().startsWith("sk_test_");
+// Real money may only move when the wallets hold real money: while the site runs on play money
+// (simulation), only a Paystack TEST key is allowed — a live key would turn play money into naira.
+export const paymentsAllowed = (simulate: boolean) => paystackReady() && (paystackTestMode() || !simulate);
+
+// Paystack answered and said no (bad account, not enough balance…) — as opposed to a network
+// error or timeout, where we can't know whether the request went through.
+export class PaystackError extends Error {}
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE()}${path}`, {
@@ -18,7 +25,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
     signal: AbortSignal.timeout(15_000),
   });
   const body = (await res.json().catch(() => ({}))) as { status?: boolean; message?: string; data?: T };
-  if (!res.ok || !body.status) throw new Error(`Paystack ${path}: ${res.status} ${body.message ?? ""}`.trim());
+  if (!res.ok || !body.status) throw new PaystackError(body.message || `Paystack ${path}: ${res.status}`);
   return body.data as T;
 }
 
@@ -41,4 +48,40 @@ export function validWebhookSignature(raw: Buffer, signature: string | undefined
   const expected = crypto.createHmac("sha512", secret()).update(raw).digest("hex");
   const a = Buffer.from(expected), b = Buffer.from(signature);
   return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+// ---------- payouts (withdrawals) ----------
+let banksCache: { at: number; list: { name: string; code: string }[] } | null = null;
+// Nigerian banks that can receive transfers (cached for a day).
+export async function listBanks() {
+  if (banksCache && Date.now() - banksCache.at < 86_400_000) return banksCache.list;
+  const rows = await call<{ name: string; code: string; active?: boolean; is_deleted?: boolean }[]>("/bank?country=nigeria&currency=NGN&perPage=200");
+  const list = rows.filter((b) => b.active !== false && !b.is_deleted).map((b) => ({ name: b.name, code: b.code })).sort((a, b) => a.name.localeCompare(b.name));
+  banksCache = { at: Date.now(), list };
+  return list;
+}
+
+// The name on a bank account, from the bank itself.
+export function resolveAccount(accountNumber: string, bankCode: string) {
+  return call<{ account_name: string; account_number: string }>(`/bank/resolve?account_number=${encodeURIComponent(accountNumber)}&bank_code=${encodeURIComponent(bankCode)}`);
+}
+
+export function createRecipient(p: { name: string; accountNumber: string; bankCode: string }) {
+  return call<{ recipient_code: string }>("/transferrecipient", {
+    method: "POST",
+    body: JSON.stringify({ type: "nuban", name: p.name, account_number: p.accountNumber, bank_code: p.bankCode, currency: "NGN" }),
+  });
+}
+
+// Send money from the Paystack balance. status: "success" | "pending" | "otp" (OTP for transfers
+// is switched on in the Paystack dashboard — turn it off there so payouts can go out) | "failed".
+export function sendTransfer(p: { amountKobo: number; recipientCode: string; reference: string; reason: string }) {
+  return call<{ transfer_code: string; status: string; reference: string }>("/transfer", {
+    method: "POST",
+    body: JSON.stringify({ source: "balance", amount: p.amountKobo, recipient: p.recipientCode, reference: p.reference, reason: p.reason, currency: "NGN" }),
+  });
+}
+
+export function verifyTransfer(reference: string) {
+  return call<{ status: string; amount: number; reference: string; transfer_code: string }>(`/transfer/verify/${encodeURIComponent(reference)}`);
 }

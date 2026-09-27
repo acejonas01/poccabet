@@ -38,6 +38,8 @@ model User {
   loginEvents    LoginEvent[]
   closedAccount  ClosedAccount? // identity archive, kept after the account is deleted
   chatMessages   ChatMessage[]
+  bankAccount    BankAccount?
+  withdrawals    Withdrawal[]
   chatMutedUntil DateTime?      @map("chat_muted_until") // set by an admin: can read match chat but not post until then
 
   @@map("users")
@@ -396,4 +398,46 @@ model ChatMessage {
   @@index([matchId, createdAt])
   @@index([createdAt])
   @@map("chat_messages")
+}
+
+// A player's payout bank account (one per player). The name comes from the bank (Paystack
+// "resolve account"), not from the player.
+model BankAccount {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  user          User     @relation(fields: [userId], references: [id])
+  bankCode      String   @map("bank_code")
+  bankName      String   @map("bank_name")
+  accountNumber String   @map("account_number")
+  accountName   String   @map("account_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("bank_accounts")
+}
+
+// A withdrawal request. The amount leaves the wallet when requested (held in lockedBalance);
+// an admin approves (→ Paystack transfer) or rejects (→ money back). Bank details are copied in
+// so the record stays right even if the player changes their account later.
+model Withdrawal {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  user          User      @relation(fields: [userId], references: [id])
+  amount        Int // kobo
+  reference     String    @unique // PBW-…; also the Paystack transfer reference
+  status        String // PENDING | PROCESSING | PAID | REJECTED | FAILED | CANCELLED
+  bankCode      String    @map("bank_code")
+  bankName      String    @map("bank_name")
+  accountNumber String    @map("account_number")
+  accountName   String    @map("account_name")
+  transferCode  String?   @map("transfer_code")
+  reviewedBy    String?   @map("reviewed_by") // admin id
+  reviewedAt    DateTime? @map("reviewed_at")
+  note          String? // reason for a rejection / why a payout failed
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@map("withdrawals")
 }
