@@ -63,6 +63,7 @@ const NAV = [
   { href: "/office/bets", label: "Bets", icon: "M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2zM9 8h6M9 12h6" },
   { href: "/office/reports", label: "Reports", icon: "M4 20V10M10 20V4M16 20v-8M22 20H2" },
   { href: "/office/matches", label: "Matches", icon: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm0 4 4 3-1.5 4.5h-5L8 10z" },
+  { href: "/office/chat", label: "Chat", icon: "M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" },
   { href: "/office/audit", label: "Audit log", icon: "M12 8v4l3 2M12 3a9 9 0 1 0 9 9" },
 ];
 
@@ -110,6 +111,7 @@ export function AdminApp() {
   else if (section === "bets") page = <BetsPage />;
   else if (section === "matches") page = <MatchesPage flash={flash} />;
   else if (section === "audit") page = <AuditPage />;
+  else if (section === "chat") page = <ChatPage flash={flash} />;
   else if (section === "reports") page = <ReportsPage />;
   else page = <Dashboard />;
 
@@ -470,7 +472,7 @@ function Breakdown({ days, setDays, data, error }: { days: number; setDays: (d: 
 }
 
 // ---------- users ----------
-type UserRow = { id: string; customerNo: string; name: string; email: string | null; phone: string | null; role: string; suspended: boolean; suspendedReason: string | null; deleted: boolean; createdAt: string; balance: number; bets: number };
+type UserRow = { id: string; customerNo: string; chatMutedUntil: string | null; name: string; email: string | null; phone: string | null; role: string; suspended: boolean; suspendedReason: string | null; deleted: boolean; createdAt: string; balance: number; bets: number };
 const userBadges = (u: UserRow) => (
   <span style={{ display: "inline-flex", gap: 6 }}>
     {u.role === "ADMIN" && <Badge tone="blue">ADMIN</Badge>}
@@ -589,6 +591,20 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
       return `Balance is now ${naira(r.balance)}`;
     },
   });
+  const muted = !!u.chatMutedUntil && new Date(u.chatMutedUntil) > new Date();
+  const mute = () => dialog.open(muted
+    ? { title: "Unmute in chat", confirm: "Unmute", tone: "good", text: <>They can post in match chat again. Muted until {when(u.chatMutedUntil)}.</>, run: async (v) => { await api(`/admin/users/${u.id}/unmute`, { reason: v.reason }); return "Unmuted in chat"; } }
+    : {
+      title: `Mute ${u.name} in chat`, confirm: "Mute", tone: "danger", text: "They can still read match chat and bet, but can't post messages.",
+      fields: (set, v) => (
+        <label className="adm-field">For how long
+          <select className="adm-select" value={v.hours ?? "24"} onChange={(e) => set("hours", e.target.value)}>
+            {[["1", "1 hour"], ["24", "1 day"], ["168", "7 days"], ["720", "30 days"], ["8760", "1 year"]].map(([h, l]) => <option key={h} value={h}>{l}</option>)}
+          </select>
+        </label>
+      ),
+      run: async (v) => { await api(`/admin/users/${u.id}/mute`, { hours: Number(v.hours ?? 24), reason: v.reason }); return "Muted in chat"; },
+    });
   const suspend = () => dialog.open(u.suspended
     ? { title: "Lift suspension", confirm: "Unsuspend", tone: "good", text: <>They'll be able to log in and bet again.{u.suspendedReason && <> Suspended for: {u.suspendedReason}</>}</>, run: async (v) => { await api(`/admin/users/${u.id}/unsuspend`, { reason: v.reason }); return "Suspension lifted"; } }
     : { title: `Suspend ${u.name}`, confirm: "Suspend", tone: "danger", text: "They'll be logged out and can't log in or bet until the suspension is lifted. Open bets still settle.", run: async (v) => { await api(`/admin/users/${u.id}/suspend`, { reason: v.reason }); return "Account suspended"; } });
@@ -620,6 +636,7 @@ function UserPage({ id, flash }: { id: string; flash: (m: string) => void }) {
           <button className="adm-btn primary" onClick={adjust}>Adjust balance</button>
           <button className={`adm-btn ${u.suspended ? "good" : "danger"}`} onClick={suspend}>{u.suspended ? "Unsuspend" : "Suspend"}</button>
           <button className="adm-btn" onClick={role}>{u.role === "ADMIN" ? "Remove admin" : "Make admin"}</button>
+          <button className={`adm-btn ${muted ? "good" : ""}`} onClick={mute}>{muted ? "Unmute in chat" : "Mute in chat"}</button>
           {u.role !== "ADMIN" && <button className="adm-btn danger" onClick={remove}>Delete account</button>}
         </>}
       </Head>
@@ -864,7 +881,7 @@ function MatchesPage({ flash }: { flash: (m: string) => void }) {
 
 // ---------- audit log ----------
 const ACTION_LABEL: Record<string, string> = {
-  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", IDENTITY_REVEAL: "Revealed identity", ARCHIVE_SEARCH: "Searched deleted accounts", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
+  USER_SUSPEND: "Suspended user", USER_DELETE: "Deleted account", IDENTITY_REVEAL: "Revealed identity", CHAT_DELETE: "Deleted chat message", CHAT_MUTE: "Muted in chat", CHAT_UNMUTE: "Unmuted in chat", ARCHIVE_SEARCH: "Searched deleted accounts", USER_UNSUSPEND: "Lifted suspension", BALANCE_ADJUST: "Adjusted balance", ROLE_GRANT: "Made admin", ROLE_REVOKE: "Removed admin",
   BET_VOID: "Voided bet", BET_SETTLE: "Settled bet", LEG_SETTLE: "Settled leg", MATCH_SUSPEND: "Suspended match", MATCH_UNSUSPEND: "Reopened match",
   MATCH_VOID: "Voided match bets", MATCH_RESULT: "Entered result",
 };
@@ -887,6 +904,46 @@ function AuditTable({ entries }: { entries: AuditEntry[] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+type ChatRow = { id: string; matchId: string; text: string; at: string; deleted: boolean; user: { id: string; customerNo: string; name: string; mutedUntil: string | null } };
+function ChatPage({ flash }: { flash: (m: string) => void }) {
+  const params = useSearchParams();
+  const router = useRouter();
+  const qs = params?.toString() ?? "";
+  const { data, error, reload } = useApi<{ total: number; pageSize: number; messages: ChatRow[] }>(`/admin/chat${qs ? `?${qs}` : ""}`);
+  const dialog = useDialog((m) => { flash(m); reload(); });
+  const remove = (c: ChatRow) => dialog.open({
+    title: "Delete message", confirm: "Delete", tone: "danger", text: <>“{c.text}” by {c.user.name}. It disappears from the match chat for everyone.</>,
+    run: async (v) => { await api(`/admin/chat/${c.id}/delete`, { reason: v.reason }); return "Message deleted"; },
+  });
+  return (
+    <>
+      <Head title="Chat" sub="Latest messages in match chats, newest first. Deleting and muting is saved in the audit log." />
+      {!data ? <Loading error={error} /> : (
+        <div className="adm-table-wrap">
+          <table className="adm-table">
+            <thead><tr><th>When</th><th>Player</th><th>Message</th><th>Match</th><th /></tr></thead>
+            <tbody>
+              {data.messages.map((c) => (
+                <tr key={c.id} style={c.deleted ? { opacity: 0.5 } : undefined}>
+                  <td>{when(c.at)}</td>
+                  <td><a href={`/office/users/${c.user.id}`} onClick={(e) => { e.preventDefault(); router.push(`/office/users/${c.user.id}`); }} style={{ fontWeight: 700 }}>{c.user.name}</a>
+                    {c.user.mutedUntil && new Date(c.user.mutedUntil) > new Date() && <> <Badge tone="red">MUTED</Badge></>}</td>
+                  <td style={{ whiteSpace: "normal", minWidth: 220 }}>{c.deleted ? <s>{c.text}</s> : c.text}</td>
+                  <td className="adm-mono">{c.matchId.replace(/^[a-z]+-/, "")}</td>
+                  <td>{c.deleted ? <Badge tone="gray">DELETED</Badge> : <button className="adm-btn sm danger" onClick={() => remove(c)}>Delete</button>}</td>
+                </tr>
+              ))}
+              {!data.messages.length && <tr><td colSpan={5} className="adm-empty">No chat messages yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data && <Pager total={data.total} pageSize={data.pageSize} />}
+      {dialog.node}
+    </>
   );
 }
 

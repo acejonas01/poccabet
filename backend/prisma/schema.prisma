@@ -37,6 +37,8 @@ model User {
   updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
   loginEvents   LoginEvent[]
   closedAccount ClosedAccount? // identity archive, kept after the account is deleted
+  chatMessages  ChatMessage[]
+  chatMutedUntil DateTime?    @map("chat_muted_until") // set by an admin: can read match chat but not post until then
 
   @@map("users")
 }
@@ -373,4 +375,22 @@ model ClosedAccount {
   @@index([phone])
   @@index([email])
   @@map("closed_accounts")
+}
+
+// Live chat on match pages. Everyone reads; logged-in players post (rate limited, links and phone
+// numbers blocked, bad words masked). Admins can delete messages and mute players (audited).
+// Messages are purged after 7 days.
+model ChatMessage {
+  id        String    @id @default(cuid())
+  matchId   String    @map("match_id") // feed match id, e.g. "sim-12202684"
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id])
+  text      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  deletedAt DateTime? @map("deleted_at")
+  deletedBy String?   @map("deleted_by") // admin id
+
+  @@index([matchId, createdAt])
+  @@index([createdAt])
+  @@map("chat_messages")
 }

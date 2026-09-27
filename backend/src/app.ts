@@ -10,6 +10,7 @@ import liveRoutes from "./routes/live";
 import picksRoutes from "./routes/picks";
 import meRoutes from "./routes/me";
 import adminRoutes from "./routes/admin";
+import chatRoutes from "./routes/chat";
 
 const app = express();
 
@@ -32,5 +33,6 @@ app.use("/api/live", liveRoutes);
 app.use("/api/picks", picksRoutes);
 app.use("/api/me", meRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/chat", chatRoutes);
 
 export default app;

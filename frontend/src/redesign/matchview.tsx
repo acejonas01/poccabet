@@ -2,23 +2,160 @@
 // on it, and a pitch showing what's happening now (attack, dangerous attack, ball safe, corner,
 // goal) or the half-time score. Built from the feed's per-minute momentum and events; the pitch
 // moves between plausible positions every few seconds (it's a picture of the play, not tracking).
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
+import { api, type ChatMessage } from "../api/client";
+import { useAuth } from "../context/AuthContext";
 import { type TCMatch, teamCode } from "./data";
+import { ChanceAndPicks, LiveStats, Timeline } from "./matchstats";
 import { ACCENT } from "./shared";
 
 const HOME = ACCENT;
 const AWAY = "#4C9EEB";
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
 
+type Panel = "pitch" | "stats" | "timeline" | "commentary" | "chat";
+const ic = (d: ReactNode) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+const PANELS: { id: Panel; label: string; icon: ReactNode }[] = [
+  { id: "pitch", label: "Match view", icon: ic(<><rect x="2.5" y="5" width="19" height="14" rx="1.5" /><path d="M12 5v14" /><circle cx="12" cy="12" r="2.6" /><path d="M2.5 9.5h3v5h-3M21.5 9.5h-3v5h3" /></>) },
+  { id: "stats", label: "Stats", icon: ic(<path d="M5 20V11M12 20V5M19 20v-6M3 20h18" />) },
+  { id: "timeline", label: "Timeline", icon: ic(<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />) },
+  { id: "commentary", label: "Commentary", icon: ic(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>) },
+  { id: "chat", label: "Chat", icon: ic(<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" />) },
+];
+
 export function MatchView({ m }: { m: TCMatch }) {
+  const [panel, setPanel] = useState<Panel>("pitch");
   return (
     <section aria-label="Match view" style={card}>
       {/* Capped width so it stays a sensible size in the wide desktop column. */}
       <div style={{ maxWidth: 560, margin: "0 auto" }}>
         <MomentumGraph m={m} />
-        <LivePitch m={m} />
+        {panel === "pitch" && <LivePitch m={m} />}
+        <div role="tablist" aria-label="Match view" style={{ display: "flex", margin: "0 12px", borderBottom: "1px solid var(--tc-line)" }}>
+          {PANELS.map((p) => (
+            <button key={p.id} role="tab" aria-selected={panel === p.id} aria-label={p.label} title={p.label} onClick={() => setPanel(p.id)} style={{
+              flex: 1, height: 46, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center",
+              color: panel === p.id ? "var(--tc-text)" : "var(--tc-label)", borderBottom: `2px solid ${panel === p.id ? ACCENT : "transparent"}`,
+            }}>{p.icon}</button>
+          ))}
+        </div>
+        <div style={{ padding: panel === "pitch" ? 0 : "14px 12px 12px" }}>
+          {panel === "stats" && <><LiveStats m={m} /><ChanceAndPicks m={m} /></>}
+          {panel === "timeline" && <Timeline m={m} />}
+          {panel === "commentary" && <Commentary m={m} />}
+          {panel === "chat" && <ChatPanel m={m} />}
+        </div>
       </div>
     </section>
+  );
+}
+
+// ---------- commentary: written from the match events ----------
+function Commentary({ m }: { m: TCMatch }) {
+  const minute = m.momentum.length;
+  const name = (side: "home" | "away") => (side === "home" ? m.home : m.away);
+  const lines: { minute: number; text: string; strong?: boolean }[] = [{ minute: 0, text: `Kick-off! ${m.home} v ${m.away} is under way.` }];
+  let hs = 0, as = 0;
+  let halfDone = false;
+  const half = () => {
+    if (halfDone || (minute < 45 && m.clock !== "HT")) return;
+    halfDone = true;
+    lines.push({ minute: 45, text: `Half time: ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
+    if (m.clock !== "HT" && minute > 45) lines.push({ minute: 46, text: "The second half is under way." });
+  };
+  for (const e of [...(m.events ?? [])].sort((a, b) => a.minute - b.minute)) {
+    if (e.minute > 45) half();
+    if (e.type === "goal") {
+      if (e.side === "home") hs++; else as++;
+      lines.push({ minute: e.minute, text: `GOAL! ${name(e.side)} score. ${m.home} ${hs}–${as} ${m.away}.`, strong: true });
+    } else if (e.type === "red") lines.push({ minute: e.minute, text: `Red card! ${name(e.side)} are down to ten men.`, strong: true });
+    else if (e.type === "yellow") lines.push({ minute: e.minute, text: `Yellow card for ${name(e.side)}.` });
+    else lines.push({ minute: e.minute, text: `Corner to ${name(e.side)}.` });
+  }
+  half();
+  return (
+    <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", maxHeight: 340, overflowY: "auto" }}>
+      {lines.reverse().map((l, i) => (
+        <li key={i} style={{ display: "flex", gap: 12, padding: "9px 0", borderTop: i ? "1px solid var(--tc-line)" : "none" }}>
+          <span style={{ width: 32, flexShrink: 0, fontSize: 13, fontWeight: 800, color: "var(--tc-soft)" }}>{l.minute}'</span>
+          <span style={{ flex: 1, fontSize: 14, fontWeight: l.strong ? 800 : 500, color: l.strong ? "var(--tc-text)" : "var(--tc-soft)" }}>{l.text}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// ---------- chat ----------
+// Everyone reads; logged-in players post. New messages are fetched every few seconds while the
+// chat is open and the tab is visible.
+function ChatPanel({ m }: { m: TCMatch }) {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<ChatMessage[] | null>(null);
+  const [text, setText] = useState("");
+  const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
+  const list = useRef<HTMLDivElement>(null);
+  const last = useRef<string | undefined>(undefined);
+
+  const add = (more: ChatMessage[]) => {
+    if (!more.length) return;
+    last.current = more[more.length - 1].at;
+    setMessages((cur) => {
+      const seen = new Set((cur ?? []).map((x) => x.id));
+      return [...(cur ?? []), ...more.filter((x) => !seen.has(x.id))].slice(-200);
+    });
+  };
+  useEffect(() => {
+    let live = true;
+    last.current = undefined;
+    setMessages(null);
+    api.getChat(m.id).then((r) => { if (live) { setMessages([]); add(r.messages); } }).catch(() => live && setMessages([]));
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      api.getChat(m.id, last.current).then((r) => live && add(r.messages)).catch(() => {});
+    }, 4000);
+    return () => { live = false; clearInterval(id); };
+  }, [m.id]);
+  // Keep the newest message in view.
+  useEffect(() => { const el = list.current; if (el) el.scrollTop = el.scrollHeight; }, [messages?.length]);
+
+  const send = async (e: FormEvent) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t || sending) return;
+    setSending(true); setError("");
+    try { add([await api.sendChat(m.id, t)]); setText(""); }
+    catch (err) { setError(err instanceof Error ? err.message : "Couldn't send"); }
+    finally { setSending(false); }
+  };
+  const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div ref={list} aria-live="polite" style={{ height: 300, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "4px 2px" }}>
+        {messages === null ? <p style={{ margin: "auto", fontSize: 13, color: "var(--tc-label)" }}>Loading chat…</p>
+          : !messages.length ? <p style={{ margin: "auto", fontSize: 13, color: "var(--tc-label)", textAlign: "center" }}>No messages yet. Say something about the match!</p>
+          : messages.map((x) => (
+            <div key={x.id} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 12, color: "var(--tc-label)" }}><strong style={{ color: ACCENT }}>{x.name}</strong> · {time(x.at)}</span>
+              <span style={{ fontSize: 14, lineHeight: 1.4, wordBreak: "break-word" }}>{x.text}</span>
+            </div>
+          ))}
+      </div>
+      {isAuthenticated ? (
+        <form onSubmit={send} style={{ display: "flex", gap: 8 }}>
+          <input value={text} onChange={(e) => setText(e.target.value)} maxLength={200} placeholder="Say something…" aria-label="Chat message"
+            style={{ flex: 1, minWidth: 0, height: 42, padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16, outline: "none" }} />
+          <button disabled={sending || !text.trim()} style={{ height: 42, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14, opacity: sending || !text.trim() ? 0.6 : 1 }}>Send</button>
+        </form>
+      ) : (
+        <button onClick={() => navigate("/login")} style={{ height: 42, borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontWeight: 800, fontSize: 14 }}>Log in to chat</button>
+      )}
+      {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: "#E5484D" }}>{error}</p>}
+      <p style={{ margin: 0, fontSize: 11.5, color: "var(--tc-label)" }}>Be respectful. No links or phone numbers. Poccabet staff will never ask for your password or money in chat.</p>
+    </div>
   );
 }
 

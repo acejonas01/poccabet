@@ -130,9 +130,9 @@ router.get("/stats", async (_req, res) => {
 });
 
 // ---------- users ----------
-const userRow = { id: true, customerNo: true, displayName: true, firstName: true, lastName: true, email: true, phone: true, role: true, suspendedAt: true, suspendedReason: true, deletedAt: true, createdAt: true, wallet: { select: { balance: true } }, _count: { select: { bets: true } } } as const;
+const userRow = { id: true, customerNo: true, chatMutedUntil: true, displayName: true, firstName: true, lastName: true, email: true, phone: true, role: true, suspendedAt: true, suspendedReason: true, deletedAt: true, createdAt: true, wallet: { select: { balance: true } }, _count: { select: { bets: true } } } as const;
 const userDto = (u: Prisma.UserGetPayload<{ select: typeof userRow }>) => ({
-  id: u.id, customerNo: u.customerNo, name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.displayName, email: u.email,
+  id: u.id, customerNo: u.customerNo, chatMutedUntil: u.chatMutedUntil, name: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.displayName, email: u.email,
   phone: u.phone ? formatNgPhone(u.phone) : null, role: u.role, suspended: !!u.suspendedAt, suspendedReason: u.suspendedReason,
   deleted: !!u.deletedAt, createdAt: u.createdAt, balance: toNaira(u.wallet?.balance ?? 0), bets: u._count.bets,
 });
@@ -556,6 +556,68 @@ router.get("/reports/players", async (req, res) => {
   try {
     const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 50));
     res.json({ rows: plain(await prisma.$queryRaw<Record<string, unknown>[]>`SELECT * FROM v_player_value WHERE bets > 0 ORDER BY stake_ngn DESC LIMIT ${limit}`) });
+  } catch (err) { fail(res, err); }
+});
+
+// ---------- match chat moderation ----------
+// Latest messages (all matches, or one), newest first, with who wrote them.
+router.get("/chat", async (req, res) => {
+  const p = page(req.query.page);
+  const matchId = req.query.matchId ? String(req.query.matchId) : undefined;
+  const where: Prisma.ChatMessageWhereInput = matchId ? { matchId } : {};
+  const [total, rows] = await Promise.all([
+    prisma.chatMessage.count({ where }),
+    prisma.chatMessage.findMany({
+      where, orderBy: { createdAt: "desc" }, skip: p * PAGE, take: PAGE,
+      include: { user: { select: { id: true, customerNo: true, displayName: true, firstName: true, lastName: true, chatMutedUntil: true } } },
+    }),
+  ]);
+  res.json({
+    total, page: p, pageSize: PAGE,
+    messages: rows.map((m) => ({
+      id: m.id, matchId: m.matchId, text: m.text, at: m.createdAt, deleted: !!m.deletedAt,
+      user: { id: m.user.id, customerNo: m.user.customerNo, name: [m.user.firstName, m.user.lastName].filter(Boolean).join(" ") || m.user.displayName, mutedUntil: m.user.chatMutedUntil },
+    })),
+  });
+});
+
+router.post("/chat/:id/delete", async (req: AuthedRequest, res) => {
+  try {
+    const why = reason.parse(req.body?.reason);
+    const id = String(req.params.id);
+    await prisma.$transaction(async (tx) => {
+      const m = await tx.chatMessage.findUnique({ where: { id } });
+      if (!m) throw new AdminError("NOT_FOUND", "Message not found", 404);
+      if (m.deletedAt) throw new AdminError("NO_CHANGE", "Already deleted", 409);
+      await tx.chatMessage.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: req.userId } });
+      await audit(tx, req, "CHAT_DELETE", "USER", m.userId, { reason: why, matchId: m.matchId, text: m.text });
+    });
+    res.json({ ok: true });
+  } catch (err) { fail(res, err); }
+});
+
+router.post("/users/:id/mute", async (req: AuthedRequest, res) => {
+  try {
+    const body = z.object({ hours: z.coerce.number().int().min(1).max(24 * 365), reason }).parse(req.body);
+    const id = String(req.params.id);
+    const until = new Date(Date.now() + body.hours * 3_600_000);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { chatMutedUntil: until } });
+      await audit(tx, req, "CHAT_MUTE", "USER", id, { hours: body.hours, until: until.toISOString(), reason: body.reason });
+    });
+    res.json({ ok: true, until });
+  } catch (err) { fail(res, err); }
+});
+
+router.post("/users/:id/unmute", async (req: AuthedRequest, res) => {
+  try {
+    const why = reason.parse(req.body?.reason);
+    const id = String(req.params.id);
+    await prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id }, data: { chatMutedUntil: null } });
+      await audit(tx, req, "CHAT_UNMUTE", "USER", id, { reason: why });
+    });
+    res.json({ ok: true });
   } catch (err) { fail(res, err); }
 });
 

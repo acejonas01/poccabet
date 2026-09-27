@@ -111,6 +111,10 @@ export const api = {
     request<{ simulated: boolean; winners: { id: string; player: string; amount: number; stake?: number; product: string; detail?: string; at: string }[] }>("/api/live/winners"),
   recordPick: (pick: Record<string, unknown>) =>
     request<{ ok: boolean }>("/api/picks", { method: "POST", body: JSON.stringify(pick) }),
+  getChat: (matchId: string, after?: string) =>
+    request<{ messages: ChatMessage[] }>(`/api/chat/${encodeURIComponent(matchId)}${after ? `?after=${encodeURIComponent(after)}` : ""}`),
+  sendChat: (matchId: string, text: string) =>
+    request<ChatMessage>(`/api/chat/${encodeURIComponent(matchId)}`, { method: "POST", body: JSON.stringify({ text }) }),
   getMatchPicks: (matchId: string) =>
     request<{ total: number; picks: { market: string; selection: string; count: number }[]; simulated?: boolean }>(`/api/picks/match/${encodeURIComponent(matchId)}`),
   getTopPick: () => request<{ top: any | null; totalToday: number }>("/api/picks/top"),
@@ -145,6 +149,8 @@ export const api = {
   placeLegacyBet: (data: { stake: number; outcomeIds: string[] }) =>
     request<{ bet: Bet }>("/api/bets", { method: "POST", body: JSON.stringify(data) }),
 };
+
+export interface ChatMessage { id: string; name: string; text: string; at: string }
 
 export interface Profile {
   id: string; customerNo: string; firstName: string | null; lastName: string | null; displayName: string;
