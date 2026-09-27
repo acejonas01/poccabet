@@ -1,7 +1,7 @@
 // Themes A (default) and B: the "Poccabet Homepage Redesign" layout. B uses lighter league headers.
 // Mobile (<900px): header, sections nav, Home / Live screens, fixed bottom nav, sheets.
 // Desktop: header with search, sports & top-leagues sidebar, main screen, bet-slip rail.
-import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { zoned } from "../lib/browser";
@@ -21,6 +21,35 @@ import { SearchResultsPage } from "./searchui";
 import "./redesign.css";
 
 
+// Back/Forward returns to where you were on that page (e.g. Featured matches on Home), instead of
+// keeping the scroll position of the page you came from. New pages still start at the top.
+function useScrollMemory(path: string) {
+  const positions = useRef(new Map<string, number>());
+  const current = useRef(path);
+  const popped = useRef(false);
+  useEffect(() => {
+    const onPop = () => { popped.current = true; };
+    let frame = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => positions.current.set(current.current, window.scrollY));
+    };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("scroll", onScroll); cancelAnimationFrame(frame); };
+  }, []);
+  useLayoutEffect(() => {
+    if (current.current === path) return;
+    current.current = path;
+    if (!popped.current) return;
+    popped.current = false;
+    const y = positions.current.get(path) ?? 0;
+    // Twice: once now, once after the page has laid out (images, lists).
+    window.scrollTo(0, y);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, y)));
+  }, [path]);
+}
+
 export function RedesignApp() {
   const desk = useIsDesktop();
   // Server pages guess the layout from the browser's user agent. If the guess doesn't fit the screen
@@ -33,6 +62,7 @@ export function RedesignApp() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, notice, clearNotice } = useAuth();
+  useScrollMemory(location.pathname + location.search);
 
   // Remembered until the browser tab is closed, so a reload lands where you were.
   const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
