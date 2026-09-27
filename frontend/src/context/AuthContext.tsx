@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api, type SignupDetails } from "../api/client";
-import { useDeviceState } from "../lib/browser";
+import { deferDeviceState, useDeviceState } from "../lib/browser";
 
 interface User {
   id: string;
@@ -14,6 +14,9 @@ interface AuthContextValue {
   balance: number;
   demo: boolean; // play-money wallet (simulation mode)
   isAuthenticated: boolean;
+  // False until the saved login has been read from this device (on server-rendered pages that's
+  // just after the first render). Pages that send logged-out visitors to /login wait for it.
+  ready: boolean;
   login: (phoneOrEmail: string, password: string) => Promise<void>;
   signupWithPhone: (data: SignupDetails & { verificationToken: string }) => Promise<void>;
   signup: (email: string, password: string, displayName: string) => Promise<void>;
@@ -36,6 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const stored = localStorage.getItem("user");
     return stored ? JSON.parse(stored) : null;
   }, null);
+  const [ready, setReady] = useState(() => !deferDeviceState());
+  useEffect(() => { setReady(true); }, []); // runs after useDeviceState has read the saved user
   const [balance, setBalance] = useState<number>(0);
   const [demo, setDemo] = useState(false);
   const [notice, setNotice] = useState<SessionNotice | null>(null);
@@ -120,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, balance, demo, isAuthenticated: !!user, login, signup, signupWithPhone, logout, resetPassword, refreshBalance, setBalance, updateUser, notice, clearNotice: () => setNotice(null) }}
+      value={{ user, balance, demo, isAuthenticated: !!user, ready, login, signup, signupWithPhone, logout, resetPassword, refreshBalance, setBalance, updateUser, notice, clearNotice: () => setNotice(null) }}
     >
       {children}
     </AuthContext.Provider>

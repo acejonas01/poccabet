@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import authRoutes from "./routes/auth";
-import walletRoutes from "./routes/wallet";
+import walletRoutes, { paystackWebhook } from "./routes/wallet";
 import eventsRoutes from "./routes/events";
 import betsRoutes from "./routes/bets";
 import oddsRoutes from "./routes/odds";
@@ -18,6 +18,8 @@ const app = express();
 const allowedOrigins = process.env.FRONTEND_ORIGIN?.split(",").map((o) => o.trim());
 app.use(helmet()); // security headers (no sniffing, no framing, HSTS…)
 app.use(cors(allowedOrigins ? { origin: allowedOrigins } : undefined));
+// Paystack's webhook needs the exact bytes it sent (signature check), so it goes before the JSON parser.
+app.post("/api/payments/paystack/webhook", express.raw({ type: "application/json", limit: "100kb" }), paystackWebhook);
 app.use(express.json({ limit: "100kb" }));
 
 app.get("/health", (_req, res) => {

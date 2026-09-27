@@ -273,6 +273,68 @@ function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose:
   );
 }
 
+// ---------- deposit (Paystack) ----------
+// Pick an amount, then pay on Paystack's own page; Paystack sends the player back to
+// /account?deposit=<reference>, where the page checks the payment and credits the wallet.
+const QUICK_AMOUNTS = [500, 1000, 2000, 5000, 10000];
+function DepositSheet({ onClose }: { onClose: () => void }) {
+  const [info, setInfo] = useState<Awaited<ReturnType<typeof api.getDepositInfo>> | null>(null);
+  const [amount, setAmount] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => { api.getDepositInfo().then(setInfo).catch((e) => setError(errText(e))); }, []);
+  const value = Number(amount.replace(/[^0-9]/g, "")) || 0;
+  const ok = !!info?.enabled && value >= info.min && value <= info.max;
+  async function pay(e: FormEvent) {
+    e.preventDefault();
+    if (!info) return;
+    if (value < info.min || value > info.max) return setError(`Enter an amount from ₦${info.min.toLocaleString("en-US")} to ₦${info.max.toLocaleString("en-US")}`);
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.startDeposit(value);
+      window.location.href = r.authorizationUrl; // Paystack's secure payment page
+    } catch (err) {
+      setError(errText(err));
+      setBusy(false);
+    }
+  }
+  return (
+    <Sheet label="Deposit" onClose={onClose}>
+      <SheetTitle title="Deposit" onClose={onClose} />
+      {!info && !error ? <Loader1X2 label="Loading…" compact />
+        : info && !info.enabled ? <p style={{ ...sheetBody, margin: 0, color: "var(--tc-label)" }}>Deposits aren't available yet. Please check back soon.</p>
+        : (
+          <form onSubmit={pay} style={sheetBody}>
+            {info?.testMode && (
+              <p style={{ margin: 0, padding: "10px 12px", borderRadius: 10, background: "rgba(245, 197, 24, 0.12)", fontSize: 12.5, lineHeight: 1.5, color: "var(--tc-soft)" }}>
+                <strong style={{ color: ACCENT }}>Test mode.</strong> No real money moves. On the Paystack page use the test card <strong>4084 0840 8408 4081</strong>, any future expiry date and CVV <strong>408</strong>.
+              </p>
+            )}
+            <Field label="Amount">
+              <span style={{ position: "relative", display: "block" }}>
+                <span aria-hidden="true" style={{ position: "absolute", left: 14, top: 0, bottom: 0, display: "flex", alignItems: "center", fontSize: 17, fontWeight: 800, color: "var(--tc-muted)" }}>₦</span>
+                <input inputMode="numeric" autoComplete="off" placeholder="0" value={amount ? value.toLocaleString("en-US") : ""}
+                  onChange={(e) => { setAmount(e.target.value); setError(null); }} style={{ ...formInput(false), paddingLeft: 34, fontSize: 17, fontWeight: 800 }} />
+              </span>
+            </Field>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {QUICK_AMOUNTS.map((q) => (
+                <button key={q} type="button" onClick={() => { setAmount(String(q)); setError(null); }} style={{
+                  height: 34, padding: "0 12px", borderRadius: 17, border: `1px solid ${value === q ? ACCENT : "var(--tc-outline-2)"}`,
+                  background: value === q ? "rgba(245, 197, 24, 0.12)" : "transparent", color: value === q ? ACCENT : "var(--tc-text)", fontSize: 13, fontWeight: 800,
+                }}>₦{q.toLocaleString("en-US")}</button>
+              ))}
+            </div>
+            {info && <span style={{ fontSize: 12, color: "var(--tc-label)" }}>From ₦{info.min.toLocaleString("en-US")} to ₦{info.max.toLocaleString("en-US")}. You'll pay on Paystack's secure page by card, bank transfer or USSD.</span>}
+            {errorLine(error)}
+            <button type="submit" disabled={!ok || busy} style={primaryBtn(ok && !busy)}>{busy ? "OPENING PAYSTACK…" : value ? `PAY ₦${value.toLocaleString("en-US")}` : "PAY"}</button>
+          </form>
+        )}
+    </Sheet>
+  );
+}
+
 const TX_LABEL: Record<string, string> = {
   BET_STAKE: "Bet placed", BET_PAYOUT: "Bet won", BET_REFUND: "Bet refunded", DEPOSIT: "Deposit",
   WITHDRAWAL: "Withdrawal", BONUS: "Bonus", DEMO_TOPUP: "Demo funds",
@@ -296,8 +358,10 @@ function TransactionsSheet({ onClose }: { onClose: () => void }) {
                   <span style={{ fontSize: 12, color: "var(--tc-label)" }}>{new Date(t.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
                 </span>
                 <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: t.amount >= 0 ? GREEN : "var(--tc-text)" }}>{t.amount >= 0 ? "+" : "−"}{naira(Math.abs(t.amount))}</span>
-                  {t.balanceAfter !== null && <span style={{ fontSize: 11, color: "var(--tc-label)" }}>Balance {naira(t.balanceAfter)}</span>}
+                  <span style={{ fontSize: 15, fontWeight: 800, color: t.status !== "COMPLETED" ? "var(--tc-label)" : t.amount >= 0 ? GREEN : "var(--tc-text)", textDecoration: t.status === "FAILED" ? "line-through" : "none" }}>{t.amount >= 0 ? "+" : "−"}{naira(Math.abs(t.amount))}</span>
+                  {t.status === "PENDING" ? <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT }}>Pending</span>
+                    : t.status === "FAILED" ? <span style={{ fontSize: 11, fontWeight: 800, color: RED }}>Not completed</span>
+                    : t.balanceAfter !== null && <span style={{ fontSize: 11, color: "var(--tc-label)" }}>Balance {naira(t.balanceAfter)}</span>}
                 </span>
               </div>
             ))}
@@ -309,21 +373,44 @@ function TransactionsSheet({ onClose }: { onClose: () => void }) {
 // ---------- the page ----------
 export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   const navigate = useNavigate();
-  const { isAuthenticated, logout, setBalance, updateUser } = useAuth();
+  const { isAuthenticated, ready, logout, setBalance, updateUser } = useAuth();
   const { setTheme } = useTheme();
   const [me, setMe] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | null>(null);
+  const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | "deposit" | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const loading = useMinLoading(!me && !error);
 
   useEffect(() => {
+    if (!ready) return; // saved login not read yet (a fresh page load, e.g. back from Paystack)
     if (!isAuthenticated) { navigate("/login", { replace: true }); return; }
     api.getMe().then(setMe).catch((err) => {
       if (err instanceof ApiError && err.status === 401) { logout(); navigate("/login", { replace: true }); }
       else setError(errText(err));
     });
-  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back from Paystack (/account?deposit=<reference>): confirm the payment, then drop it from the address.
+  useEffect(() => {
+    if (!ready || !isAuthenticated) return;
+    const ref = new URLSearchParams(window.location.search).get("deposit");
+    if (!ref) return;
+    window.history.replaceState(window.history.state, "", window.location.pathname);
+    setNote("Confirming your deposit…");
+    const check = (tries: number): void => {
+      api.checkDeposit(ref).then((r) => {
+        if (r.status === "COMPLETED") {
+          setNote(`${naira(r.amount ?? 0)} added to your wallet.`);
+          if (typeof r.balance === "number") setBalance(r.balance);
+          // Fresh profile + header balance: the page's first loads may have raced the credit.
+          api.getMe().then((p) => { setMe(p); setBalance(p.balance); }).catch(() => {});
+        } else if (r.status === "PENDING" && tries > 0) setTimeout(() => check(tries - 1), 3000); // Paystack may still be finishing
+        else if (r.status === "PENDING") setNote("Your payment hasn't been confirmed yet. If you paid, it will show in your wallet shortly.");
+        else setNote("The deposit wasn't completed, so nothing was taken from you.");
+      }).catch((err) => setNote(errText(err)));
+    };
+    check(3);
+  }, [isAuthenticated, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saved = (p: Profile) => {
     setMe(p);
@@ -395,7 +482,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
             <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5 }}>{naira(me.balance)}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {action("Deposit", <DepositIcon />, undefined, true)}
+            {action("Deposit", <DepositIcon />, () => setSheet("deposit"))}
             {action("Withdraw", <WithdrawIcon />, undefined, true)}
             {action("Transactions", <ListIcon />, () => setSheet("transactions"))}
           </div>
@@ -454,6 +541,7 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}
       {sheet === "email" && <VerifyEmailSheet me={me} onClose={() => setSheet(null)} onVerified={saved} />}
       {sheet === "password" && <PasswordSheet onClose={() => setSheet(null)} />}
+      {sheet === "deposit" && <DepositSheet onClose={() => setSheet(null)} />}
       {sheet === "transactions" && <TransactionsSheet onClose={() => setSheet(null)} />}
       {sheet === "delete" && <DeleteSheet onClose={() => setSheet(null)} onDeleted={() => { logout(); navigate("/", { replace: true }); }} />}
     </div>

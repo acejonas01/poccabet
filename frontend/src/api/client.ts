@@ -95,6 +95,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getWallet: () => request<{ balance: number; demo?: boolean }>("/api/wallet"),
+  // Deposits through Paystack: the panel's settings, start (→ Paystack page), and the check on return.
+  getDepositInfo: () => request<{ enabled: boolean; testMode: boolean; min: number; max: number }>("/api/wallet/deposit"),
+  startDeposit: (amount: number) =>
+    request<{ reference: string; authorizationUrl: string }>("/api/wallet/deposit", { method: "POST", body: JSON.stringify({ amount, returnTo: window.location.origin }) }),
+  checkDeposit: (reference: string) =>
+    request<{ reference: string; status: "COMPLETED" | "PENDING" | "FAILED" | "UNKNOWN"; amount?: number; balance?: number | null }>(`/api/wallet/deposit/${encodeURIComponent(reference)}`),
   claimBonus: () => request<Profile>("/api/me/bonus", { method: "POST" }),
   getEvents: () => request<{ events: any[] }>("/api/events"),
   getLiveOdds: (sport?: string) =>
