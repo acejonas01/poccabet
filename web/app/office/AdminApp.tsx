@@ -61,6 +61,9 @@ export function AdminApp() {
   const [me, setMe] = useState<{ id: string; displayName: string; mode: string } | null>(null);
   const [state, setState] = useState<"loading" | "login" | "denied" | "ok">("loading");
   const [toast, setToast] = useState("");
+  const [menu, setMenu] = useState(false); // phones: the sidebar slides in from the left
+  const route = path.join("/");
+  useEffect(() => setMenu(false), [route]);
 
   const check = useCallback(() => {
     if (!token()) return setState("login");
@@ -102,7 +105,15 @@ export function AdminApp() {
 
   return (
     <div className="adm">
-      <aside className="adm-side">
+      <header className="adm-top">
+        <button className="adm-menu-btn" aria-label="Menu" aria-expanded={menu} onClick={() => setMenu(true)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+        </button>
+        <div className="adm-logo">Pocca<span>bet</span><small>ADMIN</small></div>
+        <Badge tone={me?.mode === "live" ? "green" : "yellow"}>{me?.mode === "live" ? "LIVE" : "SIM"}</Badge>
+      </header>
+      {menu && <div className="adm-scrim" onClick={() => setMenu(false)} />}
+      <aside className={`adm-side${menu ? " open" : ""}`}>
         <div className="adm-logo">Pocca<span>bet</span><small>ADMIN</small></div>
         {NAV.map((n) => {
           const on = n.href === "/office" ? !section : n.href === `/office/${section}`;
@@ -191,8 +202,8 @@ function SearchBox({ placeholder }: { placeholder: string }) {
   const [text, setText] = useState(q);
   useEffect(() => setText(q), [q]);
   return (
-    <form onSubmit={(e) => { e.preventDefault(); setQ(text.trim()); }} style={{ display: "flex", gap: 8 }}>
-      <input className="adm-input" style={{ width: 300 }} value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} />
+    <form className="adm-searchform" onSubmit={(e) => { e.preventDefault(); setQ(text.trim()); }}>
+      <input className="adm-input adm-search" value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} />
       <button className="adm-btn">Search</button>
     </form>
   );
@@ -683,7 +694,7 @@ function MatchesPage({ flash }: { flash: (m: string) => void }) {
     title: `Enter result: ${name(m)}`, confirm: "Settle from this score", tone: "primary",
     text: "Grades every open leg on this match from the final score (half-time score is needed for half-time markets).",
     fields: (set, v) => (
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: 10 }}>
         {[["home", `${m.home} (full time)`], ["away", `${m.away} (full time)`], ["htHome", "Home at half time (optional)"], ["htAway", "Away at half time (optional)"]].map(([k, label]) => (
           <label key={k} className="adm-field">{label}<input className="adm-input" inputMode="numeric" value={v[k] ?? ""} onChange={(e) => set(k, e.target.value.replace(/\D/g, ""))} required={k === "home" || k === "away"} /></label>
         ))}
@@ -926,7 +937,7 @@ function ReportsPage() {
             <Stat k="Paid out" v={naira(sum("payouts_ngn"))} s={`Bonuses ${naira(sum("bonuses_ngn"))}`} />
             <Stat k="New players" v={sum("signups").toLocaleString()} s={`Deposits ${naira(sum("deposits_ngn"))} · withdrawals ${naira(sum("withdrawals_ngn"))}`} />
           </div>
-          <div className="adm-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+          <div className="adm-section" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: 12 }}>
             <div className="adm-card"><h2 style={{ fontSize: 15, margin: "0 0 12px" }}>Staked per day</h2><DayBars rows={rows} k="stake_ngn" color="#F5C518" /></div>
             <div className="adm-card"><h2 style={{ fontSize: 15, margin: "0 0 12px" }}>GGR per day</h2><DayBars rows={rows} k="ggr_ngn" color="#2AB572" /></div>
           </div>

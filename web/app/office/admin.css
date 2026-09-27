@@ -91,12 +91,68 @@ a.adm-btn { display: inline-flex; align-items: center; text-decoration: none; }
 
 .adm-login { margin: auto; width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 14px; padding: 24px; }
 
+/* search box in page headers */
+.adm-searchform { display: flex; gap: 8px; }
+.adm-search { width: 300px; }
+
+/* phone top bar (hidden on wide screens) */
+.adm-top { display: none; }
+.adm-scrim { display: none; }
+
+/* ---------- phones and small tablets ---------- */
 @media (max-width: 900px) {
   .adm { flex-direction: column; }
-  .adm-side { width: 100%; height: auto; position: static; flex-direction: row; flex-wrap: wrap; align-items: center; padding: 10px; }
-  .adm-logo { padding: 0 8px; font-size: 24px; }
-  .adm-side-foot { display: none; }
-  .adm-main { padding: 16px; }
+  .adm-top {
+    display: flex; align-items: center; gap: 8px; position: sticky; top: 0; z-index: 40; height: 56px; padding: 0 12px 0 4px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  .adm-top .adm-logo { padding: 0; font-size: 24px; flex: 1; }
+  .adm-menu-btn { width: 44px; height: 44px; border: none; background: transparent; color: var(--text); display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+  /* sidebar becomes a drawer */
+  .adm-side {
+    position: fixed; top: 0; left: 0; bottom: 0; height: auto; width: min(280px, 84vw); z-index: 70; overflow-y: auto;
+    transform: translateX(-100%); transition: transform 0.2s ease-out; box-shadow: 8px 0 32px rgba(0, 0, 0, 0.4);
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+  .adm-side.open { transform: none; }
+  .adm-nav { height: 46px; font-size: 15px; }
+  .adm-scrim { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(5, 8, 10, 0.6); }
+
+  .adm-main { padding: 16px 14px 40px; }
+  .adm-head { margin-bottom: 16px; gap: 12px; }
+  .adm-head > div:first-child { flex: 1 1 100%; }
+  .adm-head h1 { font-size: 20px; }
+  .adm-actions { width: 100%; }
+  .adm-searchform { width: 100%; }
+  .adm-search { width: auto; flex: 1; min-width: 0; font-size: 16px; } /* 16px stops iPhone zooming in */
+  .adm-input, .adm-select, .adm-textarea { font-size: 16px; }
+
+  /* stat cards two to a row */
+  .adm-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .adm-card { padding: 14px; }
+  .adm-stat .v { font-size: 20px; }
+  .adm-kv { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+
+  /* tab rows scroll sideways instead of wrapping */
+  .adm-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .adm-tabs::-webkit-scrollbar { display: none; }
+  .adm-tab { flex-shrink: 0; height: 34px; }
+
+  /* tables scroll sideways; the first column stays put */
+  .adm-table-wrap { -webkit-overflow-scrolling: touch; }
+  .adm-table { font-size: 13px; }
+  .adm-table th, .adm-table td { padding: 10px; white-space: nowrap; }
+  .adm-table th:first-child, .adm-table td:first-child { position: sticky; left: 0; background: var(--card); z-index: 1; box-shadow: 1px 0 0 var(--line); }
+  .adm-table tr.click:hover td:first-child { background: var(--raise); }
+
+  .adm-bars { gap: 3px; }
+  .adm-dialog { padding: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+  .adm-btn { height: 40px; }
+  .adm-btn.sm { height: 34px; }
+  .adm-toast { left: 12px; right: 12px; transform: none; text-align: center; bottom: calc(16px + env(safe-area-inset-bottom)); }
+}
+@media (max-width: 360px) {
+  .adm-grid, .adm-kv { grid-template-columns: 1fr; }
 }
 
 /* dashboard charts */
