@@ -14,14 +14,16 @@ const HOME = ACCENT;
 const AWAY = "#4C9EEB";
 const card: CSSProperties = { background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden" };
 
-type Panel = "pitch" | "stats" | "timeline" | "commentary" | "chat";
+type Panel = "pitch" | "stats" | "timeline" | "commentary" | "lineups";
+const JERSEY = <path d="M8.5 3.5 4 5.5 2.5 10l3 1.2V20.5h13v-9.3l3-1.2L20 5.5l-4.5-2a3.6 3.6 0 0 1-7 0z" />;
+const CHAT_ICON = <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" />;
 const ic = (d: ReactNode) => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
 const PANELS: { id: Panel; label: string; icon: ReactNode }[] = [
   { id: "pitch", label: "Match view", icon: ic(<><rect x="2.5" y="5" width="19" height="14" rx="1.5" /><path d="M12 5v14" /><circle cx="12" cy="12" r="2.6" /><path d="M2.5 9.5h3v5h-3M21.5 9.5h-3v5h3" /></>) },
   { id: "stats", label: "Stats", icon: ic(<path d="M5 20V11M12 20V5M19 20v-6M3 20h18" />) },
   { id: "timeline", label: "Timeline", icon: ic(<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01" />) },
   { id: "commentary", label: "Commentary", icon: ic(<><rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5 11a7 7 0 0 0 14 0M12 18v3" /></>) },
-  { id: "chat", label: "Chat", icon: ic(<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1.1-4.4A8 8 0 1 1 21 12z" />) },
+  { id: "lineups", label: "Line-ups", icon: ic(JERSEY) },
 ];
 
 export function MatchView({ m }: { m: TCMatch }) {
@@ -44,7 +46,7 @@ export function MatchView({ m }: { m: TCMatch }) {
           {panel === "stats" && <><LiveStats m={m} /><ChanceAndPicks m={m} /></>}
           {panel === "timeline" && <Timeline m={m} />}
           {panel === "commentary" && <Commentary m={m} />}
-          {panel === "chat" && <ChatPanel m={m} />}
+          {panel === "lineups" && <Lineups m={m} />}
         </div>
       </div>
     </section>
@@ -83,6 +85,47 @@ function Commentary({ m }: { m: TCMatch }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+// ---------- line-ups ----------
+// Needs official team sheets from a data provider; until then say so rather than invent players.
+function Lineups({ m }: { m: TCMatch }) {
+  const side = (name: string, color: string) => (
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <svg width="40" height="40" viewBox="0 0 24 24" fill={color} stroke={color} strokeWidth="1.2" strokeLinejoin="round" aria-hidden="true">{JERSEY}</svg>
+      <span style={{ maxWidth: "100%", fontSize: 14, fontWeight: 800, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name}</span>
+    </div>
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "6px 0" }}>
+      <div style={{ display: "flex", gap: 12 }}>{side(m.home, HOME)}{side(m.away, AWAY)}</div>
+      <p style={{ margin: 0, fontSize: 13, color: "var(--tc-label)", textAlign: "center" }}>Line-ups aren't available for this match yet.</p>
+    </div>
+  );
+}
+
+// ---------- live chat: its own card under the match view (like Bet9ja) ----------
+export function LiveChat({ m }: { m: TCMatch }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section aria-label="Live chat" style={{ ...card, padding: 12 }}>
+      <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: open ? 12 : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Live chat</span>
+          <button onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{
+            height: 36, padding: "0 14px 0 6px", borderRadius: 18, border: "none", background: ACCENT, color: "#13171C",
+            display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 800, flexShrink: 0,
+          }}>
+            <span style={{ width: 26, height: 26, borderRadius: 13, background: "#13171C", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{CHAT_ICON}</svg>
+            </span>
+            {open ? "Close chat" : "Open chat"}
+          </button>
+        </div>
+        {open && <ChatPanel m={m} />}
+      </div>
+    </section>
   );
 }
 

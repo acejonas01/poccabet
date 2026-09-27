@@ -7,7 +7,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { type TCMatch, codeFromMatchSlug, dayLabel, hhmm, leagueSlug, matchCode, matchHref } from "./data";
 import { CheckIcon, ChevronLeft, ChevronRight, ShareIcon } from "./icons";
 import { Crest, Flag } from "./media";
-import { MatchView } from "./matchview";
+import { LiveChat, MatchView } from "./matchview";
 import { ChanceAndPicks, LiveStats, Timeline } from "./matchstats";
 import { ACCENT, Loader1X2, MatchMarkets, canGoBack, publicOrigin, shareText, useMinLoading } from "./shared";
 
@@ -61,8 +61,9 @@ export function MatchPage({ matches, loaded, desktop = false }: { matches: TCMat
 
       <MatchHeader m={m} />
       {m.live && (m.momentum?.length ?? 0) > 0 ? <>
-        {/* Live: match view with Pitch / Stats / Timeline / Commentary / Chat, then the markets. */}
+        {/* Live: match view with Pitch / Stats / Timeline / Commentary / Line-ups, live chat, then the markets. */}
         <MatchView m={m} />
+        <LiveChat m={m} />
         <div style={{ ...card, padding: 16 }}><MatchMarkets m={m} desktop={desktop} /></div>
       </> : <>
         <div role="tablist" style={{ display: "flex", borderBottom: "1px solid var(--tc-line)" }}>
