@@ -132,8 +132,9 @@ export function BottomNav({ active, liveCount, onHome, onLive, onSlip, onMyBets,
     );
   };
   return (
-    <nav aria-label="Main" style={{
-      position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, display: "flex", alignItems: "stretch",
+    // tc-bottom-nav: slides away while a match's live chat is open (redesign.css, .tc-chat-open).
+    <nav aria-label="Main" className="tc-bottom-nav" style={{
+      position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 40, display: "flex", alignItems: "stretch", transition: "transform .2s ease",
       // No extra bottom padding on purpose, but keep env(safe-area-inset-bottom): it adds the
       // home-bar space on phones when the site runs edge to edge (e.g. installed as an app).
       padding: "0 4px env(safe-area-inset-bottom)", background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)", boxShadow: "0 -8px 24px rgba(0,0,0,0.35)",

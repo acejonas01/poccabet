@@ -109,6 +109,12 @@ function Lineups({ m }: { m: TCMatch }) {
 // ---------- live chat: its own card under the match view (like Bet9ja) ----------
 export function LiveChat({ m }: { m: TCMatch }) {
   const [open, setOpen] = useState(false);
+  // Hide the phone's bottom nav while chatting, so it doesn't cover the message box.
+  useEffect(() => {
+    if (!open) return;
+    document.documentElement.classList.add("tc-chat-open");
+    return () => document.documentElement.classList.remove("tc-chat-open");
+  }, [open]);
   return (
     <section aria-label="Live chat" style={{ ...card, padding: 12 }}>
       <div style={{ maxWidth: 560, margin: "0 auto", display: "flex", flexDirection: "column", gap: open ? 12 : 0 }}>
