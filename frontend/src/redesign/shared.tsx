@@ -756,11 +756,24 @@ export function DemoTag() {
 const MARKET_GROUPS: { id: string; title: string }[] = [
   { id: "MAIN", title: "Main" }, { id: "GOALS", title: "Goals" }, { id: "HANDICAP", title: "Handicap" }, { id: "HALVES", title: "Halves" },
 ];
+// Phones' match page: a sticky bar of market tabs (like BetKing's Main · Over/Under · Goals …).
+const MARKET_TABS: { id: string; label: string; markets?: string[] }[] = [
+  { id: "all", label: "All" },
+  { id: "main", label: "Main", markets: ["1x2", "dc", "dnb"] },
+  { id: "ou", label: "Over/Under", markets: ["ou15", "ou", "ou35"] },
+  { id: "goals", label: "Goals", markets: ["gg", "oe"] },
+  { id: "hc", label: "Handicap", markets: ["hc"] },
+  { id: "cs", label: "Correct score", markets: ["cs"] },
+  { id: "ht", label: "1st half", markets: ["ht"] },
+];
 // section: phones' match page — each market is its own full-width section (style given by the
-// page) with a gutter between, and can be folded away, like BetKing. Otherwise one grouped list.
+// page) with a gutter between, and can be folded away, like BetKing; a sticky tab bar on top
+// shows one kind of market at a time. Otherwise one grouped list.
 export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desktop?: boolean; section?: CSSProperties }) {
   const { isOn, pick } = usePicker();
   const [folded, setFolded] = useState<Set<string>>(new Set());
+  const [tab, setTab] = useState("all");
+  const top = useRef<HTMLDivElement>(null);
   const all = deriveOdds(m.o, m.ou);
   const byGroup = (g: string) => [...MK, CORRECT_SCORE].filter((mk) => mk.group === g);
   const grid = (mk: (typeof MK)[number]) => (
@@ -784,9 +797,30 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
   );
   if (section) {
     const toggle = (id: string) => setFolded((f) => { const n = new Set(f); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+    const only = MARKET_TABS.find((t) => t.id === tab)?.markets;
+    // Switching tabs while scrolled down the markets: bring the first one back up under the bar.
+    const choose = (id: string) => {
+      setTab(id);
+      const el = top.current;
+      if (!el) return;
+      const header = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--tc-header-h")) || 69;
+      const y = el.getBoundingClientRect().top + window.scrollY - header + 8; // 8 = the bar's top margin
+      if (window.scrollY > y) window.scrollTo(0, y);
+    };
     return (
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {MARKET_GROUPS.flatMap((g) => byGroup(g.id)).map((mk) => {
+      <div ref={top} style={{ display: "flex", flexDirection: "column" }}>
+        <div role="tablist" aria-label="Markets" className="tc-hscroll" style={{
+          position: "sticky", top: "var(--tc-header-h, 69px)", zIndex: 15, margin: "8px -16px 0", padding: "0 8px",
+          display: "flex", overflowX: "auto", background: "var(--tc-card)", borderBottom: "0.5px solid var(--tc-line)",
+        }}>
+          {MARKET_TABS.map((t) => (
+            <button key={t.id} role="tab" aria-selected={tab === t.id} onClick={() => choose(t.id)} style={{
+              flexShrink: 0, height: 44, padding: "0 12px", border: "none", background: "transparent", whiteSpace: "nowrap",
+              borderBottom: `2px solid ${tab === t.id ? ACCENT : "transparent"}`, color: tab === t.id ? "var(--tc-text)" : "var(--tc-muted)", fontSize: 14, fontWeight: tab === t.id ? 800 : 600,
+            }}>{t.label}</button>
+          ))}
+        </div>
+        {MARKET_GROUPS.flatMap((g) => byGroup(g.id)).filter((mk) => !only || only.includes(mk.id)).map((mk) => {
           const open = !folded.has(mk.id);
           return (
             <section key={mk.id} aria-label={mk.label} style={{ ...section, padding: open ? "4px 16px 16px" : "4px 16px" }}>
