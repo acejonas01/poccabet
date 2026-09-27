@@ -788,7 +788,8 @@ export function MatchMarkets({ m, desktop = false, section }: { m: TCMatch; desk
               height: section ? 44 : 48, borderRadius: 8, border: "none", display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "0 12px", gap: 8, background: !v ? "var(--tc-panel)" : on ? ACCENT : "var(--tc-odd)", color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-text)",
             }}>
-            <span style={{ fontSize: 12, fontWeight: 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
+            {/* Selection label (1 / X / 2, Over…): brighter and a touch bigger on the phone match page */}
+            <span style={{ fontSize: section ? 13 : 12, fontWeight: section ? 800 : 700, color: !v ? "var(--tc-faint)" : on ? "#13171C" : section ? "var(--tc-soft-2)" : "var(--tc-muted)", whiteSpace: "nowrap" }}>{c}</span>
             {v ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 19, fontWeight: 700 }}>{v.toFixed(2)}</span> : <LockIcon size={15} />}
           </button>
         );
