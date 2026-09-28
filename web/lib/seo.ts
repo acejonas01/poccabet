@@ -29,8 +29,8 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
   if (!first) {
     const next = feed?.upcoming?.slice(0, 3).map((e: any) => ({ home: e.homeTeam, away: e.awayTeam })) ?? [];
     return base(
-      `${BRAND} — Football betting odds, live scores & more`,
-      `Bet on today's football with ${BRAND}: live odds, in-play scores, accumulators and booking codes.${next.length ? ` Up next: ${fixtureLine(next)}.` : ""}`,
+      `${BRAND} — Bet Smarter: Top Odds, Live Betting, Fast Payouts`,
+      `Bet on football, basketball and more with top odds, live betting and booking codes. Premier League, La Liga, NPFL and every big match, all in one place. 18+.${next.length ? ` Up next: ${fixtureLine(next)}.` : ""}`,
       true,
       ["Football betting odds & live scores", next.length ? `Up next: ${fixtureLine(next.slice(0, 2))}` : "Live odds, in-play scores and booking codes"],
     );
