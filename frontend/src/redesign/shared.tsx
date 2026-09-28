@@ -432,15 +432,16 @@ const iconBtn: CSSProperties = {
 export function CodeRow({ code, share, ticket = false }: { code: string; share: { text: string; url?: string }; ticket?: boolean }) {
   const [done, setDone] = useState<"copy" | "share" | null>(null);
   const flash = (what: "copy" | "share") => { setDone(what); setTimeout(() => setDone(null), 1600); };
+  const shown = ticket ? formatTicket(code) : code; // copied as shown: "PB4817-2093-6651"
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {ticket
-        ? <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)", userSelect: "all" }}>{formatTicket(code)}</span>
+        ? <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)", userSelect: "all" }}>{shown}</span>
         : <span style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, letterSpacing: 2, lineHeight: 1, userSelect: "all" }}>{code}</span>}
-      <button aria-label={`Copy ${code}`} title="Copy" onClick={async () => { if (await copyText(code)) flash("copy"); }} style={iconBtn}>
+      <button aria-label={`Copy ${shown}`} title="Copy" onClick={async () => { if (await copyText(shown)) flash("copy"); }} style={iconBtn}>
         {done === "copy" ? <CheckIcon size={18} style={{ color: "#2AB572" }} /> : <CopyIcon />}
       </button>
-      <button aria-label={`Share ${code}`} title="Share" onClick={async () => { if ((await shareText(share.text, share.url)) !== "failed") flash("share"); }} style={{ ...iconBtn, background: ACCENT, border: "none", color: "#13171C" }}>
+      <button aria-label={`Share ${shown}`} title="Share" onClick={async () => { if ((await shareText(share.text, share.url)) !== "failed") flash("share"); }} style={{ ...iconBtn, background: ACCENT, border: "none", color: "#13171C" }}>
         {done === "share" ? <CheckIcon size={18} /> : <ShareIcon />}
       </button>
     </div>
@@ -494,7 +495,7 @@ function CodePopup({ data, onClose, onViewBets }: { data: CodeCardData; onClose:
 
           {one && (
             <div style={{ alignSelf: "stretch", display: "flex", gap: 10, marginTop: 12 }}>
-              <button onClick={async () => { if (await copyText(one.code)) flash("copy"); }} style={bigBtn(false)}>
+              <button onClick={async () => { if (await copyText(booking ? one.code : formatTicket(one.code))) flash("copy"); }} style={bigBtn(false)}>
                 {done === "copy" ? <><CheckIcon size={18} style={{ color: green }} />Copied</> : <><CopyIcon />Copy code</>}
               </button>
               <button onClick={async () => { const s = share(one); if ((await shareText(s.text, s.url)) !== "failed") flash("share"); }} style={bigBtn(true)}>
