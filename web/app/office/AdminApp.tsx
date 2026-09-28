@@ -51,6 +51,8 @@ function useApi<T>(path: string | null) {
 }
 
 // ---------- formatting ----------
+// Ticket IDs: 12 digits shown as "PB4817-2093-6651" (same as the site); older "PB…" IDs unchanged.
+const formatTicket = (t: string) => (/^\d{12}$/.test(t) ? `PB${t.replace(/(\d{4})(?=\d)/g, "$1-")}` : t);
 const naira = (v: number | null | undefined) => v == null ? "—" : `${v < 0 ? "-" : ""}₦${Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const when = (d: string | Date | null | undefined) => d ? new Date(d).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Lagos" }) : "—";
 const day = (d: string | Date | null | undefined) => d ? new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Africa/Lagos" }) : "—";
@@ -746,7 +748,7 @@ function BetTable({ bets, onOpen, withUser }: { bets: BetRow[]; onOpen: (b: BetR
         <tbody>
           {bets.map((b) => (
             <tr key={b.id} className="click" onClick={() => onOpen(b)}>
-              <td style={{ fontFamily: "ui-monospace, monospace", fontWeight: 700 }}>{b.ticket}</td>
+              <td style={{ fontFamily: "ui-monospace, monospace", fontWeight: 700, whiteSpace: "nowrap" }}>{formatTicket(b.ticket)}</td>
               {withUser && <td>{b.user?.name}<div style={{ fontSize: 12, color: "var(--label)" }}>{b.user?.phone}</div></td>}
               <td>{b.type === "ACCUMULATOR" ? `Multiple (${b.selections})` : "Single"}</td>
               <td className="adm-num">{naira(b.stake)}</td><td className="adm-num">{b.totalOdds.toFixed(2)}</td>
@@ -797,7 +799,7 @@ function BetPage({ id, flash }: { id: string; flash: (m: string) => void }) {
   });
   return (
     <>
-      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Ticket {b.ticket} <Badge tone={STATUS_TONE[b.status] ?? "gray"}>{b.status}</Badge></span>}
+      <Head title={<span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>Ticket {formatTicket(b.ticket)} <Badge tone={STATUS_TONE[b.status] ?? "gray"}>{b.status}</Badge></span>}
         sub={<>{b.type === "ACCUMULATOR" ? "Multiple" : "Single"} · placed {when(b.createdAt)}{b.settledAt ? ` · settled ${when(b.settledAt)}` : ""} · <Link href={`/office/users/${b.userId}`} style={{ textDecoration: "underline" }}>{b.user?.name}</Link></>}>
         {open && <>
           <button className="adm-btn good" onClick={() => betAction("WON")}>Settle won</button>

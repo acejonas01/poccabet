@@ -162,7 +162,7 @@ model Outcome {
 
 model Bet {
   id              String    @id @default(cuid())
-  ticket          String    @unique // short public code for "Check a bet", e.g. "PB7K2M9Q"
+  ticket          String    @unique // public ID for "Check a bet": 12 digits, e.g. "481720936651" (older bets: "PB7K2M9Q")
   userId          String    @map("user_id")
   user            User      @relation(fields: [userId], references: [id])
   stake           Int // kobo

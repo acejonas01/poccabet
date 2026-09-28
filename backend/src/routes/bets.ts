@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import { requireAuth, AuthedRequest } from "../middleware/auth";
 import { bookSlip, loadSlip } from "../betting/booking";
-import { normaliseCode, newTicket } from "../betting/codes";
+import { freshTicket, ticketKey } from "../betting/codes";
 import { toKobo, toNaira } from "../betting/money";
 import { BetError, betDto, betInclude, placeBets } from "../betting/placeBet";
 import { maybeSettle } from "../betting/settle";
@@ -71,7 +71,7 @@ router.get("/", requireAuth, async (req: AuthedRequest, res) => {
 
 // GET /api/bets/ticket/:ticket — "Check a bet": any ticket's status, no login, no personal details.
 router.get("/ticket/:ticket", limit("ticket-lookup", 60, 10), async (req, res) => {
-  const ticket = normaliseCode(String(req.params.ticket));
+  const ticket = ticketKey(String(req.params.ticket));
   const bet = ticket ? await prisma.bet.findUnique({ where: { ticket }, include: betInclude }) : null;
   if (!bet) return res.status(404).json({ error: "No bet found with that ticket ID", code: "TICKET_NOT_FOUND" });
   const { id: _id, source: _source, ...pub } = betDto(bet);
@@ -115,7 +115,7 @@ async function placeLegacy(req: AuthedRequest, res: Response) {
       const created = await tx.bet.create({
         data: {
           userId: req.userId!,
-          ticket: newTicket(),
+          ticket: await freshTicket((t) => tx.bet.findUnique({ where: { ticket: t }, select: { id: true } }).then(Boolean)),
           stake,
           totalOdds: Math.round(odds * 100) / 100,
           potentialPayout: Math.floor(stake * odds),

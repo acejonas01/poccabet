@@ -380,19 +380,24 @@ export const bookingShare = (code: string, count: number, odds: number) => ({
   url: bookingLink(code),
 });
 export const ticketShare = (ticket: string, count: number, odds: number) => ({
-  text: `I just placed a bet on Poccabet ⚽\nTicket ID: ${ticket} · ${slipLine(count, odds)}\nCheck it anytime:`,
+  text: `I just placed a bet on Poccabet ⚽\nTicket ID: ${formatTicket(ticket)} · ${slipLine(count, odds)}\nCheck it anytime:`,
   url: publicOrigin(),
 });
 
-// Ticket IDs ("PB" + 6) and booking codes (6) share an alphabet, so tell them apart by shape:
-// each input accepts the other kind too and does the right thing with it.
+// Ticket IDs (12 digits, shown "PB4817-2093-6651"; older ones "PB" + 6) and booking codes (6 letters
+// and digits): each input accepts the other kind too and does the right thing with it.
 const cleanCode = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
-export const isTicketCode = (s: string) => /^PB[A-Z0-9]{6}$/.test(cleanCode(s));
+// A ticket as typed ("PB4817-2093-6651", "4817 2093 6651") → as stored ("481720936651").
+export const ticketKey = (s: string) => { const c = cleanCode(s); return /^PB\d{12}$/.test(c) ? c.slice(2) : c; };
+export const isTicketCode = (s: string) => /^(\d{12}|PB[A-Z0-9]{6})$/.test(ticketKey(s));
+// "481720936651" → "PB4817-2093-6651": every ticket starts with PB, and the dashes make it easy to read
+// out. Older "PB…" IDs stay as they are.
+export const formatTicket = (t: string) => (/^\d{12}$/.test(t) ? `PB${t.replace(/(\d{4})(?=\d)/g, "$1-")}` : t);
 const isBookingCode = (s: string) => /^[A-Z0-9]{6}$/.test(cleanCode(s));
 type TicketInfo = Pick<Bet, "ticket" | "status" | "type" | "selections" | "stake" | "potentialPayout">;
 const ticketSummary = (bet: TicketInfo) => {
   const outcome = bet.status === "PENDING" ? "Open" : bet.status.charAt(0) + bet.status.slice(1).toLowerCase();
-  return `#${bet.ticket} · ${outcome} · ${bet.type === "ACCUMULATOR" ? `${bet.selections.length}-fold` : "Single"} · stake ${naira(bet.stake)} · to win ${naira(bet.potentialPayout)}`;
+  return `${formatTicket(bet.ticket)} · ${outcome} · ${bet.type === "ACCUMULATOR" ? `${bet.selections.length}-fold` : "Single"} · stake ${naira(bet.stake)} · to win ${naira(bet.potentialPayout)}`;
 };
 
 // A booked leg (with today's price) as a slip selection.
@@ -423,14 +428,14 @@ const iconBtn: CSSProperties = {
 };
 
 // One code with its Copy and Share buttons. The icons confirm with a tick for a moment.
-// A booking code (meant to be shared and typed in) is big; a ticket ID is a quieter "#PB…" reference.
+// A booking code (meant to be shared and typed in) is big; a ticket ID is a quieter "PB4817-2093-6651" reference.
 export function CodeRow({ code, share, ticket = false }: { code: string; share: { text: string; url?: string }; ticket?: boolean }) {
   const [done, setDone] = useState<"copy" | "share" | null>(null);
   const flash = (what: "copy" | "share") => { setDone(what); setTimeout(() => setDone(null), 1600); };
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       {ticket
-        ? <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)" }}>#<span style={{ userSelect: "all" }}>{code}</span></span>
+        ? <span style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)", userSelect: "all" }}>{formatTicket(code)}</span>
         : <span style={{ flex: 1, minWidth: 0, fontFamily: "'Barlow Condensed', sans-serif", fontSize: 30, fontWeight: 700, letterSpacing: 2, lineHeight: 1, userSelect: "all" }}>{code}</span>}
       <button aria-label={`Copy ${code}`} title="Copy" onClick={async () => { if (await copyText(code)) flash("copy"); }} style={iconBtn}>
         {done === "copy" ? <CheckIcon size={18} style={{ color: "#2AB572" }} /> : <CopyIcon />}
@@ -483,7 +488,7 @@ function CodePopup({ data, onClose, onViewBets }: { data: CodeCardData; onClose:
             {one
               ? booking
                 ? <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 40, fontWeight: 700, letterSpacing: 3, lineHeight: 1, userSelect: "all" }}>{one.code}</span>
-                : <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)" }}>#<span style={{ userSelect: "all" }}>{one.code}</span></span>
+                : <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: 0.5, color: "var(--tc-soft)", userSelect: "all" }}>{formatTicket(one.code)}</span>
               : data.codes.map((c) => <CodeRow key={c.code} code={c.code} share={share(c)} ticket={!booking} />)}
           </div>
 
@@ -607,7 +612,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
 
   async function load() {
     if (!code.trim() || busy) return setMsg({ tone: "info", text: "Enter a booking code to load a slip" });
-    if (isTicketCode(code)) return openTicket(cleanCode(code));
+    if (isTicketCode(code)) return openTicket(ticketKey(code));
     setBusy(true);
     setLoadingCode(true);
     setMsg(null);
@@ -753,7 +758,7 @@ export function CheckBet() {
   const [msg, setMsg] = useState<string | null>(null);
 
   async function check() {
-    const q = cleanCode(id);
+    const q = ticketKey(id);
     if (!q) return;
     try {
       // A booking code typed here loads that slip instead.
@@ -778,7 +783,7 @@ export function CheckBet() {
       <div style={{ display: "flex", gap: 8 }}>
         <label style={{ flex: 1, minWidth: 0, height: 40, display: "flex", alignItems: "center", padding: "0 12px", borderRadius: 10, border: "1px solid var(--tc-outline)", background: "var(--tc-page)", boxSizing: "border-box" }}>
           <span style={hidden}>Ticket ID</span>
-          <input suppressHydrationWarning type="text" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Ticket ID, e.g. #PB4AGTNX" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16 }} />
+          <input suppressHydrationWarning type="text" value={id} onChange={(e) => setId(e.target.value.toUpperCase())} onKeyDown={(e) => e.key === "Enter" && check()} placeholder="Ticket ID, e.g. PB4817-2093-6651" autoCapitalize="characters" style={{ flex: 1, minWidth: 0, background: "transparent", border: "none", outline: "none", color: "var(--tc-text)", fontFamily: "inherit", fontSize: 16 }} />
         </label>
         <button onClick={check} style={{ height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: "var(--tc-track)", color: "var(--tc-text)", fontSize: 14, fontWeight: 800 }}>Check</button>
       </div>

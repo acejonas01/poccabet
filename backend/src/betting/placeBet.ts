@@ -2,7 +2,7 @@
 // in one database transaction.
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
-import { newTicket } from "./codes";
+import { freshTicket } from "./codes";
 import { FEED_SOURCE, findMatches } from "./feed";
 import { formatNaira, toNaira } from "./money";
 import { type LegRequest, type OddsPolicy, type PricedLeg, payoutKobo, priceLegs, totalOdds } from "./pricing";
@@ -139,7 +139,7 @@ export async function placeBets(userId: string, input: PlaceInput, attempt = 0):
         const bet = await tx.bet.create({
           data: {
             userId,
-            ticket: newTicket(),
+            ticket: await freshTicket((t) => tx.bet.findUnique({ where: { ticket: t }, select: { id: true } }).then(Boolean)),
             stake: stakeKobo,
             totalOdds: p.odds,
             potentialPayout: p.payout,

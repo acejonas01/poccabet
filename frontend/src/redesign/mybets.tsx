@@ -5,7 +5,7 @@ import { api, type Bet, type BetSelectionInfo } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { dayLabel, hhmm } from "./data";
 import { ChevronLeft } from "./icons";
-import { ACCENT, CodeRow, Loader1X2, canGoBack, ticketShare, useMinLoading } from "./shared";
+import { ACCENT, CodeRow, Loader1X2, canGoBack, formatTicket, ticketKey, ticketShare, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const placedAt = (iso: string) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -54,7 +54,7 @@ const Totals = ({ bet }: { bet: Bet }) => (
 
 // The bets from the last My Bets load, so a ticket opened from the list shows at once.
 let loadedBets: Bet[] = [];
-const findTicket = (bets: Bet[], ticket: string) => bets.find((b) => b.ticket.toUpperCase() === ticket.toUpperCase()) ?? null;
+const findTicket = (bets: Bet[], ticket: string) => bets.find((b) => b.ticket === ticketKey(ticket)) ?? null;
 
 // The full ticket (/my-bets/<ticket>), opened by tapping a bet. Shown from the list's copy straight
 // away, then refreshed; opened from a link or after a reload, it's loaded from the player's bets.
@@ -96,7 +96,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
           <button type="button" onClick={back} aria-label="Back" style={{ width: 36, height: 36, margin: "0 0 0 -10px", border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ChevronLeft size={18} />
           </button>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Ticket #{ticket.toUpperCase()}</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Ticket {formatTicket(ticketKey(ticket))}</h1>
         </div>
         {bet && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -160,7 +160,7 @@ function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
   const nextKickoff = legs.filter((l) => l.result === "PENDING" && l.kickoff).map((l) => new Date(l.kickoff!).getTime()).sort((a, b) => a - b)[0];
   // The whole card is one button: tapping anywhere (the "Open" pill too) opens the ticket.
   return (
-    <button onClick={onOpen} aria-label={`Ticket ${bet.ticket}, ${statusOf(bet).label}. Show details`} style={{
+    <button onClick={onOpen} aria-label={`Ticket ${formatTicket(bet.ticket)}, ${statusOf(bet).label}. Show details`} style={{
       width: "100%", padding: 0, textAlign: "left", font: "inherit", color: "inherit", cursor: "pointer",
       background: "var(--tc-card)", border: "1px solid var(--tc-card-line)", borderRadius: 14, overflow: "hidden", display: "block",
     }}>
@@ -183,7 +183,7 @@ function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
           </span>
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>#{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
+          <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>{formatTicket(bet.ticket)}</strong> · {placedAt(bet.createdAt)}</span>
           <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: ACCENT }}>Details ›</span>
         </div>
       </div>

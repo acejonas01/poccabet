@@ -16,7 +16,7 @@ import { gradeSelection } from "../betting/grade";
 import { settleBet } from "../betting/settle";
 import { forgetSuspensions } from "../betting/suspensions";
 import { recordResult } from "../betting/catalog";
-import { normaliseCode } from "../betting/codes";
+import { ticketKey } from "../betting/codes";
 import { OPEN as OPEN_WITHDRAWAL, WithdrawalError, approveWithdrawal, checkWithdrawal, nameMatches, rejectWithdrawal } from "../lib/withdrawals";
 
 const router = Router();
@@ -328,7 +328,7 @@ router.get("/bets", async (req, res) => {
   const status = String(req.query.status ?? "");
   const where: Prisma.BetWhereInput = {
     ...(["PENDING", "WON", "LOST", "VOID"].includes(status) ? { status } : {}),
-    ...(q ? { OR: [{ ticket: normaliseCode(q) }, { id: q }, { userId: q }, { user: userSearch(q) }] } : {}),
+    ...(q ? { OR: [{ ticket: ticketKey(q) }, { id: q }, { userId: q }, { user: userSearch(q) }] } : {}),
   };
   const p = page(req.query.page);
   const [total, bets] = await Promise.all([
@@ -341,7 +341,7 @@ router.get("/bets", async (req, res) => {
 router.get("/bets/:id", async (req, res) => {
   const id = String(req.params.id);
   const b = await prisma.bet.findFirst({
-    where: { OR: [{ id }, { ticket: normaliseCode(id) }] },
+    where: { OR: [{ id }, { ticket: ticketKey(id) }] },
     include: { selections: true, _count: { select: { selections: true } }, user: { select: { displayName: true, phone: true } } },
   });
   if (!b) return res.status(404).json({ error: "Bet not found", code: "NOT_FOUND" });
