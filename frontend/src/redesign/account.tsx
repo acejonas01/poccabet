@@ -7,7 +7,7 @@ import { useDeviceState } from "../lib/browser";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
-import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
+import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, GiftIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
 import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -663,6 +663,9 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
   // Hide balance: remembered on this device.
   const [hideMoney, setHideMoney] = useDeviceState(() => localStorage.getItem("pocca-hide-balance") === "1", false);
   const toggleHide = () => setHideMoney((h) => { try { localStorage.setItem("pocca-hide-balance", h ? "0" : "1"); } catch { /* private mode */ } return !h; });
+  // Dashboard (Version B) or quick menu (Version C): chosen with the switch on top, remembered on this device.
+  const [view, setView] = useDeviceState<"dashboard" | "menu">(() => (localStorage.getItem("pocca-account-view") === "menu" ? "menu" : "dashboard"), "dashboard");
+  const chooseView = (v: "dashboard" | "menu") => { setView(v); try { localStorage.setItem("pocca-account-view", v); } catch { /* private mode */ } };
   const loading = useMinLoading(!me && !error);
 
   useEffect(() => {
@@ -731,6 +734,74 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
   const bonusLocked = me.bonus.amount > 0 && !me.bonus.claimed;
   const openStake = (bets ?? []).filter((b) => b.status === "PENDING").reduce((n, b) => n + b.stake, 0);
 
+  // ---------- Version C: quick menu ----------
+  const quickMenu = () => {
+    const tiles: { label: string; icon: ReactNode; run: () => void; badge?: number; color?: string }[] = [
+      { label: "My bets", icon: <ReceiptIcon size={20} />, run: () => navigate("/my-bets"), badge: me!.stats.open || undefined },
+      { label: "Transactions", icon: <ListIcon size={20} />, run: () => setSheet("transactions") },
+      { label: "Deposit", icon: <DepositIcon size={20} />, run: () => setSheet("deposit") },
+      { label: "Withdraw", icon: <WithdrawIcon size={20} />, run: () => setSheet("withdraw") },
+      { label: "Personal details", icon: <UserIcon size={20} />, run: () => setSheet("details") },
+      { label: "Security", icon: <KeyIcon size={20} />, run: () => setSheet("password") },
+      { label: "Live games", icon: <LiveIcon size={20} />, run: () => navigate("/sports/football/live") },
+      { label: "Help & support", icon: <HeadsetIcon size={20} />, run: onSupport },
+      { label: "Play responsibly", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, run: onSupport, color: "#2AB572" },
+      { label: "Log out", icon: <LogoutIcon />, run: () => { logout(); navigate("/", { replace: true }); }, color: "#FF8A7A" },
+    ];
+    return <>
+      {/* Balance row: refresh · withdrawable · hide · Deposit */}
+      <section aria-label="Your balance" style={{ ...box, display: "flex", alignItems: "center", gap: 12, padding: "14px 16px" }}>
+        <button type="button" onClick={refresh} aria-label="Refresh balance" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 12, border: "1px solid var(--tc-outline)", background: "var(--tc-raise)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: `rotate(${spin}deg)`, transition: "transform .6s" }}><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
+        </button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>
+            Balance{me!.demo && <span style={{ fontSize: 10, fontWeight: 800, padding: "1px 6px", borderRadius: 4, background: "var(--tc-raise)", color: ACCENT }}>DEMO</span>}
+            <button type="button" onClick={toggleHide} aria-label={hideMoney ? "Show balance" : "Hide balance"} style={{ width: 36, height: 36, margin: "-10px 0 -10px -6px", border: "none", background: "transparent", color: "var(--tc-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {hideMoney ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+            </button>
+          </div>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 26, lineHeight: 1.1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{money(me!.balance)}</div>
+        </div>
+        <button type="button" onClick={() => setSheet("deposit")} style={{ height: 48, padding: "0 14px", flexShrink: 0, borderRadius: 12, border: "none", background: ACCENT, color: "#13171C", fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Deposit
+        </button>
+      </section>
+      {note && <p role="status" style={{ margin: 0, fontSize: 13, fontWeight: 700, textAlign: "center", color: "var(--tc-soft)" }}>{note}</p>}
+
+      {/* Bonus row */}
+      {bonusLocked && (
+        <section aria-label="Welcome bonus" style={{ ...box, background: "#262416", display: "flex", alignItems: "center", gap: 10, padding: "0 16px", minHeight: 52 }}>
+          <span style={{ display: "flex", color: ACCENT }}><GiftIcon size={18} /></span>
+          <span style={{ flex: 1, fontSize: 14, color: "#D2CFB8", fontWeight: 600 }}>Welcome bonus <span style={{ color: ACCENT, fontWeight: 800 }}>{hideMoney ? "₦ • • •" : naira(me!.bonus.amount).replace(".00", "")}</span> · locked</span>
+          <button type="button" onClick={me!.emailVerified ? claimBonus : () => setSheet(me!.email ? "email" : "edit")} style={{ border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800, padding: "14px 0" }}>{me!.emailVerified ? "Claim" : "Verify email"}</button>
+        </section>
+      )}
+
+      {/* Menu grid */}
+      <nav aria-label="Account menu" style={{ ...box, background: desktop ? "var(--tc-line)" : "var(--tc-league)", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1 }}>
+        {tiles.map((t) => (
+          <button key={t.label} type="button" onClick={t.run} style={{
+            minHeight: 68, border: "none", background: "var(--tc-card)", color: t.color ?? "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center",
+            gap: 10, fontSize: 15, fontWeight: 700, padding: "0 8px",
+          }}>
+            <span style={{ display: "flex", color: t.color ?? ACCENT }}>{t.icon}</span>{t.label}
+            {t.badge ? <span style={{ minWidth: 20, height: 20, padding: "0 6px", boxSizing: "border-box", borderRadius: 10, background: ACCENT, color: "#13171C", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{t.badge}</span> : null}
+          </button>
+        ))}
+      </nav>
+
+      {/* Customer ID: quoted to support, so it's one tap from here */}
+      <section aria-label="Customer ID" style={{ ...box, display: "flex", alignItems: "center", gap: 10, padding: "12px 16px" }}>
+        <span style={{ fontSize: 13, color: "var(--tc-label)", fontWeight: 600 }}>Customer ID</span>
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 800, letterSpacing: 0.4 }}>{me!.customerNo}</span>
+        <CopyChip text={me!.customerNo} />
+      </section>
+      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
+      <p style={{ margin: "-4px 0 0", textAlign: "center", fontSize: 12, color: "var(--tc-faint)" }}>18+ only · Bet responsibly</p>
+    </>;
+  };
+
   const item = (icon: ReactNode, label: string, onClick: () => void, right?: ReactNode, color = "var(--tc-text)") => (
     <button type="button" onClick={onClick} style={{ ...rowStyle, color, fontSize: 15, fontWeight: 600 }}>
       <span style={{ display: "flex", color: color === "var(--tc-text)" ? "var(--tc-muted)" : color }}>{icon}</span>
@@ -748,6 +819,17 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
 
   return (
     <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, marginTop: desktop ? 0 : -16 }}>
+      {/* Layout switch: Dashboard (B) or Quick menu (C) */}
+      <div role="tablist" aria-label="Account layout" style={{ ...box, display: "flex", gap: 4, padding: 4, ...(desktop ? {} : { borderRadius: 0 }) }}>
+        {([["dashboard", "Dashboard"], ["menu", "Quick menu"]] as const).map(([id, label]) => (
+          <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => chooseView(id)} style={{
+            flex: 1, height: 40, borderRadius: 10, border: "none", background: view === id ? "var(--tc-raise)" : "transparent",
+            color: view === id ? "var(--tc-text)" : "var(--tc-label)", fontSize: 14, fontWeight: view === id ? 800 : 600,
+            boxShadow: view === id ? `inset 0 -2px 0 ${ACCENT}` : "none",
+          }}>{label}</button>
+        ))}
+      </div>
+      {view === "menu" ? quickMenu() : <>
       {/* Wallet: a yellow betting ticket with a torn edge */}
       <section aria-label="Your wallet" style={{ ...box, background: ACCENT, color: INK, position: "relative", paddingBottom: 26, overflow: desktop ? "hidden" : "visible" }}>
         <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
@@ -845,6 +927,7 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
       </section>
       <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
       <p style={{ margin: "-4px 0 0", textAlign: "center", fontSize: 12, color: "var(--tc-faint)" }}>18+ only · Bet responsibly</p>
+      </>}
 
       {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} />}
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}

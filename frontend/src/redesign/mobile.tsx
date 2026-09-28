@@ -22,7 +22,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 
 // ---------- header ----------
 export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulated: boolean; searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void }) {
-  const { isAuthenticated, balance, logout } = useAuth();
+  const { isAuthenticated, balance } = useAuth();
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -49,7 +49,7 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         {isAuthenticated ? (
           <>
             <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <button onClick={logout} style={{ height: 38, padding: "0 12px", borderRadius: 9, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
+            <UserMenu />
           </>
         ) : (
           <>
@@ -59,6 +59,49 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         )}
       </div>
     </header>
+  );
+}
+
+// Logged-in header: a round user button; tapping it opens My account / My bets / Log out.
+function UserMenu() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: PointerEvent) => { if (!wrap.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("pointerdown", away);
+    document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", esc); };
+  }, [open]);
+  const go = (path: string) => { setOpen(false); navigate(path); };
+  const row: CSSProperties = { width: "100%", minHeight: 48, padding: "0 16px", border: "none", borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", gap: 12, fontSize: 15, fontWeight: 600, textAlign: "left" };
+  return (
+    <div ref={wrap} style={{ position: "relative" }}>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Your account" aria-haspopup="menu" aria-expanded={open} style={{
+        width: 38, height: 38, borderRadius: 19, border: `2px solid ${ACCENT}`, background: open ? "rgba(245, 197, 24, 0.16)" : "transparent",
+        color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+      }}><UserIcon size={20} /></button>
+      {open && (
+        <div role="menu" aria-label="Account" style={{
+          position: "absolute", right: 0, top: "calc(100% + 10px)", width: 230, zIndex: 50, borderRadius: 14, overflow: "hidden",
+          background: "var(--tc-panel)", border: "1px solid var(--tc-card-line)", boxShadow: "0 16px 40px rgba(0,0,0,0.45)",
+        }}>
+          <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 2 }}>
+            <span style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>Logged in as</span>
+            <span style={{ fontSize: 15, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.displayName ?? "Player"}</span>
+          </div>
+          <button type="button" role="menuitem" onClick={() => go("/account")} style={row}><span style={{ display: "flex", color: ACCENT }}><UserIcon size={20} /></span>My account</button>
+          <button type="button" role="menuitem" onClick={() => go("/my-bets")} style={row}><span style={{ display: "flex", color: ACCENT }}><ReceiptIcon size={20} /></span>My bets</button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); logout(); navigate("/", { replace: true }); }} style={{ ...row, color: "#FF8A7A", fontWeight: 700 }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l-5-5 5-5M5 12h12" /></svg>
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
