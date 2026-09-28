@@ -96,7 +96,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
           <button type="button" onClick={back} aria-label="Back" style={{ width: 36, height: 36, margin: "0 0 0 -10px", border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <ChevronLeft size={18} />
           </button>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Ticket {ticket.toUpperCase()}</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800 }}>Ticket #{ticket.toUpperCase()}</h1>
         </div>
         {bet && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -137,7 +137,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
           <section aria-label="Stake and winnings" style={box}><Totals bet={bet} /></section>
           <section aria-label="Ticket ID" style={{ ...box, padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 6 }}>
             <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.8, color: "var(--tc-label)" }}>TICKET ID</span>
-            <CodeRow code={bet.ticket} share={ticketShare(bet.ticket, bet.selections.length, bet.totalOdds)} />
+            <CodeRow ticket code={bet.ticket} share={ticketShare(bet.ticket, bet.selections.length, bet.totalOdds)} />
           </section>
         </>
       )}
@@ -183,7 +183,7 @@ function BetCard({ bet, onOpen }: { bet: Bet; onOpen: () => void }) {
           </span>
         )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
+          <span style={{ fontSize: 12, color: "var(--tc-label)" }}>Ticket <strong style={{ color: "var(--tc-soft)", letterSpacing: 0.5 }}>#{bet.ticket}</strong> · {placedAt(bet.createdAt)}</span>
           <span style={{ flexShrink: 0, fontSize: 12, fontWeight: 800, color: ACCENT }}>Details ›</span>
         </div>
       </div>
