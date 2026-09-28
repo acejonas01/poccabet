@@ -9,7 +9,7 @@ import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { WinnersStrip } from "./footer";
 import { SPORTS } from "./sports";
-import { ChanceBar, FeaturedCard, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, featuredLive, useBack } from "./mobile";
+import { ChanceBar, FeaturedCard, HeaderBalance, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, UserMenu, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import { ACCENT, Loader1X2, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -30,7 +30,7 @@ const NAV = [
 ];
 
 export function DesktopHeader({ searchIndex, onOpenMatch, simulated, onSupport }: { searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void; simulated: boolean; onSupport: () => void }) {
-  const { isAuthenticated, balance, logout } = useAuth();
+  const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const themeBtn = useThemeButton();
   const navigate = useNavigate();
@@ -63,8 +63,9 @@ export function DesktopHeader({ searchIndex, onOpenMatch, simulated, onSupport }
         </button>}
         {isAuthenticated ? (
           <>
-            <button onClick={() => navigate("/account")} title="My account" style={{ height: 40, padding: "0 14px", borderRadius: 10, border: "1px solid var(--tc-outline-strong)", background: "transparent", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</button>
-            <button onClick={logout} style={{ height: 40, padding: "0 20px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontWeight: 800, fontSize: 14 }}>Log out</button>
+            {/* Same as phones: quiet balance (click to hide), and a user button with My account / My bets / Log out. */}
+            <HeaderBalance size={40} />
+            <UserMenu size={40} />
           </>
         ) : (
           <>

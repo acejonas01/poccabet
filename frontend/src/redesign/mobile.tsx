@@ -22,8 +22,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 
 // ---------- header ----------
 export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulated: boolean; searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void }) {
-  const { isAuthenticated, balance } = useAuth();
-  const [hideBalance, toggleBalance] = useHideBalance(); // tap it (or the Account page's eye) to hide / show
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -49,12 +48,7 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         <MobileSearchButton index={searchIndex} onOpenMatch={onOpenMatch} />
         {isAuthenticated ? (
           <>
-            {/* Balance: a small grey label over a smaller amount, so it doesn't shout. */}
-            <button type="button" onClick={toggleBalance} aria-label={hideBalance ? "Show balance" : "Hide balance"} aria-pressed={hideBalance} style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: 2, font: "inherit" }}>
-              <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "var(--tc-label)" }}>Balance</span>
-              {/* Whole naira, rounded down (never shows more than the player has); the exact amount is on the Account page. */}
-              <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>{hideBalance ? "₦ • • •" : `₦${Math.floor(balance).toLocaleString("en-US")}`}</span>
-            </button>
+            <HeaderBalance />
             <UserMenu />
           </>
         ) : (
@@ -68,8 +62,22 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
   );
 }
 
-// Logged-in header: a round user button; tapping it opens My account / My bets / Log out.
-function UserMenu() {
+// Logged-in header balance (phones and desktop): a small grey label over a smaller amount, so it
+// doesn't shout. Tap it (or the Account page's eye) to hide / show.
+export function HeaderBalance({ size = 38 }: { size?: number }) {
+  const { balance } = useAuth();
+  const [hideBalance, toggleBalance] = useHideBalance();
+  return (
+    <button type="button" onClick={toggleBalance} aria-label={hideBalance ? "Show balance" : "Hide balance"} aria-pressed={hideBalance} title={hideBalance ? "Show balance" : "Hide balance"} style={{ height: size, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: 2, font: "inherit", cursor: "pointer" }}>
+      <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "var(--tc-label)" }}>Balance</span>
+      {/* Whole naira, rounded down (never shows more than the player has); the exact amount is on the Account page. */}
+      <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>{hideBalance ? "₦ • • •" : `₦${Math.floor(balance).toLocaleString("en-US")}`}</span>
+    </button>
+  );
+}
+
+// Logged-in header (phones and desktop): a round user button; tapping it opens My account / My bets / Log out.
+export function UserMenu({ size = 38 }: { size?: number }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
@@ -86,8 +94,8 @@ function UserMenu() {
   const row: CSSProperties = { width: "100%", minHeight: 48, padding: "0 16px", border: "none", borderTop: "1px solid var(--tc-line)", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", gap: 12, fontSize: 15, fontWeight: 600, textAlign: "left" };
   return (
     <div ref={wrap} style={{ position: "relative" }}>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Your account" aria-haspopup="menu" aria-expanded={open} style={{
-        width: 38, height: 38, borderRadius: 19, border: `2px solid ${ACCENT}`, background: open ? "rgba(245, 197, 24, 0.16)" : "transparent",
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-label="Your account" title="Your account" aria-haspopup="menu" aria-expanded={open} style={{
+        width: size, height: size, borderRadius: size / 2, border: `2px solid ${ACCENT}`, cursor: "pointer", background: open ? "rgba(245, 197, 24, 0.16)" : "transparent",
         color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
       }}><UserIcon size={20} /></button>
       {open && (
