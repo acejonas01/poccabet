@@ -189,6 +189,7 @@ export function RedesignApp() {
         <Route path="/forgot-password" element={authPage(<RedesignForgot />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
         <Route path="/my-bets/:ticket" element={page(<RedesignTicket desktop={desk} />)} />
+        <Route path="/ticket/:ticket" element={page(<RedesignTicket desktop={desk} shared />)} />
         <Route path="/betslip" element={desk
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />

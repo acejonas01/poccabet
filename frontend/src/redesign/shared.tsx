@@ -369,6 +369,8 @@ const LOCAL = /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/;
 export const publicOrigin = () =>
   String(import.meta.env.VITE_PUBLIC_URL || (LOCAL.test(location.hostname) ? "https://poccabet.vercel.app" : location.origin)).replace(/\/$/, "");
 
+// A ticket's own page (/ticket/PB4817-2093-6651): anyone with the link can follow the bet.
+export const ticketLink = (ticket: string) => `${publicOrigin()}/ticket/${formatTicket(ticket)}`;
 // Anyone opening this link gets the booked slip loaded (useBookingLink below).
 export const bookingLink = (code: string) => `${publicOrigin()}/?book=${encodeURIComponent(code)}`;
 
@@ -381,7 +383,7 @@ export const bookingShare = (code: string, count: number, odds: number) => ({
 });
 export const ticketShare = (ticket: string, count: number, odds: number) => ({
   text: `I just placed a bet on Poccabet ⚽\nTicket ID: ${formatTicket(ticket)} · ${slipLine(count, odds)}\nCheck it anytime:`,
-  url: publicOrigin(),
+  url: ticketLink(ticket),
 });
 
 // Ticket IDs (12 digits, shown "PB4817-2093-6651"; older ones "PB" + 6) and booking codes (6 letters

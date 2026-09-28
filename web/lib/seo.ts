@@ -75,6 +75,7 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
     signup: ["Open an account", `Join ${BRAND} in a minute: phone number, a one-time code, and you're in.`, true],
     betslip: ["Bet slip", `Your ${BRAND} bet slip.`, false],
     "my-bets": ["My bets", `Your ${BRAND} bets.`, false],
+    ticket: ["Bet ticket", `A bet placed on ${BRAND}: the picks, odds and how it's going.`, false],
     account: ["My account", `Your ${BRAND} account.`, false],
     "forgot-password": ["Reset your password", `Forgot your ${BRAND} password? Get a code and choose a new one.`, false],
     search: ["Search", `Search ${BRAND} for teams, leagues and live games.`, false],

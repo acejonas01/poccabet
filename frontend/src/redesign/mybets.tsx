@@ -56,19 +56,30 @@ const Totals = ({ bet }: { bet: Bet }) => (
 let loadedBets: Bet[] = [];
 const findTicket = (bets: Bet[], ticket: string) => bets.find((b) => b.ticket === ticketKey(ticket)) ?? null;
 
-// The full ticket (/my-bets/<ticket>), opened by tapping a bet. Shown from the list's copy straight
-// away, then refreshed; opened from a link or after a reload, it's loaded from the player's bets.
-export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
+// The full ticket, two ways:
+// - /my-bets/<ticket>: the player's own, opened by tapping a bet. Shown from the list's copy straight
+//   away, then refreshed; opened from a link or after a reload, it's loaded from the player's bets.
+// - /ticket/<ticket> (`shared`): the link in a shared ticket. Anyone can open it, logged in or not;
+//   it shows what "Check a bet" shows (the bet, never who placed it).
+export function RedesignTicket({ desktop = false, shared = false }: { desktop?: boolean; shared?: boolean }) {
   const { ticket = "" } = useParams();
   const { isAuthenticated, ready } = useAuth();
   const navigate = useNavigate();
-  const [bet, setBet] = useState<Bet | null>(() => findTicket(loadedBets, ticket));
+  const [bet, setBet] = useState<Bet | null>(() => (shared ? null : findTicket(loadedBets, ticket)));
   const [fetching, setFetching] = useState(!bet);
   const loading = useMinLoading(fetching);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!ready) return;
+    if (!shared) return;
+    api.checkTicket(ticketKey(ticket))
+      .then((r) => setBet(r.bet as Bet))
+      .catch((e) => setError(e.message))
+      .finally(() => setFetching(false));
+  }, [shared, ticket]);
+
+  useEffect(() => {
+    if (shared || !ready) return;
     if (!isAuthenticated) { navigate("/login", { replace: true }); return; }
     // Always refresh: results may have come in since the list was loaded.
     api.getMyBets()
@@ -76,7 +87,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
       .catch((e) => { if (!bet) setError(e.message); })
       .finally(() => setFetching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, isAuthenticated, ticket]);
+  }, [shared, ready, isAuthenticated, ticket]);
 
   // Phones: full-width sections on the dark page (like the account page); desktop: one card.
   const box: CSSProperties = desktop
@@ -87,7 +98,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
       <span style={{ color: "var(--tc-label)" }}>{label}</span><span style={{ fontWeight: 700, textAlign: "right" }}>{value}</span>
     </div>
   );
-  const back = () => (canGoBack() ? navigate(-1) : navigate("/my-bets"));
+  const back = () => (canGoBack() ? navigate(-1) : navigate(shared ? "/" : "/my-bets"));
 
   return (
     <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, margin: desktop ? "0 auto" : "-16px 0 0", maxWidth: desktop ? 640 : undefined }}>
@@ -109,7 +120,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
       </header>
 
       {!bet ? (
-        loading ? <Loader1X2 label="Loading your ticket…" />
+        loading ? <Loader1X2 label={shared ? "Loading ticket…" : "Loading your ticket…"} />
           : <p style={{ margin: 0, padding: "40px 0", textAlign: "center", fontSize: 14, color: "var(--tc-label)" }}>{error ?? "Ticket not found."}</p>
       ) : (
         <>
