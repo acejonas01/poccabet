@@ -117,6 +117,9 @@ export const DartsIcon = ({ size = 24 }: P) => (
 export const CricketIcon = ({ size = 24 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M15 3l5 5-10 10-5-5z" /><path d="M5 13l-2 2 3 3" /><circle cx="18" cy="18" r="2" /></svg>
 );
+export const TrashIcon = ({ size = 16 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(2)}><path d="M4 7h16M10 11v6M14 11v6" /><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3" /></svg>
+);
 export const CopyIcon = ({ size = 18 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(2)}><rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M15 9V6.5A2.5 2.5 0 0 0 12.5 4h-6A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15H9" /></svg>
 );

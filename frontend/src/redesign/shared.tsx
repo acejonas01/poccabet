@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { ApiError, api, type Bet, type BookedLeg } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
-import { useBetSlip } from "../context/BetSlipContext";
+import { type Selection, useBetSlip } from "../context/BetSlipContext";
 import { useDeviceState } from "../lib/browser";
 import type { Dir, TCMatch } from "./data";
-import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon } from "./icons";
+import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon, TrashIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
 
 export const ACCENT = "#F5C518";
@@ -542,6 +542,10 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
   const [codeCard, setCodeCard] = useState<CodeCardData | null>(null);
   const [loadingCode, setLoadingCode] = useState(false);
   const showCodeLoader = useMinLoading(loadingCode);
+  // "Clear all" empties the slip in one tap; what was there is kept so it can be undone until a new pick goes in.
+  const [cleared, setCleared] = useState<Selection[] | null>(null);
+  useEffect(() => { if (selections.length) setCleared(null); }, [selections.length]);
+  const clearAll = () => { setCleared(selections); clear(); setMsg(null); setChanged(false); };
   const [busy, setBusy] = useState(false);
   const [changed, setChanged] = useState(false); // prices moved: the button asks to accept them
   const [anyOdds, setAnyOdds] = useDeviceState(() => localStorage.getItem(ANY_ODDS_KEY) === "1", false);
@@ -689,7 +693,17 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
       </div>
       {/* Loading a booking code: the 1 X 2 loader (one full pass) in place of the selections. */}
       {showCodeLoader && <div style={{ borderTop: "1px solid var(--tc-line)" }}><Loader1X2 label="Loading slip…" compact /></div>}
-      <div style={{ display: count || showCodeLoader ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>Tap any odds to add a selection</div>
+      <div style={{ display: count || showCodeLoader ? "none" : "block", padding: "28px 16px", textAlign: "center", fontSize: 14, color: "var(--tc-label)", borderTop: "1px solid var(--tc-line)" }}>
+        {cleared ? <>Slip cleared · <button type="button" onClick={() => replaceAll(cleared)} style={{ padding: 0, border: "none", background: "transparent", color: ACCENT, font: "inherit", fontWeight: 800, cursor: "pointer" }}>Undo</button></> : "Tap any odds to add a selection"}
+      </div>
+      {count > 0 && !showCodeLoader && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px", borderTop: "1px solid var(--tc-line)" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>{count} selection{count === 1 ? "" : "s"}</span>
+          <button type="button" onClick={clearAll} style={{ height: 30, padding: "0 4px", border: "none", background: "transparent", color: "#FF8A7A", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>
+            <TrashIcon size={15} />Clear all
+          </button>
+        </div>
+      )}
       {!showCodeLoader && selections.map((s) => (
         <div key={s.outcomeId} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 16px", borderTop: "1px solid var(--tc-line)" }}>
           <button aria-label={`Remove ${s.eventLabel} ${s.marketName} · ${s.label}`} onClick={() => removeSelection(s.outcomeId)} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: 14, border: "1px solid var(--tc-outline)", background: "transparent", color: "var(--tc-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
