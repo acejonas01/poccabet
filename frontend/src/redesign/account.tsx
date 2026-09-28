@@ -2,13 +2,11 @@
 // password, log out and delete the account. Edits happen in bottom sheets.
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, api, type BankAccount, type Bet, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
-import { useDeviceState } from "../lib/browser";
+import { ApiError, api, type BankAccount, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
-import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, GiftIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
-import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
+import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, GiftIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
+import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useHideBalance, useMinLoading } from "./shared";
 import { PlayResponsibly } from "./footer";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -540,142 +538,16 @@ function TransactionsSheet({ onClose }: { onClose: () => void }) {
 }
 
 // ---------- the page ----------
-// ---------- dashboard pieces (Version B) ----------
-type Money = (v: number) => string;
-const DAY = 86_400_000;
-
-// Your form: win rate, last 5 results, staked / returns / bets, for 7 days, 30 days or all time.
-function FormCard({ bets, box, heading, money }: { bets: Bet[] | null; box: CSSProperties; heading: CSSProperties; money: Money }) {
-  const [period, setPeriod] = useState<"7D" | "30D" | "All">("30D");
-  const since = period === "All" ? 0 : Date.now() - (period === "7D" ? 7 : 30) * DAY;
-  const inPeriod = (bets ?? []).filter((b) => new Date(b.createdAt).getTime() >= since);
-  const settled = inPeriod.filter((b) => b.status === "WON" || b.status === "LOST")
-    .sort((a, b) => new Date(b.settledAt ?? b.createdAt).getTime() - new Date(a.settledAt ?? a.createdAt).getTime());
-  const won = settled.filter((b) => b.status === "WON").length;
-  const rate = settled.length ? Math.round((won / settled.length) * 100) : null;
-  const last5 = settled.slice(0, 5).reverse(); // oldest → newest, newest on the right
-  const staked = inPeriod.reduce((n, b) => n + b.stake, 0);
-  const returns = inPeriod.reduce((n, b) => n + (b.status === "WON" ? b.payout ?? 0 : 0), 0);
-  const C = 238.8; // ring circumference (r = 38)
-  const short = (v: number) => (money(0).includes("•") ? "₦ • • •" : `₦${Math.round(v).toLocaleString("en-US")}`); // whole naira fits the cells
-  const cell = (label: string, value: string, last = false) => (
-    <div style={{ padding: "12px 16px", borderRight: last ? "none" : "1px solid var(--tc-line)", minWidth: 0 }}>
-      <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: 17, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
-    </div>
-  );
-  return (
-    <section aria-label="Your form" style={box}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
-        <h2 style={heading}>Your form</h2>
-        <div role="tablist" aria-label="Period" style={{ display: "flex", gap: 2 }}>
-          {(["7D", "30D", "All"] as const).map((p) => (
-            <button key={p} type="button" role="tab" aria-selected={period === p} onClick={() => setPeriod(p)} style={{
-              height: 36, minWidth: 48, padding: "0 10px", border: "none", borderBottom: `3px solid ${period === p ? ACCENT : "transparent"}`,
-              background: "transparent", color: period === p ? "var(--tc-text)" : "var(--tc-label)", fontSize: 13, fontWeight: 800,
-            }}>{p}</button>
-          ))}
-        </div>
-      </div>
-      {!bets ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>Loading your bets…</p>
-        : !inPeriod.length ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>{bets.length ? "No bets in this period." : "Your form shows here after your first bet."}</p>
-        : <>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "4px 16px 16px" }}>
-            <div style={{ position: "relative", width: 88, height: 88, flexShrink: 0 }}>
-              <svg width="88" height="88" viewBox="0 0 96 96" aria-hidden="true" style={{ transform: "rotate(-90deg)" }}>
-                <circle cx="48" cy="48" r="38" fill="none" stroke="var(--tc-line)" strokeWidth="10" />
-                <circle cx="48" cy="48" r="38" fill="none" stroke={ACCENT} strokeWidth="10" strokeDasharray={C} strokeDashoffset={C * (1 - (rate ?? 0) / 100)} />
-              </svg>
-              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 26, lineHeight: 1 }}>{rate === null ? "–" : `${rate}%`}</span>
-                <span style={{ fontSize: 10, color: "var(--tc-label)", fontWeight: 700 }}>WIN RATE</span>
-              </div>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 700, letterSpacing: 0.6 }}>LAST {last5.length || 5} RESULTS</div>
-              <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
-                {last5.length ? last5.map((b) => (
-                  <span key={b.id} title={`${b.ticket}: ${b.status === "WON" ? "won" : "lost"}`} style={{ flex: 1, maxWidth: 52, height: 30, borderRadius: 4, background: b.status === "WON" ? ACCENT : "var(--tc-raise)", color: b.status === "WON" ? "#13171C" : "var(--tc-soft)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{b.status === "WON" ? "W" : "L"}</span>
-                )) : <span style={{ fontSize: 13, color: "var(--tc-label)" }}>No settled bets yet</span>}
-              </div>
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid var(--tc-line)" }}>
-            {cell("Staked", short(staked))}
-            {cell("Returns", short(returns))}
-            {cell("Bets", String(inPeriod.length), true)}
-          </div>
-        </>}
-    </section>
-  );
-}
-
-// Open bets: the newest one, with how its legs are going.
-const LEG_COLOR: Record<string, string> = { WON: ACCENT, LOST: "#E5484D", VOID: "var(--tc-faint)", PENDING: "var(--tc-outline-strong)" };
-function OpenBetCard({ bets, box, heading, money, onAll }: { bets: Bet[] | null; box: CSSProperties; heading: CSSProperties; money: Money; onAll: () => void }) {
-  if (!bets) return null;
-  const open = bets.filter((b) => b.status === "PENDING");
-  const bet = open[0];
-  const legs = bet?.selections ?? [];
-  const next = legs.find((l) => l.result === "PENDING");
-  const kick = next?.kickoff ? new Date(next.kickoff).getTime() : null;
-  const live = kick !== null && Date.now() >= kick && Date.now() < kick + 2 * 3600_000;
-  const time = kick ? new Date(kick).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  return (
-    <section aria-label="Open bets" style={box}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", borderBottom: bet ? "1px solid var(--tc-line)" : "none" }}>
-        <h2 style={heading}>Open bets{open.length > 0 && <span style={{ color: ACCENT }}> · {open.length}</span>}</h2>
-        <button type="button" onClick={onAll} style={{ border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700, padding: "12px 0" }}>See all</button>
-      </div>
-      {!bet ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>No open bets right now.</p> : <>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 16px 10px" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-            {live && <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 7px", borderRadius: 4, background: "rgba(229, 72, 77, 0.16)", color: "#FF8A7A", letterSpacing: 0.6 }}>● LIVE</span>}
-            <span style={{ fontSize: 15, fontWeight: 700 }}>{legs.length > 1 ? `${legs.length}-fold accumulator` : "Single"}</span>
-          </span>
-          <span style={{ fontSize: 13, color: "var(--tc-label)", fontWeight: 600, flexShrink: 0 }}>{legs.filter((l) => l.result === "WON").length} of {legs.length} won</span>
-        </div>
-        <div aria-hidden="true" style={{ display: "flex", gap: 4, padding: "0 16px" }}>
-          {legs.map((l, i) => <span key={i} style={{ flex: 1, height: 5, borderRadius: 2, background: LEG_COLOR[l.result] ?? LEG_COLOR.PENDING }} />)}
-        </div>
-        {next && (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14, padding: "12px 16px", background: "var(--tc-page)", borderTop: "1px solid var(--tc-line)", borderBottom: "1px solid var(--tc-line)" }}>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{legs.length > 1 ? "Next leg" : "Match"}{time && ` · ${live ? "live now" : time}`}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.home} vs {next.away}</div>
-              <div style={{ fontSize: 12, color: "var(--tc-soft)", marginTop: 1 }}>{next.marketLabel}: {next.market === "1x2" ? ({ "1": next.home, X: "Draw", "2": next.away } as Record<string, string>)[next.selection] ?? next.selection : next.selection}</div>
-            </div>
-            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 26, flexShrink: 0 }}>{next.odds.toFixed(2)}</span>
-          </div>
-        )}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 16px" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>Stake {money(bet.stake)} · To win</div>
-            <div style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{money(bet.potentialPayout)}</div>
-          </div>
-          <button type="button" onClick={onAll} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800, flexShrink: 0 }}>View bet</button>
-        </div>
-      </>}
-    </section>
-  );
-}
-
 export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () => void; desktop?: boolean }) {
   const navigate = useNavigate();
   const { isAuthenticated, ready, logout, setBalance, updateUser } = useAuth();
-  const { setTheme } = useTheme();
   const [me, setMe] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | "deposit" | "withdraw" | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [bets, setBets] = useState<Bet[] | null>(null);
   const [spin, setSpin] = useState(0);
   // Hide balance: remembered on this device.
-  const [hideMoney, setHideMoney] = useDeviceState(() => localStorage.getItem("pocca-hide-balance") === "1", false);
-  const toggleHide = () => setHideMoney((h) => { try { localStorage.setItem("pocca-hide-balance", h ? "0" : "1"); } catch { /* private mode */ } return !h; });
-  // Dashboard (Version B) or quick menu (Version C): chosen with the switch on top, remembered on this device.
-  const [view, setView] = useDeviceState<"dashboard" | "menu">(() => (localStorage.getItem("pocca-account-view") === "menu" ? "menu" : "dashboard"), "dashboard");
-  const chooseView = (v: "dashboard" | "menu") => { setView(v); try { localStorage.setItem("pocca-account-view", v); } catch { /* private mode */ } };
+  const [hideMoney, toggleHide] = useHideBalance(); // shared with the header
   const loading = useMinLoading(!me && !error);
 
   useEffect(() => {
@@ -709,13 +581,9 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
     check(3);
   }, [isAuthenticated, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!ready || !isAuthenticated) return;
-    api.getMyBets().then((r) => setBets(r.bets)).catch(() => setBets([]));
-  }, [isAuthenticated, ready]);
   const refresh = () => {
     setSpin((d) => d + 360);
-    Promise.all([api.getMe(), api.getMyBets()]).then(([p, r]) => { setMe(p); setBalance(p.balance); setBets(r.bets); }).catch(() => {});
+    api.getMe().then((p) => { setMe(p); setBalance(p.balance); }).catch(() => {});
   };
 
   const saved = (p: Profile) => {
@@ -735,14 +603,10 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
   if (error) return <p style={{ padding: "40px 0", textAlign: "center", color: "var(--tc-label)" }}>{error}</p>;
   if (loading || !me) return <Loader1X2 label="Loading your account…" />;
 
-  const firstName = me.firstName ?? me.displayName.split(" ")[0];
-  const INK = "#13171C"; // text on the yellow wallet
   // Phones: sections run full width on the dark page, 8px apart; desktop: rounded cards.
   const box: CSSProperties = desktop ? { ...card, overflow: "hidden" } : { background: "var(--tc-card)", margin: "0 -16px" };
-  const heading: CSSProperties = { margin: 0, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.1 };
   const money = (v: number) => (hideMoney ? "₦ • • • • •" : naira(v));
   const bonusLocked = me.bonus.amount > 0 && !me.bonus.claimed;
-  const openStake = (bets ?? []).filter((b) => b.status === "PENDING").reduce((n, b) => n + b.stake, 0);
 
   // ---------- Version C: quick menu ----------
   const quickMenu = () => {
@@ -807,135 +671,13 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
         <span style={{ flex: 1, fontSize: 16, fontWeight: 800, letterSpacing: 0.4 }}>{me!.customerNo}</span>
         <CopyChip text={me!.customerNo} />
       </section>
-      <div style={{ padding: "6px 0 4px" }}><PlayResponsibly center /></div>
+      <div style={{ padding: "6px 0 4px" }}><PlayResponsibly center label={false} /></div>
     </>;
   };
 
-  const item = (icon: ReactNode, label: string, onClick: () => void, right?: ReactNode, color = "var(--tc-text)") => (
-    <button type="button" onClick={onClick} style={{ ...rowStyle, color, fontSize: 15, fontWeight: 600 }}>
-      <span style={{ display: "flex", color: color === "var(--tc-text)" ? "var(--tc-muted)" : color }}>{icon}</span>
-      <span style={{ flex: 1 }}>{label}</span>
-      {right}
-      {color === "var(--tc-text)" && <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>}
-    </button>
-  );
-  const quick = (label: string, icon: ReactNode, onClick: () => void, last = false) => (
-    <button type="button" onClick={onClick} style={{
-      flex: 1, minWidth: 0, padding: "16px 0", border: "none", borderRight: last ? "none" : "1px solid var(--tc-line)", background: "transparent",
-      color: "var(--tc-soft)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700,
-    }}><span style={{ display: "flex", color: ACCENT }}>{icon}</span>{label}</button>
-  );
-
   return (
     <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, marginTop: desktop ? 0 : -16 }}>
-      {/* Layout switch: Dashboard (B) or Quick menu (C) */}
-      <div role="tablist" aria-label="Account layout" style={{ ...box, display: "flex", gap: 4, padding: 4, ...(desktop ? {} : { borderRadius: 0 }) }}>
-        {([["dashboard", "Dashboard"], ["menu", "Quick menu"]] as const).map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={view === id} onClick={() => chooseView(id)} style={{
-            flex: 1, height: 40, borderRadius: 10, border: "none", background: view === id ? "var(--tc-raise)" : "transparent",
-            color: view === id ? "var(--tc-text)" : "var(--tc-label)", fontSize: 14, fontWeight: view === id ? 800 : 600,
-            boxShadow: view === id ? `inset 0 -2px 0 ${ACCENT}` : "none",
-          }}>{label}</button>
-        ))}
-      </div>
-      {view === "menu" ? quickMenu() : <>
-      {/* Wallet: a yellow betting ticket with a torn edge */}
-      <section aria-label="Your wallet" style={{ ...box, background: ACCENT, color: INK, position: "relative", paddingBottom: 26, overflow: desktop ? "hidden" : "visible" }}>
-        <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <button type="button" onClick={() => setSheet("details")} style={{ border: "none", background: "transparent", color: INK, padding: 0, fontSize: 15, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Hi, {firstName}</button>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
-            {me.customerNo}<CopyChip text={me.customerNo} ink={INK} />
-          </span>
-        </div>
-        <div style={{ padding: "14px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8 }}>TOTAL BALANCE</span>
-          {me.demo && <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 7px", borderRadius: 5, background: INK, color: ACCENT, letterSpacing: 0.8 }}>DEMO</span>}
-          <button type="button" onClick={toggleHide} aria-label={hideMoney ? "Show balance" : "Hide balance"} style={{ width: 44, height: 44, margin: "-12px 0 -12px -6px", border: "none", background: "transparent", color: INK, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {hideMoney ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
-          </button>
-          <button type="button" onClick={refresh} aria-label="Refresh balance" style={{ width: 44, height: 44, margin: "-12px 0 -12px -12px", border: "none", background: "transparent", color: INK, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: `rotate(${spin}deg)`, transition: "transform .6s" }}><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
-          </button>
-        </div>
-        <div style={{ padding: "2px 16px 0", fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 40, lineHeight: 1.05, letterSpacing: -0.3 }}>{money(me.balance)}</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 16, borderTop: "1px solid rgba(19,23,28,0.18)", borderBottom: "1px solid rgba(19,23,28,0.18)" }}>
-          <div style={{ padding: "12px 16px", borderRight: "1px solid rgba(19,23,28,0.18)" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>In open bets</div>
-            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{bets ? money(openStake) : "…"}</div>
-          </div>
-          <div style={{ padding: "12px 16px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{bonusLocked ? "Bonus · locked" : "Total winnings"}</div>
-            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{money(bonusLocked ? me.bonus.amount : me.stats.winnings)}</div>
-          </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, padding: "16px 16px 0" }}>
-          <button type="button" onClick={() => setSheet("deposit")} style={{ height: 54, borderRadius: 12, border: "none", background: INK, color: ACCENT, fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><DepositIcon size={20} />Deposit</button>
-          <button type="button" onClick={() => setSheet("withdraw")} style={{ height: 54, borderRadius: 12, border: `2px solid ${INK}`, background: "transparent", color: INK, fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><WithdrawIcon size={20} />Withdraw</button>
-        </div>
-        {note && <p role="status" style={{ margin: "12px 16px 0", fontSize: 13, fontWeight: 700, textAlign: "center" }}>{note}</p>}
-        {/* torn ticket edge: circles in the page colour along the bottom */}
-        <div aria-hidden="true" style={{ position: "absolute", left: -4, right: -4, bottom: -7, display: "flex", justifyContent: "space-between", overflow: "hidden" }}>
-          {Array.from({ length: 22 }, (_, i) => <span key={i} style={{ width: 14, height: 14, flexShrink: 0, borderRadius: 7, background: desktop ? "var(--tc-page)" : "var(--tc-league)" }} />)}
-        </div>
-      </section>
-
-      {/* Quick actions */}
-      <nav aria-label="Quick actions" style={{ ...box, display: "flex" }}>
-        {quick("Transactions", <ListIcon size={24} />, () => setSheet("transactions"))}
-        {quick("My bets", <ReceiptIcon size={24} />, () => navigate("/my-bets"))}
-        {quick("Live", <LiveIcon size={24} />, () => navigate("/sports/football/live"))}
-        {quick("Help", <HeadsetIcon size={24} />, onSupport, true)}
-      </nav>
-
-      {/* Welcome bonus: account ✓ → verify email → claim */}
-      {bonusLocked && (
-        <section aria-label="Welcome bonus" style={{ ...box, background: "#262416", color: "var(--tc-text)" }}>
-          <div style={{ height: 4, background: "#3E3920" }}><div style={{ width: me.emailVerified ? "66%" : "33%", height: 4, background: ACCENT }} /></div>
-          <div style={{ padding: 16, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <h2 style={heading}>Unlock your <span style={{ color: ACCENT }}>{naira(me.bonus.amount).replace(".00", "")}</span> bonus</h2>
-            <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT, flexShrink: 0 }}>{me.emailVerified ? 2 : 1} of 3</span>
-          </div>
-          {([
-            { label: "Create your account", done: true },
-            { label: "Verify your email", done: me.emailVerified, action: me.emailVerified ? null : { text: "Verify", run: () => setSheet(me.email ? "email" : "edit") } },
-            { label: "Claim your bonus", done: false, action: me.emailVerified ? { text: "Claim", run: claimBonus } : null },
-          ] as { label: string; done: boolean; action?: { text: string; run: () => void } | null }[]).map((st, i) => (
-            <div key={st.label} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 54, padding: "0 16px", borderTop: "1px solid #3A3620" }}>
-              <span aria-hidden="true" style={{ width: 24, height: 24, flexShrink: 0, boxSizing: "border-box", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, ...(st.done ? { background: ACCENT, color: INK } : { border: `2px solid ${st.action ? ACCENT : "#6A6445"}`, color: st.action ? ACCENT : "#BDB9A0" }) }}>
-                {st.done ? <CheckIcon size={13} /> : i + 1}
-              </span>
-              <span style={{ flex: 1, fontSize: 15, fontWeight: st.action ? 700 : 600, color: st.done ? "#A9A68E" : "var(--tc-text)", textDecoration: st.done ? "line-through" : "none" }}>{st.label}</span>
-              {st.action && <button type="button" onClick={st.action.run} style={{ height: 36, padding: "0 16px", borderRadius: 8, border: "none", background: ACCENT, color: INK, fontSize: 14, fontWeight: 800 }}>{st.action.text}</button>}
-            </div>
-          ))}
-        </section>
-      )}
-
-      <FormCard bets={bets} box={box} heading={heading} money={money} />
-      <OpenBetCard bets={bets} box={box} heading={heading} money={money} onAll={() => navigate("/my-bets")} />
-
-      {/* Play responsibly */}
-      <button type="button" onClick={() => navigate("/responsible-gambling")} style={{ ...box, border: box.border ?? "none", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2AB572" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-        <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 15, fontWeight: 700 }}>Play responsibly</span>
-          <span style={{ fontSize: 13, color: "var(--tc-label)" }}>18+ only. Tips, warning signs and where to get help.</span>
-        </span>
-        <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
-      </button>
-
-      {/* Account */}
-      <section aria-label="Account" style={box}>
-        <h2 style={{ margin: 0, padding: "14px 16px 8px", fontSize: 12, fontWeight: 800, color: "var(--tc-label)", letterSpacing: 1.2 }}>ACCOUNT</h2>
-        {item(<UserIcon size={20} />, "Personal details", () => setSheet("details"))}
-        {me.email && item(<MailIcon />, "Email", () => (me.emailVerified ? setSheet("details") : setSheet("email")), <Badge ok={me.emailVerified}>{me.emailVerified ? "Verified" : "Unverified"}</Badge>)}
-        {item(<KeyIcon />, "Password & security", () => setSheet("password"))}
-        {item(<HeadsetIcon size={20} />, "Help & support", onSupport)}
-        {THEMES.includes("d") && item(<ListIcon />, "Classic layout (Theme D)", () => setTheme("d"))}
-        {item(<LogoutIcon />, "Log out", () => { logout(); navigate("/", { replace: true }); }, undefined, "#FF8A7A")}
-      </section>
-      <div style={{ padding: "6px 0 4px" }}><PlayResponsibly center /></div>
-      </>}
+      {quickMenu()}
 
       {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} onCloseAccount={() => setSheet("delete")} />}
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}

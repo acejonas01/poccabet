@@ -77,14 +77,15 @@ export function WinnersStrip({ desktop = false }: { desktop?: boolean }) {
 }
 
 // Red 18+ badge + "Play responsibly" (footer, sign-up).
-export function PlayResponsibly({ center = false }: { center?: boolean }) {
+// label={false}: the red 18+ circle alone (still a link, named for screen readers).
+export function PlayResponsibly({ center = false, label = true }: { center?: boolean; label?: boolean }) {
   const navigate = useNavigate();
   return (
     <div style={{ display: "flex", justifyContent: center ? "center" : undefined }}>
       {/* Opens the Play responsibly page (/responsible-gambling). */}
-      <a href="/responsible-gambling" onClick={(e) => { e.preventDefault(); navigate("/responsible-gambling"); }} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700, color: "var(--tc-text)", textDecoration: "none" }}>
+      <a href="/responsible-gambling" aria-label={label ? undefined : "Play responsibly (18+)"} onClick={(e) => { e.preventDefault(); navigate("/responsible-gambling"); }} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700, color: "var(--tc-text)", textDecoration: "none" }}>
         <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
-        Play responsibly
+        {label && "Play responsibly"}
       </a>
     </div>
   );

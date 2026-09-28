@@ -10,7 +10,7 @@ import {
   ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
-import { ACCENT, Loader1X2, canGoBack, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
+import { ACCENT, Loader1X2, canGoBack, useHideBalance, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { SiteFooter, WinnersStrip } from "./footer";
 import { type PickOfDay, featuredUpcoming, usePickOfTheDay } from "./potd";
@@ -23,6 +23,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 // ---------- header ----------
 export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulated: boolean; searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void }) {
   const { isAuthenticated, balance } = useAuth();
+  const [hideBalance] = useHideBalance(); // the Account page's eye hides it here too
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -48,7 +49,12 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         <MobileSearchButton index={searchIndex} onOpenMatch={onOpenMatch} />
         {isAuthenticated ? (
           <>
-            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center" }}>₦{balance.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            {/* Balance: a small grey label over a smaller amount, so it doesn't shout. */}
+            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: 2 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "var(--tc-label)" }}>Balance</span>
+              {/* Whole naira, rounded down (never shows more than the player has); the exact amount is on the Account page. */}
+              <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>{hideBalance ? "₦ • • •" : `₦${Math.floor(balance).toLocaleString("en-US")}`}</span>
+            </span>
             <UserMenu />
           </>
         ) : (

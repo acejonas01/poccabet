@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, type BookedLeg } from "../api/client";
@@ -879,4 +879,24 @@ export function useThemeButton() {
     onClick: () => { if (!held.current) cycleTheme(); },
     title: "Tap to switch theme A/B/C — hold for the classic layout",
   };
+}
+
+// ---------- hide balance ----------
+// One on/off setting for this device (the eye on the Account page), read by the Account page and
+// the header together, so hiding it in one place hides it everywhere at once. Server pages always
+// render it shown; the browser switches after loading.
+const HIDE_KEY = "pocca-hide-balance";
+const hideListeners = new Set<() => void>();
+const readHidden = () => { try { return localStorage.getItem(HIDE_KEY) === "1"; } catch { return false; } };
+export function useHideBalance() {
+  const hidden = useSyncExternalStore(
+    (cb) => { hideListeners.add(cb); return () => { hideListeners.delete(cb); }; },
+    readHidden,
+    () => false,
+  );
+  const toggle = () => {
+    try { localStorage.setItem(HIDE_KEY, readHidden() ? "0" : "1"); } catch { /* private mode */ }
+    hideListeners.forEach((cb) => cb());
+  };
+  return [hidden, toggle] as const;
 }
