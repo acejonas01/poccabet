@@ -90,7 +90,7 @@ export function RedesignTicket({ desktop = false }: { desktop?: boolean }) {
   const back = () => (canGoBack() ? navigate(-1) : navigate("/my-bets"));
 
   return (
-    <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, marginTop: desktop ? 0 : -16, maxWidth: desktop ? 640 : undefined, margin: desktop ? "0 auto" : undefined }}>
+    <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, margin: desktop ? "0 auto" : "-16px 0 0", maxWidth: desktop ? 640 : undefined }}>
       <header style={{ ...box, padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button type="button" onClick={back} aria-label="Back" style={{ width: 36, height: 36, margin: "0 0 0 -10px", border: "none", background: "transparent", color: "var(--tc-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
