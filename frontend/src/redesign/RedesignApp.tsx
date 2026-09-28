@@ -173,7 +173,7 @@ export function RedesignApp() {
         <Route path="/betslip" element={desk
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
-        <Route path="/account" element={page(<RedesignAccount onSupport={() => setSheet("support")} />)} />
+        <Route path="/account" element={page(<RedesignAccount desktop={desk} onSupport={() => setSheet("support")} />)} />
         <Route path="*" element={page(<NotFound onHome={goHome} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}

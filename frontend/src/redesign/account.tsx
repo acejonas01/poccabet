@@ -2,11 +2,12 @@
 // password, log out and delete the account. Edits happen in bottom sheets.
 import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, api, type BankAccount, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
+import { ApiError, api, type BankAccount, type Bet, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
+import { useDeviceState } from "../lib/browser";
 import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
-import { CheckIcon, ChevronRight, DepositIcon, GiftIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
+import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
 import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -22,11 +23,11 @@ const rowStyle: CSSProperties = {
 };
 
 // Small "Copy" button for the customer ID (quoted when contacting support).
-function CopyChip({ text }: { text: string }) {
+function CopyChip({ text, ink }: { text: string; ink?: string }) {
   const [done, setDone] = useState(false);
   return (
     <button type="button" onClick={async () => { if (await copyText(text)) { setDone(true); setTimeout(() => setDone(false), 1600); } }}
-      style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid var(--tc-outline-2)", background: "transparent", color: done ? GREEN : "var(--tc-text)", fontSize: 12, fontWeight: 800 }}>
+      style={{ padding: "4px 10px", borderRadius: 8, border: `1px solid ${ink ? "rgba(19,23,28,0.35)" : "var(--tc-outline-2)"}`, background: "transparent", color: ink ?? (done ? GREEN : "var(--tc-text)"), fontSize: 12, fontWeight: 800 }}>
       {done ? "Copied" : "Copy"}
     </button>
   );
@@ -529,7 +530,127 @@ function TransactionsSheet({ onClose }: { onClose: () => void }) {
 }
 
 // ---------- the page ----------
-export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
+// ---------- dashboard pieces (Version B) ----------
+type Money = (v: number) => string;
+const DAY = 86_400_000;
+
+// Your form: win rate, last 5 results, staked / returns / bets, for 7 days, 30 days or all time.
+function FormCard({ bets, box, heading, money }: { bets: Bet[] | null; box: CSSProperties; heading: CSSProperties; money: Money }) {
+  const [period, setPeriod] = useState<"7D" | "30D" | "All">("30D");
+  const since = period === "All" ? 0 : Date.now() - (period === "7D" ? 7 : 30) * DAY;
+  const inPeriod = (bets ?? []).filter((b) => new Date(b.createdAt).getTime() >= since);
+  const settled = inPeriod.filter((b) => b.status === "WON" || b.status === "LOST")
+    .sort((a, b) => new Date(b.settledAt ?? b.createdAt).getTime() - new Date(a.settledAt ?? a.createdAt).getTime());
+  const won = settled.filter((b) => b.status === "WON").length;
+  const rate = settled.length ? Math.round((won / settled.length) * 100) : null;
+  const last5 = settled.slice(0, 5).reverse(); // oldest → newest, newest on the right
+  const staked = inPeriod.reduce((n, b) => n + b.stake, 0);
+  const returns = inPeriod.reduce((n, b) => n + (b.status === "WON" ? b.payout ?? 0 : 0), 0);
+  const C = 238.8; // ring circumference (r = 38)
+  const short = (v: number) => (money(0).includes("•") ? "₦ • • •" : `₦${Math.round(v).toLocaleString("en-US")}`); // whole naira fits the cells
+  const cell = (label: string, value: string, last = false) => (
+    <div style={{ padding: "12px 16px", borderRight: last ? "none" : "1px solid var(--tc-line)", minWidth: 0 }}>
+      <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{label}</div>
+      <div style={{ fontSize: 17, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
+    </div>
+  );
+  return (
+    <section aria-label="Your form" style={box}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
+        <h2 style={heading}>Your form</h2>
+        <div role="tablist" aria-label="Period" style={{ display: "flex", gap: 2 }}>
+          {(["7D", "30D", "All"] as const).map((p) => (
+            <button key={p} type="button" role="tab" aria-selected={period === p} onClick={() => setPeriod(p)} style={{
+              height: 36, minWidth: 48, padding: "0 10px", border: "none", borderBottom: `3px solid ${period === p ? ACCENT : "transparent"}`,
+              background: "transparent", color: period === p ? "var(--tc-text)" : "var(--tc-label)", fontSize: 13, fontWeight: 800,
+            }}>{p}</button>
+          ))}
+        </div>
+      </div>
+      {!bets ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>Loading your bets…</p>
+        : !inPeriod.length ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>{bets.length ? "No bets in this period." : "Your form shows here after your first bet."}</p>
+        : <>
+          <div style={{ display: "flex", alignItems: "center", gap: 16, padding: "4px 16px 16px" }}>
+            <div style={{ position: "relative", width: 88, height: 88, flexShrink: 0 }}>
+              <svg width="88" height="88" viewBox="0 0 96 96" aria-hidden="true" style={{ transform: "rotate(-90deg)" }}>
+                <circle cx="48" cy="48" r="38" fill="none" stroke="var(--tc-line)" strokeWidth="10" />
+                <circle cx="48" cy="48" r="38" fill="none" stroke={ACCENT} strokeWidth="10" strokeDasharray={C} strokeDashoffset={C * (1 - (rate ?? 0) / 100)} />
+              </svg>
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 26, lineHeight: 1 }}>{rate === null ? "–" : `${rate}%`}</span>
+                <span style={{ fontSize: 10, color: "var(--tc-label)", fontWeight: 700 }}>WIN RATE</span>
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 700, letterSpacing: 0.6 }}>LAST {last5.length || 5} RESULTS</div>
+              <div style={{ display: "flex", gap: 5, marginTop: 8 }}>
+                {last5.length ? last5.map((b) => (
+                  <span key={b.id} title={`${b.ticket}: ${b.status === "WON" ? "won" : "lost"}`} style={{ flex: 1, maxWidth: 52, height: 30, borderRadius: 4, background: b.status === "WON" ? ACCENT : "var(--tc-raise)", color: b.status === "WON" ? "#13171C" : "var(--tc-soft)", fontSize: 13, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{b.status === "WON" ? "W" : "L"}</span>
+                )) : <span style={{ fontSize: 13, color: "var(--tc-label)" }}>No settled bets yet</span>}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid var(--tc-line)" }}>
+            {cell("Staked", short(staked))}
+            {cell("Returns", short(returns))}
+            {cell("Bets", String(inPeriod.length), true)}
+          </div>
+        </>}
+    </section>
+  );
+}
+
+// Open bets: the newest one, with how its legs are going.
+const LEG_COLOR: Record<string, string> = { WON: ACCENT, LOST: "#E5484D", VOID: "var(--tc-faint)", PENDING: "var(--tc-outline-strong)" };
+function OpenBetCard({ bets, box, heading, money, onAll }: { bets: Bet[] | null; box: CSSProperties; heading: CSSProperties; money: Money; onAll: () => void }) {
+  if (!bets) return null;
+  const open = bets.filter((b) => b.status === "PENDING");
+  const bet = open[0];
+  const legs = bet?.selections ?? [];
+  const next = legs.find((l) => l.result === "PENDING");
+  const kick = next?.kickoff ? new Date(next.kickoff).getTime() : null;
+  const live = kick !== null && Date.now() >= kick && Date.now() < kick + 2 * 3600_000;
+  const time = kick ? new Date(kick).toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  return (
+    <section aria-label="Open bets" style={box}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "6px 16px", borderBottom: bet ? "1px solid var(--tc-line)" : "none" }}>
+        <h2 style={heading}>Open bets{open.length > 0 && <span style={{ color: ACCENT }}> · {open.length}</span>}</h2>
+        <button type="button" onClick={onAll} style={{ border: "none", background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 700, padding: "12px 0" }}>See all</button>
+      </div>
+      {!bet ? <p style={{ margin: 0, padding: "0 16px 16px", fontSize: 13, color: "var(--tc-label)" }}>No open bets right now.</p> : <>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 16px 10px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+            {live && <span style={{ fontSize: 11, fontWeight: 800, padding: "3px 7px", borderRadius: 4, background: "rgba(229, 72, 77, 0.16)", color: "#FF8A7A", letterSpacing: 0.6 }}>● LIVE</span>}
+            <span style={{ fontSize: 15, fontWeight: 700 }}>{legs.length > 1 ? `${legs.length}-fold accumulator` : "Single"}</span>
+          </span>
+          <span style={{ fontSize: 13, color: "var(--tc-label)", fontWeight: 600, flexShrink: 0 }}>{legs.filter((l) => l.result === "WON").length} of {legs.length} won</span>
+        </div>
+        <div aria-hidden="true" style={{ display: "flex", gap: 4, padding: "0 16px" }}>
+          {legs.map((l, i) => <span key={i} style={{ flex: 1, height: 5, borderRadius: 2, background: LEG_COLOR[l.result] ?? LEG_COLOR.PENDING }} />)}
+        </div>
+        {next && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 14, padding: "12px 16px", background: "var(--tc-page)", borderTop: "1px solid var(--tc-line)", borderBottom: "1px solid var(--tc-line)" }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>{legs.length > 1 ? "Next leg" : "Match"}{time && ` · ${live ? "live now" : time}`}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{next.home} vs {next.away}</div>
+              <div style={{ fontSize: 12, color: "var(--tc-soft)", marginTop: 1 }}>{next.marketLabel}: {next.market === "1x2" ? ({ "1": next.home, X: "Draw", "2": next.away } as Record<string, string>)[next.selection] ?? next.selection : next.selection}</div>
+            </div>
+            <span style={{ fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 26, flexShrink: 0 }}>{next.odds.toFixed(2)}</span>
+          </div>
+        )}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "14px 16px" }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 12, color: "var(--tc-label)", fontWeight: 600 }}>Stake {money(bet.stake)} · To win</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: ACCENT }}>{money(bet.potentialPayout)}</div>
+          </div>
+          <button type="button" onClick={onAll} style={{ height: 44, padding: "0 18px", borderRadius: 10, border: `1px solid ${ACCENT}`, background: "transparent", color: ACCENT, fontSize: 14, fontWeight: 800, flexShrink: 0 }}>View bet</button>
+        </div>
+      </>}
+    </section>
+  );
+}
+
+export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () => void; desktop?: boolean }) {
   const navigate = useNavigate();
   const { isAuthenticated, ready, logout, setBalance, updateUser } = useAuth();
   const { setTheme } = useTheme();
@@ -537,6 +658,11 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [sheet, setSheet] = useState<"details" | "edit" | "email" | "password" | "transactions" | "delete" | "deposit" | "withdraw" | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [bets, setBets] = useState<Bet[] | null>(null);
+  const [spin, setSpin] = useState(0);
+  // Hide balance: remembered on this device.
+  const [hideMoney, setHideMoney] = useDeviceState(() => localStorage.getItem("pocca-hide-balance") === "1", false);
+  const toggleHide = () => setHideMoney((h) => { try { localStorage.setItem("pocca-hide-balance", h ? "0" : "1"); } catch { /* private mode */ } return !h; });
   const loading = useMinLoading(!me && !error);
 
   useEffect(() => {
@@ -570,6 +696,15 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
     check(3);
   }, [isAuthenticated, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!ready || !isAuthenticated) return;
+    api.getMyBets().then((r) => setBets(r.bets)).catch(() => setBets([]));
+  }, [isAuthenticated, ready]);
+  const refresh = () => {
+    setSpin((d) => d + 360);
+    Promise.all([api.getMe(), api.getMyBets()]).then(([p, r]) => { setMe(p); setBalance(p.balance); setBets(r.bets); }).catch(() => {});
+  };
+
   const saved = (p: Profile) => {
     setMe(p);
     setBalance(p.balance);
@@ -587,113 +722,129 @@ export function RedesignAccount({ onSupport }: { onSupport: () => void }) {
   if (error) return <p style={{ padding: "40px 0", textAlign: "center", color: "var(--tc-label)" }}>{error}</p>;
   if (loading || !me) return <Loader1X2 label="Loading your account…" />;
 
-  const fullName = [me.firstName ?? me.displayName, me.lastName].filter(Boolean).join(" ");
-  const initials = fullName.split(/\s+/).map((w) => w.replace(/[^A-Za-z0-9]/g, "")[0]).filter(Boolean).slice(0, 2).join("").toUpperCase() || "P";
-  const action = (label: string, icon: ReactNode, onClick?: () => void, soon = false) => (
-    <button type="button" onClick={onClick} disabled={!onClick} style={{
-      flex: 1, minWidth: 0, padding: "12px 4px 10px", border: "none", borderRadius: 12, background: "var(--tc-raise)",
-      color: onClick ? "var(--tc-text)" : "var(--tc-faint)", display: "flex", flexDirection: "column", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700,
-    }}>
-      <span style={{ color: onClick ? ACCENT : "var(--tc-faint)", display: "flex" }}>{icon}</span>
-      {label}{soon && <span style={{ fontSize: 10, fontWeight: 700, marginTop: -4 }}>soon</span>}
-    </button>
-  );
+  const firstName = me.firstName ?? me.displayName.split(" ")[0];
+  const INK = "#13171C"; // text on the yellow wallet
+  // Phones: sections run full width on the dark page, 8px apart; desktop: rounded cards.
+  const box: CSSProperties = desktop ? { ...card, overflow: "hidden" } : { background: "var(--tc-card)", margin: "0 -16px" };
+  const heading: CSSProperties = { margin: 0, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 700, fontSize: 24, lineHeight: 1.1 };
+  const money = (v: number) => (hideMoney ? "₦ • • • • •" : naira(v));
+  const bonusLocked = me.bonus.amount > 0 && !me.bonus.claimed;
+  const openStake = (bets ?? []).filter((b) => b.status === "PENDING").reduce((n, b) => n + b.stake, 0);
+
   const item = (icon: ReactNode, label: string, onClick: () => void, right?: ReactNode, color = "var(--tc-text)") => (
     <button type="button" onClick={onClick} style={{ ...rowStyle, color, fontSize: 15, fontWeight: 600 }}>
       <span style={{ display: "flex", color: color === "var(--tc-text)" ? "var(--tc-muted)" : color }}>{icon}</span>
       <span style={{ flex: 1 }}>{label}</span>
       {right}
-      <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
+      {color === "var(--tc-text)" && <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>}
     </button>
   );
-  const group = (title: string, children: ReactNode) => (
-    <section>
-      <h2 style={sectionTitle}>{title}</h2>
-      <div style={{ ...card, overflow: "hidden" }}><div style={{ marginTop: -1 }}>{children}</div></div>
-    </section>
+  const quick = (label: string, icon: ReactNode, onClick: () => void, last = false) => (
+    <button type="button" onClick={onClick} style={{
+      flex: 1, minWidth: 0, padding: "16px 0", border: "none", borderRight: last ? "none" : "1px solid var(--tc-line)", background: "transparent",
+      color: "var(--tc-soft)", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700,
+    }}><span style={{ display: "flex", color: ACCENT }}>{icon}</span>{label}</button>
   );
-  const statCell = (label: string, value: string, color = "var(--tc-text)") => (
-    <div style={{ flex: 1, minWidth: 0, padding: "12px 6px", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-      <span style={{ fontSize: 16, fontWeight: 800, color, whiteSpace: "nowrap" }}>{value}</span>
-      <span style={{ fontSize: 11, fontWeight: 600, color: "var(--tc-label)" }}>{label}</span>
-    </div>
-  );
-  const winnings = me.stats.winnings >= 1_000_000 ? `₦${(me.stats.winnings / 1e6).toFixed(1)}M` : `₦${Math.round(me.stats.winnings).toLocaleString("en-US")}`;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Who you are + your money */}
-      <section style={{ ...card, overflow: "hidden" }}>
-        <button type="button" onClick={() => setSheet("details")} style={{ width: "100%", padding: "16px", display: "flex", alignItems: "center", gap: 12, border: "none", background: "transparent", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
-          <span aria-hidden="true" style={{ width: 48, height: 48, flexShrink: 0, borderRadius: 24, border: `1.5px solid ${ACCENT}`, color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17, fontWeight: 800 }}>{initials}</span>
-          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 17, fontWeight: 800, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{fullName}</span>
-            <span style={{ fontSize: 13, color: "var(--tc-label)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{me.phoneDisplay ?? me.email ?? ""}</span>
+    <div className={desktop ? undefined : "tc-account-page"} style={{ display: "flex", flexDirection: "column", gap: desktop ? 16 : 8, marginTop: desktop ? 0 : -16 }}>
+      {/* Wallet: a yellow betting ticket with a torn edge */}
+      <section aria-label="Your wallet" style={{ ...box, background: ACCENT, color: INK, position: "relative", paddingBottom: 26, overflow: desktop ? "hidden" : "visible" }}>
+        <div style={{ padding: "16px 16px 0", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <button type="button" onClick={() => setSheet("details")} style={{ border: "none", background: "transparent", color: INK, padding: 0, fontSize: 15, fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Hi, {firstName}</button>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, flexShrink: 0 }}>
+            {me.customerNo}<CopyChip text={me.customerNo} ink={INK} />
           </span>
-          <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
-        </button>
-        <div style={{ padding: "14px 16px 16px", borderTop: "1px solid var(--tc-line)", display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 700, color: "var(--tc-label)" }}>
-              Total balance{me.demo && <span style={{ padding: "1px 6px", borderRadius: 4, background: "var(--tc-raise)", fontSize: 10, letterSpacing: 0.5 }}>DEMO</span>}
-            </span>
-            <span style={{ fontSize: 30, fontWeight: 800, letterSpacing: -0.5 }}>{naira(me.balance)}</span>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {action("Deposit", <DepositIcon />, () => setSheet("deposit"))}
-            {action("Withdraw", <WithdrawIcon />, () => setSheet("withdraw"))}
-            {action("Transactions", <ListIcon />, () => setSheet("transactions"))}
-          </div>
-          {note && <span role="status" style={{ fontSize: 12, color: "var(--tc-muted)", textAlign: "center" }}>{note}</span>}
         </div>
-        {/* Betting at a glance */}
-        <div style={{ display: "flex", borderTop: "1px solid var(--tc-line)" }}>
-          {statCell("Bets", String(me.stats.bets))}
-          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
-          {statCell("Open", String(me.stats.open))}
-          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
-          {statCell("Won", String(me.stats.won), me.stats.won ? GREEN : undefined)}
-          <span style={{ width: 1, background: "var(--tc-line)", margin: "10px 0" }} />
-          {statCell("Winnings", winnings, me.stats.winnings ? GREEN : undefined)}
+        <div style={{ padding: "14px 16px 0", display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.8 }}>TOTAL BALANCE</span>
+          {me.demo && <span style={{ fontSize: 10, fontWeight: 800, padding: "3px 7px", borderRadius: 5, background: INK, color: ACCENT, letterSpacing: 0.8 }}>DEMO</span>}
+          <button type="button" onClick={toggleHide} aria-label={hideMoney ? "Show balance" : "Hide balance"} style={{ width: 44, height: 44, margin: "-12px 0 -12px -6px", border: "none", background: "transparent", color: INK, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {hideMoney ? <EyeOffIcon size={20} /> : <EyeIcon size={20} />}
+          </button>
+          <button type="button" onClick={refresh} aria-label="Refresh balance" style={{ width: 44, height: 44, margin: "-12px 0 -12px -12px", border: "none", background: "transparent", color: INK, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ transform: `rotate(${spin}deg)`, transition: "transform .6s" }}><path d="M21 12a9 9 0 1 1-2.6-6.4" /><path d="M21 3v6h-6" /></svg>
+          </button>
+        </div>
+        <div style={{ padding: "2px 16px 0", fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontSize: 40, lineHeight: 1.05, letterSpacing: -0.3 }}>{money(me.balance)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", marginTop: 16, borderTop: "1px solid rgba(19,23,28,0.18)", borderBottom: "1px solid rgba(19,23,28,0.18)" }}>
+          <div style={{ padding: "12px 16px", borderRight: "1px solid rgba(19,23,28,0.18)" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>In open bets</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{bets ? money(openStake) : "…"}</div>
+          </div>
+          <div style={{ padding: "12px 16px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.75 }}>{bonusLocked ? "Bonus · locked" : "Total winnings"}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, marginTop: 2 }}>{money(bonusLocked ? me.bonus.amount : me.stats.winnings)}</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 10, padding: "16px 16px 0" }}>
+          <button type="button" onClick={() => setSheet("deposit")} style={{ height: 54, borderRadius: 12, border: "none", background: INK, color: ACCENT, fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><DepositIcon size={20} />Deposit</button>
+          <button type="button" onClick={() => setSheet("withdraw")} style={{ height: 54, borderRadius: 12, border: `2px solid ${INK}`, background: "transparent", color: INK, fontSize: 16, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><WithdrawIcon size={20} />Withdraw</button>
+        </div>
+        {note && <p role="status" style={{ margin: "12px 16px 0", fontSize: 13, fontWeight: 700, textAlign: "center" }}>{note}</p>}
+        {/* torn ticket edge: circles in the page colour along the bottom */}
+        <div aria-hidden="true" style={{ position: "absolute", left: -4, right: -4, bottom: -7, display: "flex", justifyContent: "space-between", overflow: "hidden" }}>
+          {Array.from({ length: 22 }, (_, i) => <span key={i} style={{ width: 14, height: 14, flexShrink: 0, borderRadius: 7, background: desktop ? "var(--tc-page)" : "var(--tc-league)" }} />)}
         </div>
       </section>
 
-      {/* Welcome bonus: one claim, unlocked by verifying the email. */}
-      {me.bonus.amount > 0 && !me.bonus.claimed && (
-        <section style={{ ...card, padding: 16, display: "flex", alignItems: "center", gap: 14, border: "1px solid rgba(245, 197, 24, 0.45)", background: "linear-gradient(135deg, rgba(245, 197, 24, 0.14), transparent 70%), var(--tc-card)" }}>
-          <span aria-hidden="true" style={{ width: 44, height: 44, flexShrink: 0, borderRadius: 22, background: "rgba(245, 197, 24, 0.16)", color: ACCENT, display: "flex", alignItems: "center", justifyContent: "center" }}><GiftIcon /></span>
-          <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-            <span style={{ fontSize: 15, fontWeight: 800 }}>{naira(me.bonus.amount).replace(".00", "")} welcome bonus</span>
-            <span style={{ fontSize: 13, color: "var(--tc-muted)" }}>{me.emailVerified ? "Ready to claim. One per account." : "Verify your email to unlock it."}</span>
-          </span>
-          <button type="button" onClick={() => (me.emailVerified ? claimBonus() : setSheet("email"))} style={{ flexShrink: 0, height: 40, padding: "0 16px", borderRadius: 10, border: "none", background: ACCENT, color: "#13171C", fontSize: 14, fontWeight: 800 }}>
-            {me.emailVerified ? "Claim" : "Verify"}
-          </button>
+      {/* Quick actions */}
+      <nav aria-label="Quick actions" style={{ ...box, display: "flex" }}>
+        {quick("Transactions", <ListIcon size={24} />, () => setSheet("transactions"))}
+        {quick("My bets", <ReceiptIcon size={24} />, () => navigate("/my-bets"))}
+        {quick("Live", <LiveIcon size={24} />, () => navigate("/sports/football/live"))}
+        {quick("Help", <HeadsetIcon size={24} />, onSupport, true)}
+      </nav>
+
+      {/* Welcome bonus: account ✓ → verify email → claim */}
+      {bonusLocked && (
+        <section aria-label="Welcome bonus" style={{ ...box, background: "#262416", color: "var(--tc-text)" }}>
+          <div style={{ height: 4, background: "#3E3920" }}><div style={{ width: me.emailVerified ? "66%" : "33%", height: 4, background: ACCENT }} /></div>
+          <div style={{ padding: 16, display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <h2 style={heading}>Unlock your <span style={{ color: ACCENT }}>{naira(me.bonus.amount).replace(".00", "")}</span> bonus</h2>
+            <span style={{ fontSize: 13, fontWeight: 800, color: ACCENT, flexShrink: 0 }}>{me.emailVerified ? 2 : 1} of 3</span>
+          </div>
+          {([
+            { label: "Create your account", done: true },
+            { label: "Verify your email", done: me.emailVerified, action: me.emailVerified ? null : { text: "Verify", run: () => setSheet(me.email ? "email" : "edit") } },
+            { label: "Claim your bonus", done: false, action: me.emailVerified ? { text: "Claim", run: claimBonus } : null },
+          ] as { label: string; done: boolean; action?: { text: string; run: () => void } | null }[]).map((st, i) => (
+            <div key={st.label} style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 54, padding: "0 16px", borderTop: "1px solid #3A3620" }}>
+              <span aria-hidden="true" style={{ width: 24, height: 24, flexShrink: 0, boxSizing: "border-box", borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800, ...(st.done ? { background: ACCENT, color: INK } : { border: `2px solid ${st.action ? ACCENT : "#6A6445"}`, color: st.action ? ACCENT : "#BDB9A0" }) }}>
+                {st.done ? <CheckIcon size={13} /> : i + 1}
+              </span>
+              <span style={{ flex: 1, fontSize: 15, fontWeight: st.action ? 700 : 600, color: st.done ? "#A9A68E" : "var(--tc-text)", textDecoration: st.done ? "line-through" : "none" }}>{st.label}</span>
+              {st.action && <button type="button" onClick={st.action.run} style={{ height: 36, padding: "0 16px", borderRadius: 8, border: "none", background: ACCENT, color: INK, fontSize: 14, fontWeight: 800 }}>{st.action.text}</button>}
+            </div>
+          ))}
         </section>
       )}
 
-      {group("BETTING", <>
-        {item(<ReceiptIcon size={22} />, "My bets", () => navigate("/my-bets"), me.stats.open ? <span style={{ padding: "1px 8px", borderRadius: 999, background: "var(--tc-raise)", fontSize: 12, fontWeight: 800 }}>{me.stats.open} open</span> : undefined)}
-        {item(<ListIcon />, "Transactions", () => setSheet("transactions"))}
-      </>)}
+      <FormCard bets={bets} box={box} heading={heading} money={money} />
+      <OpenBetCard bets={bets} box={box} heading={heading} money={money} onAll={() => navigate("/my-bets")} />
 
-      {group("PROFILE & SECURITY", <>
-        {item(<UserIcon size={22} />, "Personal details", () => setSheet("details"))}
-        {me.email && item(<MailIcon />, "Email", () => (me.emailVerified ? setSheet("details") : setSheet("email")), <Badge ok={me.emailVerified}>{me.emailVerified ? "Verified" : "Verify now"}</Badge>)}
-        {item(<KeyIcon />, "Change password", () => setSheet("password"))}
-      </>)}
+      {/* Play responsibly */}
+      <button type="button" onClick={onSupport} style={{ ...box, border: box.border ?? "none", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2AB572" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
+        <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 15, fontWeight: 700 }}>Play responsibly</span>
+          <span style={{ fontSize: 13, color: "var(--tc-label)" }}>18+ only. Need a break or help? Talk to us.</span>
+        </span>
+        <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
+      </button>
 
-      {group("HELP", <>
-        {item(<HeadsetIcon size={22} />, "Customer service", onSupport)}
+      {/* Account */}
+      <section aria-label="Account" style={box}>
+        <h2 style={{ margin: 0, padding: "14px 16px 8px", fontSize: 12, fontWeight: 800, color: "var(--tc-label)", letterSpacing: 1.2 }}>ACCOUNT</h2>
+        {item(<UserIcon size={20} />, "Personal details", () => setSheet("details"))}
+        {me.email && item(<MailIcon />, "Email", () => (me.emailVerified ? setSheet("details") : setSheet("email")), <Badge ok={me.emailVerified}>{me.emailVerified ? "Verified" : "Unverified"}</Badge>)}
+        {item(<KeyIcon />, "Password & security", () => setSheet("password"))}
+        {item(<HeadsetIcon size={20} />, "Help & support", onSupport)}
         {THEMES.includes("d") && item(<ListIcon />, "Classic layout (Theme D)", () => setTheme("d"))}
-      </>)}
-
-      <section style={{ ...card, overflow: "hidden" }}>
-        <div style={{ marginTop: -1 }}>
-          {item(<LogoutIcon />, "Log out", () => { logout(); navigate("/", { replace: true }); })}
-        </div>
+        {item(<LogoutIcon />, "Log out", () => { logout(); navigate("/", { replace: true }); }, undefined, "#FF8A7A")}
       </section>
-      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", marginTop: -8, padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
+      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
+      <p style={{ margin: "-4px 0 0", textAlign: "center", fontSize: 12, color: "var(--tc-faint)" }}>18+ only · Bet responsibly</p>
 
       {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} />}
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}

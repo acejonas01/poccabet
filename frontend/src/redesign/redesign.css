@@ -225,4 +225,4 @@
 
 /* Phone match page: the whole background is the gap colour (date-row colour), so the top area and
    the gaps between sections are one tone. */
-.tc-root[data-layout="phone"]:has(.tc-match-page) { background: var(--tc-league); }
+.tc-root[data-layout="phone"]:has(.tc-match-page, .tc-account-page) { background: var(--tc-league); }
