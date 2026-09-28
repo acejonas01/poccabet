@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE),
   applicationName: "Poccabet",
   icons: {
-    icon: [{ url: "/icons/app/icon.svg", type: "image/svg+xml" }, { url: "/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    icon: [{ url: "/favicon.ico", sizes: "any" }, { url: "/icons/app/icon.svg", type: "image/svg+xml" }, { url: "/favicon-32.png", sizes: "32x32", type: "image/png" }],
     apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.webmanifest",
