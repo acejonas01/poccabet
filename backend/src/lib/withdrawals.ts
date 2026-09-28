@@ -75,6 +75,8 @@ async function markPaid(tx: Tx, id: string) {
 }
 
 export async function cancelWithdrawal(userId: string, id: string) {
+  const mine = await prisma.withdrawal.findFirst({ where: { id, userId }, select: { id: true } });
+  if (!mine) throw new WithdrawalError("NOT_FOUND", "Withdrawal not found", 404);
   const ok = await prisma.$transaction((tx) => giveBack(tx, id, ["PENDING"], "CANCELLED", "Cancelled by the player"));
   if (!ok) throw new WithdrawalError("CANT_CANCEL", "This withdrawal can no longer be cancelled", 409);
   return prisma.withdrawal.findUniqueOrThrow({ where: { id } });

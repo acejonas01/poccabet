@@ -180,10 +180,8 @@ router.post("/withdrawals", requireAuth, limit("withdraw", 10, 60, byUser), asyn
 
 // POST /api/wallet/withdrawals/:id/cancel — while it's still waiting for review.
 router.post("/withdrawals/:id/cancel", requireAuth, async (req: AuthedRequest, res) => {
-  const mine = await prisma.withdrawal.findFirst({ where: { id: String(req.params.id), userId: req.userId! }, select: { id: true } });
-  if (!mine) return res.status(404).json({ error: "Withdrawal not found", code: "NOT_FOUND" });
   try {
-    const w = await cancelWithdrawal(req.userId!, mine.id);
+    const w = await cancelWithdrawal(req.userId!, String(req.params.id));
     const wallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: req.userId! }, select: { balance: true } });
     res.json({ withdrawal: withdrawalDto(w), balance: toNaira(wallet.balance) });
   } catch (err) { wFail(res, err); }

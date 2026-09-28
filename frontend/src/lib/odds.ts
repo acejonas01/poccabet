@@ -9,17 +9,6 @@ export const ALL_COLUMNS = [
   { key: "under", label: "Under", type: "ou" },
 ];
 
-export const LEAGUE_COUNTRY: Record<string, { country: string; flag: string }> = {
-  NPFL: { country: "Nigeria", flag: "🇳🇬" },
-  "English Premier League": { country: "England", flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿" },
-  "La Liga": { country: "Spain", flag: "🇪🇸" },
-  "Serie A": { country: "Italy", flag: "🇮🇹" },
-  "UEFA Champions League": { country: "Europe", flag: "🇪🇺" },
-  "International Friendly": { country: "International", flag: "🌍" },
-  NBA: { country: "USA", flag: "🇺🇸" },
-  "ATP Masters": { country: "International", flag: "🌍" },
-};
-
 export function getEventCode(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
@@ -76,10 +65,3 @@ export function getOdds(event: any) {
   };
 }
 
-export function marketFor(event: any, marketType: string) {
-  return marketType === "ou"
-    ? event.markets.find((m: any) => m.type === "OVER_UNDER")
-    : event.markets.find(
-        (m: any) => m.type === "MATCH_WINNER" || m.type === "HEAD_TO_HEAD"
-      );
-}

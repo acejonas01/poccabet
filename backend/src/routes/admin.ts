@@ -624,7 +624,7 @@ router.post("/users/:id/unmute", async (req: AuthedRequest, res) => {
 
 // ---------- error alerts ----------
 // "Send test alert" in the office: a deliberate error, to check the alerts arrive (email / app).
-router.post("/test-alert", async (req: AuthedRequest, res) => {
+router.post("/test-alert", async (_req, res) => {
   const on = !!process.env.SENTRY_DSN;
   const { Sentry } = await import("../instrument");
   const id = Sentry.captureException(new Error(`Test alert from the Poccabet office (${new Date().toISOString()})`));

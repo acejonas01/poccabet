@@ -138,9 +138,6 @@ export const WithdrawIcon = ({ size = 22 }: P) => (
 export const ListIcon = ({ size = 22 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></svg>
 );
-export const MailIcon = ({ size = 22 }: P) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>
-);
 export const KeyIcon = ({ size = 22 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="8" cy="15" r="4" /><path d="M10.8 12.2L20 3M16 7l3 3M14 9l2 2" /></svg>
 );
