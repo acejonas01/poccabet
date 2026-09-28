@@ -221,6 +221,7 @@ model BetSelection {
 model BookedSlip {
   code       String   @id
   selections Json // [{ matchId, market, selection }]
+  signature  String?  @unique // hash of the selections: the same slip always gets the same code
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("booked_slips")

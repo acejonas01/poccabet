@@ -1,4 +1,6 @@
 // Booking codes: save a slip (without a stake) under a short code that anyone can load later.
+// The same selections always get the same code, whoever books them and however often.
+import { createHash } from "node:crypto";
 import { prisma } from "../lib/prisma";
 import { newBookingCode, normaliseCode } from "./codes";
 import { findMatches } from "./feed";
@@ -25,19 +27,32 @@ async function withPrices(legs: BookedLeg[]) {
   return { available, unavailable };
 }
 
+// One key per slip: its selections, sorted, so the order they were added in doesn't matter.
+const signatureOf = (legs: BookedLeg[]) =>
+  createHash("sha256").update(legs.map((l) => `${l.matchId}|${l.market}|${l.selection}`).sort().join("\n")).digest("hex");
+const existingCode = (signature: string) =>
+  prisma.bookedSlip.findUnique({ where: { signature }, select: { code: true } }).then((s) => s?.code ?? null);
+
 export async function bookSlip(legs: BookedLeg[]) {
   if (!legs.length) throw new BetError("EMPTY_SLIP", "Add at least one selection");
   if (legs.length > RULES.maxSelections) throw new BetError("TOO_MANY_SELECTIONS", `A slip can hold up to ${RULES.maxSelections} selections`);
   const { available } = await withPrices(legs);
   if (!available.length) throw new BetError("SELECTIONS_UNAVAILABLE", "None of these selections can be booked right now", 409);
-  const keep = available.map(({ matchId, market, selection }) => ({ matchId, market, selection }));
+  // Only what can still be booked, each selection once.
+  const keep = [...new Map(available.map(({ matchId, market, selection }) => [`${matchId}|${market}|${selection}`, { matchId, market, selection }])).values()];
+  const signature = signatureOf(keep);
+  const booked = await existingCode(signature);
+  if (booked) return { code: booked, count: keep.length };
   for (let attempt = 0; attempt < 3; attempt++) {
     const code = newBookingCode();
     try {
-      await prisma.bookedSlip.create({ data: { code, selections: keep } });
+      await prisma.bookedSlip.create({ data: { code, selections: keep, signature } });
       return { code, count: keep.length };
     } catch (err: any) {
-      if (err?.code !== "P2002") throw err; // code taken — pick another
+      if (err?.code !== "P2002") throw err;
+      // Booked by someone else at the same moment: theirs is the code. Otherwise the code was taken; pick another.
+      const same = await existingCode(signature);
+      if (same) return { code: same, count: keep.length };
     }
   }
   throw new BetError("BOOKING_FAILED", "Couldn't create a booking code. Try again.", 500);
