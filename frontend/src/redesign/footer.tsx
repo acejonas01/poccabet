@@ -1,5 +1,6 @@
 // Recent Winners + site footer for the redesign (Themes A, B and C).
 import { useEffect, useState, type ReactElement } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { poll } from "./data";
 import { ACCENT } from "./shared";
@@ -77,10 +78,14 @@ export function WinnersStrip({ desktop = false }: { desktop?: boolean }) {
 
 // Red 18+ badge + "Play responsibly" (footer, sign-up).
 export function PlayResponsibly({ center = false }: { center?: boolean }) {
+  const navigate = useNavigate();
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: center ? "center" : undefined, gap: 10, fontSize: 14, fontWeight: 700 }}>
-      <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
-      Play responsibly
+    <div style={{ display: "flex", justifyContent: center ? "center" : undefined }}>
+      {/* Opens the Play responsibly page (/responsible-gambling). */}
+      <a href="/responsible-gambling" onClick={(e) => { e.preventDefault(); navigate("/responsible-gambling"); }} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, fontWeight: 700, color: "var(--tc-text)", textDecoration: "none" }}>
+        <span style={{ width: 34, height: 34, borderRadius: 17, border: "2px solid #E5484D", color: "#E5484D", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>18+</span>
+        Play responsibly
+      </a>
     </div>
   );
 }

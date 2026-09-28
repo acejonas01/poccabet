@@ -15,6 +15,7 @@ import { SUPPORT_EMAIL, ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets } from "./mybets";
 import { RedesignAccount } from "./account";
+import { ResponsibleGambling } from "./responsible";
 import { RedesignForgot, RedesignLogin, RedesignSignup } from "./auth";
 import { buildIndex } from "./search";
 import { SearchResultsPage } from "./searchui";
@@ -174,6 +175,7 @@ export function RedesignApp() {
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
         <Route path="/account" element={page(<RedesignAccount desktop={desk} onSupport={() => setSheet("support")} />)} />
+        <Route path="/responsible-gambling" element={page(<ResponsibleGambling desktop={desk} onSupport={() => setSheet("support")} />)} />
         <Route path="*" element={page(<NotFound onHome={goHome} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}

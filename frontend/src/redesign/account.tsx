@@ -9,6 +9,7 @@ import { THEMES, useTheme } from "../context/ThemeContext";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
 import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, GiftIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, MailIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
 import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useMinLoading } from "./shared";
+import { PlayResponsibly } from "./footer";
 
 const naira = (v: number) => `₦${v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const errText = (err: unknown) => (err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -223,8 +224,8 @@ function DeleteSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: (
     }
   }
   return (
-    <Sheet label="Delete account" onClose={onClose}>
-      <SheetTitle title="Delete account" onClose={onClose} />
+    <Sheet label="Close account" onClose={onClose}>
+      <SheetTitle title="Close account" onClose={onClose} />
       <form onSubmit={remove} style={sheetBody}>
         <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(229, 72, 77, 0.1)", border: "1px solid rgba(229, 72, 77, 0.4)", fontSize: 14, lineHeight: 1.5, color: "var(--tc-soft)" }}>
           This can't be undone. You'll be logged out everywhere and can't log in again, and your name, phone number and email
@@ -243,7 +244,7 @@ function DeleteSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: (
 }
 
 // ---------- personal details & transactions (sheets) ----------
-function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose: () => void; onEdit: () => void; onVerify: () => void }) {
+function DetailsSheet({ me, onClose, onEdit, onVerify, onCloseAccount }: { me: Profile; onClose: () => void; onEdit: () => void; onVerify: () => void; onCloseAccount: () => void }) {
   const dob = me.dateOfBirth ? new Date(`${me.dateOfBirth}T00:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—";
   const row = (label: string, value: ReactNode, extra?: ReactNode) => (
     <div style={{ ...rowStyle, cursor: "default" }}>
@@ -267,9 +268,18 @@ function DetailsSheet({ me, onClose, onEdit, onVerify }: { me: Profile; onClose:
         {row("Phone number", me.phoneDisplay ?? "—", me.phone && <Badge ok={me.phoneVerified}>{me.phoneVerified ? "Verified" : "Not verified"}</Badge>)}
         {row("Date of birth", dob)}
       </div>
-      <div style={{ padding: "8px 20px 24px" }}>
+      <div style={{ padding: "8px 20px 8px" }}>
         <button type="button" onClick={onEdit} style={{ ...primaryBtn(true), width: "100%" }}>EDIT DETAILS</button>
       </div>
+      {/* Closing the account lives here, out of the way (it still asks for DELETE and the password). */}
+      <button type="button" onClick={onCloseAccount} style={{ ...rowStyle, marginTop: 8, color: RED, fontSize: 15, fontWeight: 700 }}>
+        <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
+          Close account
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--tc-label)" }}>Permanently close your Poccabet account</span>
+        </span>
+        <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
+      </button>
+      <div style={{ height: 16 }} />
     </Sheet>
   );
 }
@@ -745,7 +755,7 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
       { label: "Security", icon: <KeyIcon size={20} />, run: () => setSheet("password") },
       { label: "Live games", icon: <LiveIcon size={20} />, run: () => navigate("/sports/football/live") },
       { label: "Help & support", icon: <HeadsetIcon size={20} />, run: onSupport },
-      { label: "Play responsibly", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, run: onSupport, color: "#2AB572" },
+      { label: "Play responsibly", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>, run: () => navigate("/responsible-gambling"), color: "#2AB572" },
       { label: "Log out", icon: <LogoutIcon />, run: () => { logout(); navigate("/", { replace: true }); }, color: "#FF8A7A" },
     ];
     return <>
@@ -797,8 +807,7 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
         <span style={{ flex: 1, fontSize: 16, fontWeight: 800, letterSpacing: 0.4 }}>{me!.customerNo}</span>
         <CopyChip text={me!.customerNo} />
       </section>
-      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
-      <p style={{ margin: "-4px 0 0", textAlign: "center", fontSize: 12, color: "var(--tc-faint)" }}>18+ only · Bet responsibly</p>
+      <div style={{ padding: "6px 0 4px" }}><PlayResponsibly center /></div>
     </>;
   };
 
@@ -906,11 +915,11 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
       <OpenBetCard bets={bets} box={box} heading={heading} money={money} onAll={() => navigate("/my-bets")} />
 
       {/* Play responsibly */}
-      <button type="button" onClick={onSupport} style={{ ...box, border: box.border ?? "none", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
+      <button type="button" onClick={() => navigate("/responsible-gambling")} style={{ ...box, border: box.border ?? "none", display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", color: "var(--tc-text)", textAlign: "left", font: "inherit" }}>
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2AB572" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
         <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 2 }}>
           <span style={{ fontSize: 15, fontWeight: 700 }}>Play responsibly</span>
-          <span style={{ fontSize: 13, color: "var(--tc-label)" }}>18+ only. Need a break or help? Talk to us.</span>
+          <span style={{ fontSize: 13, color: "var(--tc-label)" }}>18+ only. Tips, warning signs and where to get help.</span>
         </span>
         <span style={{ display: "flex", color: "var(--tc-faint)" }}><ChevronRight /></span>
       </button>
@@ -925,11 +934,10 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
         {THEMES.includes("d") && item(<ListIcon />, "Classic layout (Theme D)", () => setTheme("d"))}
         {item(<LogoutIcon />, "Log out", () => { logout(); navigate("/", { replace: true }); }, undefined, "#FF8A7A")}
       </section>
-      <button type="button" onClick={() => setSheet("delete")} style={{ alignSelf: "center", padding: "6px 10px", border: "none", background: "transparent", color: "var(--tc-label)", fontSize: 13, fontWeight: 600, textDecoration: "underline" }}>Delete account</button>
-      <p style={{ margin: "-4px 0 0", textAlign: "center", fontSize: 12, color: "var(--tc-faint)" }}>18+ only · Bet responsibly</p>
+      <div style={{ padding: "6px 0 4px" }}><PlayResponsibly center /></div>
       </>}
 
-      {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} />}
+      {sheet === "details" && <DetailsSheet me={me} onClose={() => setSheet(null)} onEdit={() => setSheet("edit")} onVerify={() => setSheet("email")} onCloseAccount={() => setSheet("delete")} />}
       {sheet === "edit" && <EditSheet me={me} onClose={() => setSheet(null)} onSaved={saved} />}
       {sheet === "email" && <VerifyEmailSheet me={me} onClose={() => setSheet(null)} onVerified={saved} />}
       {sheet === "password" && <PasswordSheet onClose={() => setSheet(null)} />}

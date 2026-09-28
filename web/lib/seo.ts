@@ -78,6 +78,7 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
     account: ["My account", `Your ${BRAND} account.`, false],
     "forgot-password": ["Reset your password", `Forgot your ${BRAND} password? Get a code and choose a new one.`, false],
     search: ["Search", `Search ${BRAND} for teams, leagues and live games.`, false],
+    "responsible-gambling": ["Play responsibly", `18+ only. Tips for safe betting, warning signs of a gambling problem, and where to get help with ${BRAND}.`, true],
   };
   const f = fixed[first];
   if (f) return base(`${f[0]} | ${BRAND}`, f[1], f[2], [f[0], f[1]]);
