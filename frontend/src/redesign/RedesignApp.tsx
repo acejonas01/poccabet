@@ -74,7 +74,7 @@ export function RedesignApp() {
     checkedLive.current = true;
     if (data.live.length === 0 && tab === "live") setTab("upcoming");
   }, [data.liveLoaded, data.live.length, tab, setTab]);
-  // The bottom nav lights Live only when you came through it; landing on Home keeps Home lit.
+  // The bottom and quick navs light Live only when you came through them; landing on Home keeps Home / Sports lit.
   const [liveNav, setLiveNav] = useState(false);
   const defaultTab = (): HomeTab => (data.live.length > 0 ? "live" : "upcoming");
   const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
@@ -92,14 +92,14 @@ export function RedesignApp() {
 
   const goHome = () => { setTab(defaultTab()); setLiveNav(false); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
-  // Quick nav: Sports = back to the default Home (all upcoming) at the top,
+  // Quick nav: Sports = back to the default Home (Live tab, or Upcoming when nothing is live) at the top,
   // Live = Live tab, Top leagues = Top leagues tab, Today = Upcoming filtered to today.
   const onSection = (key: SectionKey) => {
     if (key === "more") return setSheet("shortcuts");
     if (key === "support") return setSheet("support");
     setLiveNav(false);
     if (key === "sports") {
-      setTab("upcoming");
+      setTab(defaultTab());
       setDateId("all");
       return window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -113,7 +113,7 @@ export function RedesignApp() {
     setDateId(key === "today" ? zoned().toDateString() : "all");
     scrollToList();
   };
-  const activeSection: SectionKey = tab === "live" ? "live" : tab === "top" ? "top" : dateId === zoned().toDateString() ? "today" : "sports";
+  const activeSection: SectionKey = tab === "live" ? (liveNav ? "live" : "sports") : tab === "top" ? "top" : dateId === zoned().toDateString() ? "today" : "sports";
   // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
   const goLive = () => {
     setTab("live");
