@@ -66,7 +66,17 @@ export function RedesignApp() {
   useScrollMemory(location.pathname + location.search);
 
   // Remembered until the browser tab is closed, so a reload lands where you were.
-  const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "upcoming", "session");
+  // Home opens on Live; when nothing is live on first load it falls back to Upcoming.
+  const [tab, setTab] = useStoredState<HomeTab>("pocca-home-tab", "live", "session");
+  const checkedLive = useRef(false);
+  useEffect(() => {
+    if (!data.liveLoaded || checkedLive.current) return;
+    checkedLive.current = true;
+    if (data.live.length === 0 && tab === "live") setTab("upcoming");
+  }, [data.liveLoaded, data.live.length, tab, setTab]);
+  // The bottom nav lights Live only when you came through it; landing on Home keeps Home lit.
+  const [liveNav, setLiveNav] = useState(false);
+  const defaultTab = (): HomeTab => (data.live.length > 0 ? "live" : "upcoming");
   const [dateId, setDateId] = useStoredState("pocca-home-date", "all", "session");
   const [market, setMarket] = useStoredState("pocca-home-market", "1x2", "session");
   const [sheet, setSheet] = useState<"markets" | "shortcuts" | "support" | null>(null);
@@ -80,13 +90,14 @@ export function RedesignApp() {
   // Tapping a match (row, "+ markets", search result…) opens its page.
   const openMatch = (m: TCMatch) => navigate(matchHref(m));
 
-  const goHome = () => { setTab("upcoming"); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
+  const goHome = () => { setTab(defaultTab()); setLiveNav(false); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
   // Quick nav: Sports = back to the default Home (all upcoming) at the top,
   // Live = Live tab, Today = Upcoming filtered to today.
   const onSection = (key: SectionKey) => {
     if (key === "more") return setSheet("shortcuts");
     if (key === "support") return setSheet("support");
+    setLiveNav(false);
     if (key === "sports") {
       setTab("upcoming");
       setDateId("all");
@@ -101,6 +112,7 @@ export function RedesignApp() {
   // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
   const goLive = () => {
     setTab("live");
+    setLiveNav(true);
     navigate("/");
     requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView());
   };
@@ -112,7 +124,7 @@ export function RedesignApp() {
   const onSlipPage = location.pathname === "/betslip";
   const back = () => (canGoBack() ? navigate(-1) : navigate("/"));
   const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
-  const navActive = onRoot ? (tab === "live" ? "live" : "home")
+  const navActive = onRoot ? (tab === "live" && liveNav ? "live" : "home")
     : location.pathname === "/my-bets" ? "mybets" : location.pathname === "/account" ? "account" : "home";
 
   const home = desk ? (
