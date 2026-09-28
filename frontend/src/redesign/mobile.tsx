@@ -23,7 +23,7 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 // ---------- header ----------
 export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulated: boolean; searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void }) {
   const { isAuthenticated, balance } = useAuth();
-  const [hideBalance] = useHideBalance(); // the Account page's eye hides it here too
+  const [hideBalance, toggleBalance] = useHideBalance(); // tap it (or the Account page's eye) to hide / show
   const navigate = useNavigate();
   // Publish the header height (--tc-header-h) so sticky rows can sit right under it.
   const ref = useRef<HTMLElement>(null);
@@ -50,11 +50,11 @@ export function MobileHeader({ simulated, searchIndex, onOpenMatch }: { simulate
         {isAuthenticated ? (
           <>
             {/* Balance: a small grey label over a smaller amount, so it doesn't shout. */}
-            <span style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", color: "var(--tc-text)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: 2 }}>
+            <button type="button" onClick={toggleBalance} aria-label={hideBalance ? "Show balance" : "Hide balance"} aria-pressed={hideBalance} style={{ height: 38, padding: "0 10px", borderRadius: 9, border: "1px solid var(--tc-outline-2)", background: "transparent", color: "var(--tc-text)", display: "flex", flexDirection: "column", alignItems: "flex-start", justifyContent: "center", gap: 2, font: "inherit" }}>
               <span style={{ fontSize: 10, fontWeight: 600, lineHeight: 1, color: "var(--tc-label)" }}>Balance</span>
               {/* Whole naira, rounded down (never shows more than the player has); the exact amount is on the Account page. */}
               <span style={{ fontSize: 13, fontWeight: 800, lineHeight: 1 }}>{hideBalance ? "₦ • • •" : `₦${Math.floor(balance).toLocaleString("en-US")}`}</span>
-            </span>
+            </button>
             <UserMenu />
           </>
         ) : (
