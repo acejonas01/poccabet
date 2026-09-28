@@ -22,5 +22,6 @@ export function checkPath([first, second, third, ...rest]: string[]): RouteCheck
     if (second !== "football") return { redirect: `/sports/${second}` };
     return FOOTBALL_VIEWS.includes(third) || /^\d{4}-\d{2}-\d{2}$/.test(third) ? { ok: true } : { redirect: "/sports/football" };
   }
+  if (first === "my-bets" && second) return !third && /^[A-Za-z0-9]{4,20}$/.test(second) ? { ok: true } : { notFound: true };
   return PAGES.includes(first) && !second ? { ok: true } : { notFound: true };
 }

@@ -13,7 +13,7 @@ import { ACCENT, BetSlipBody, MarketsSheet, canGoBack, trackPage, useBookingLink
 import { MatchPage } from "./matchpage";
 import { SUPPORT_EMAIL, ShortcutsPanel, SupportSheet } from "./shortcuts";
 import { LeaguePage, SportListPage, SportPage } from "./sports";
-import { RedesignMyBets } from "./mybets";
+import { RedesignMyBets, RedesignTicket } from "./mybets";
 import { RedesignAccount } from "./account";
 import { ResponsibleGambling } from "./responsible";
 import { RedesignForgot, RedesignLogin, RedesignSignup } from "./auth";
@@ -130,7 +130,7 @@ export function RedesignApp() {
   const back = () => (canGoBack() ? navigate(-1) : navigate("/"));
   const authPage = (el: ReactNode) => (desk ? <div className="tc-auth-desk">{el}</div> : el);
   const navActive = onRoot ? (tab === "live" && liveNav ? "live" : "home")
-    : location.pathname === "/my-bets" ? "mybets" : location.pathname === "/account" ? "account" : "home";
+    : location.pathname.startsWith("/my-bets") ? "mybets" : location.pathname === "/account" ? "account" : "home";
 
   const home = desk ? (
     <DesktopHome upcoming={data.upcoming} live={data.live} tab={tab} setTab={setTab} loaded={tab === "live" ? data.liveLoaded : data.upcomingLoaded} />
@@ -188,6 +188,7 @@ export function RedesignApp() {
         <Route path="/signup" element={authPage(<RedesignSignup />)} />
         <Route path="/forgot-password" element={authPage(<RedesignForgot />)} />
         <Route path="/my-bets" element={page(<RedesignMyBets />)} />
+        <Route path="/my-bets/:ticket" element={page(<RedesignTicket desktop={desk} />)} />
         <Route path="/betslip" element={desk
           ? page(<div style={{ maxWidth: 480, margin: "0 auto", background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14, overflow: "hidden" }}><BetSlipBody onBack={back} /></div>)
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
