@@ -7,7 +7,7 @@ import {
   type TCMatch, TOP_LEAGUES, dateOptions, dayHeading, dayLabel, groupByLeague, hhmm, kickoff, leagueRank, leagueSlug, matchHref, matchesDate,
 } from "./data";
 import {
-  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, UserIcon,
+  ChevronDown, ChevronLeft, ChevronRight, GridIcon, HeadsetIcon, HomeIcon, MoreIcon, LiveIcon, ReceiptIcon, StarIcon, TicketShape, TrackerIcon, TrophyIcon, UserIcon,
 } from "./icons";
 import { FIXED, deriveOdds, impliedPct, marketCount, marketDef } from "./markets";
 import { ACCENT, Loader1X2, canGoBack, useHideBalance, useMinLoading, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -115,10 +115,11 @@ function UserMenu() {
 // Theme A's quick-nav items and icon artwork. Single-colour glyphs are recoloured to Theme C
 // through a CSS mask (yellow when active, grey otherwise); Casino and Specials keep their
 // original colours, as in Theme A. Support and More use line icons (no artwork yet).
-export type SectionKey = "sports" | "live" | "today" | "support" | "more";
+export type SectionKey = "sports" | "live" | "top" | "today" | "support" | "more";
 const SECTIONS: { key: string; label: string; icon?: string; Svg?: typeof MoreIcon; original: boolean }[] = [
   { key: "sports", label: "Sports", icon: "/icons/soccer-ball.png", original: false },
   { key: "live", label: "Live", icon: "/icons/live-3.png", original: false },
+  { key: "top", label: "Top leagues", Svg: TrophyIcon, original: false },
   { key: "aviator", label: "Aviator", icon: "/icons/aviator.png", original: false },
   { key: "virtuals", label: "Virtuals", icon: "/icons/visuals.png", original: false },
   { key: "today", label: "Today", icon: "/icons/today.png", original: false },
@@ -145,12 +146,12 @@ export function SectionsNav({ active, onSelect }: { active: SectionKey; onSelect
     <nav aria-label="Sections" className="tc-hscroll" style={{ display: "flex", gap: 2, padding: "8px 8px 0", borderBottom: "1px solid var(--tc-divider)", overflowX: "auto" }}>
       {SECTIONS.map(({ key, label, icon, Svg, original }) => {
         const on = key === active;
-        const action = ["sports", "live", "today", "support", "more"].includes(key) ? (key as SectionKey) : null;
+        const action = ["sports", "live", "top", "today", "support", "more"].includes(key) ? (key as SectionKey) : null;
         return (
           <button key={key} aria-current={on ? "page" : undefined} onClick={action ? () => onSelect(action) : undefined} style={{
             flex: "0 0 auto", minWidth: 64, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 6px 10px",
             background: "transparent", border: "none", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`,
-            color: on ? ACCENT : "var(--tc-muted)", fontSize: 12, fontWeight: on ? 700 : 600,
+            color: on ? ACCENT : "var(--tc-muted)", fontSize: 12, fontWeight: on ? 700 : 600, whiteSpace: "nowrap",
           }}>
             {Svg ? <Svg size={26} /> : icon && <NavIcon src={icon} original={original} />}
             {label}

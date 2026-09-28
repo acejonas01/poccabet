@@ -81,7 +81,10 @@ export const SearchIcon = ({ size = 16 }: P) => (
 export const HeadsetIcon = ({ size = 24 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M4 15v-3a8 8 0 0 1 16 0v3" /><path d="M4 14h3v6H5.5A1.5 1.5 0 0 1 4 18.5zM20 14h-3v6h1.5a1.5 1.5 0 0 0 1.5-1.5z" /><path d="M18 20c0 1.2-2 2-5 2" /></svg>
 );
-export const MoreIcon = ({ size = 24 }: P) => (
+export const TrophyIcon = ({ size = 24 }: P) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><path d="M8 21h8M12 16v5" /><path d="M7 3h10v6a5 5 0 0 1-10 0z" /><path d="M17 5h3v1.5A3.5 3.5 0 0 1 16.5 10M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10" /><path d="M12 5.6l.9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 7.7l2-.3z" fill="currentColor" strokeWidth="0.6" /></svg>
+);
+export const MoreIcon =({ size = 24 }: P) => (
   <svg width={size} height={size} viewBox="0 0 24 24" {...stroke(1.8)}><circle cx="12" cy="12" r="9" /><circle cx="8" cy="12" r="0.6" fill="currentColor" /><circle cx="12" cy="12" r="0.6" fill="currentColor" /><circle cx="16" cy="12" r="0.6" fill="currentColor" /></svg>
 );
 export const BasketballIcon = ({ size = 24 }: P) => (

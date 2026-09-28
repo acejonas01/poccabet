@@ -296,7 +296,11 @@ export function useStoredState<T>(key: string, initial: T, where: "local" | "ses
     const raw = store().getItem(key);
     return raw === null ? initial : (JSON.parse(raw) as T);
   }, initial);
+  // Skip the first save: on server-rendered pages it would write the default over the stored
+  // value before it's read back (dev mode runs effects twice, so the read then gets the default).
+  const first = useRef(true);
   useEffect(() => {
+    if (first.current) { first.current = false; return; }
     try { store().setItem(key, JSON.stringify(value)); } catch { /* storage blocked: just not remembered */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, value]);

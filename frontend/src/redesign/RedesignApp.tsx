@@ -93,7 +93,7 @@ export function RedesignApp() {
   const goHome = () => { setTab(defaultTab()); setLiveNav(false); setDateId("all"); navigate("/"); window.scrollTo(0, 0); };
   const scrollToList = () => requestAnimationFrame(() => document.getElementById("tc-list")?.scrollIntoView({ behavior: "smooth" }));
   // Quick nav: Sports = back to the default Home (all upcoming) at the top,
-  // Live = Live tab, Today = Upcoming filtered to today.
+  // Live = Live tab, Top leagues = Top leagues tab, Today = Upcoming filtered to today.
   const onSection = (key: SectionKey) => {
     if (key === "more") return setSheet("shortcuts");
     if (key === "support") return setSheet("support");
@@ -104,11 +104,16 @@ export function RedesignApp() {
       return window.scrollTo({ top: 0, behavior: "smooth" });
     }
     if (key === "live") return goLive();
+    if (key === "top") {
+      setTab("top");
+      setDateId("all");
+      return scrollToList();
+    }
     setTab("upcoming");
     setDateId(key === "today" ? zoned().toDateString() : "all");
     scrollToList();
   };
-  const activeSection: SectionKey = tab === "live" ? "live" : dateId === zoned().toDateString() ? "today" : "sports";
+  const activeSection: SectionKey = tab === "live" ? "live" : tab === "top" ? "top" : dateId === zoned().toDateString() ? "today" : "sports";
   // Live = Home with the Live tab open, scrolled to the list (featured live match on top).
   const goLive = () => {
     setTab("live");
