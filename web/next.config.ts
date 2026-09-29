@@ -18,9 +18,15 @@ const nextConfig: NextConfig = {
   experimental: { externalDir: true }, // compile the shared screens from ../frontend/src
   outputFileTracingRoot: path.resolve(__dirname, ".."), // the repo: this site + ../frontend
   // The API is reached through this site (same origin): no CORS setup needed on the backend.
+  // /ingest: PostHog (EU) through this site too, so ad blockers don't drop analytics.
   async rewrites() {
-    return [{ source: "/api/:path*", destination: `${BACKEND}/api/:path*` }];
+    return [
+      { source: "/api/:path*", destination: `${BACKEND}/api/:path*` },
+      { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/:path*", destination: "https://eu.i.posthog.com/:path*" },
+    ];
   },
+  skipTrailingSlashRedirect: true, // PostHog's API paths end in "/"
   // Slides and game tiles are always linked with a version stamp (?v=…) that changes with the
   // image, so browsers may keep them for a year: a replaced image gets a new address.
   async headers() {

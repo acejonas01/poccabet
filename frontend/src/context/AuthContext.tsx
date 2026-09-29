@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from "react";
 import { api, type SignupDetails } from "../api/client";
 import { deferDeviceState, useDeviceState } from "../lib/browser";
+import { forgetPlayer, identifyPlayer, track } from "../lib/analytics";
 
 interface User {
   id: string;
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (phoneOrEmail: string, password: string) => {
     const id = phoneOrEmail.trim();
     const res = await api.login(id.includes("@") ? { email: id, password } : { phone: id, password });
+    track("logged_in");
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -67,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signup = useCallback(async (email: string, password: string, displayName: string) => {
     const res = await api.signup({ email, password, displayName });
+    track("signed_up", { method: "email" });
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -76,6 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signupWithPhone = useCallback(async (data: SignupDetails & { verificationToken: string }) => {
     const res = await api.signupPhone(data);
+    track("signed_up", { method: "phone" });
     localStorage.setItem("token", res.token);
     localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
@@ -94,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    forgetPlayer();
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
@@ -111,6 +116,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) refreshBalance().catch(() => {});
   }, [user, refreshBalance]);
+
+  // Analytics: link this device's visits to the player (internal id only).
+  useEffect(() => { if (user?.id) identifyPlayer(user.id); }, [user?.id]);
 
   // The server ended the session (suspended / closed account): log out and explain.
   useEffect(() => {

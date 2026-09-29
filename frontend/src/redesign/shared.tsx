@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import { THEMES, useTheme } from "../context/ThemeContext";
 import { type Selection, useBetSlip } from "../context/BetSlipContext";
 import { useDeviceState } from "../lib/browser";
+import { track } from "../lib/analytics";
 import type { Dir, TCMatch } from "./data";
 import { ChevronLeft, CheckIcon, CloseIcon, CopyIcon, LockIcon, ReceiptIcon, ShareIcon, TrashIcon } from "./icons";
 import { CORRECT_SCORE, MK, deriveOdds } from "./markets";
@@ -418,7 +419,7 @@ export function useBookingLink(onLoaded: () => void) {
     params.delete("book");
     navigate({ pathname: window.location.pathname, search: params.toString() ? `?${params}` : "" }, { replace: true });
     api.loadSlip(code)
-      .then((res) => { if (res.available.length) { replaceAll(res.available.map(toSelection)); onLoaded(); } })
+      .then((res) => { track("booking_code_loaded", { from: "link", selections: res.available.length }); if (res.available.length) { replaceAll(res.available.map(toSelection)); onLoaded(); } })
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -580,6 +581,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
         selections: selections.map((s) => ({ ...legOf(s.outcomeId), odds: s.odds })),
       });
       setBalance(res.balance);
+      track("bet_placed", { mode, bets: res.bets.length, selections: selections.length, stake, total_odds: res.bets[0]?.totalOdds });
       clear();
       setChanged(false);
       setCodeCard({ kind: "ticket", codes: res.bets.map((b) => ({ code: b.ticket, count: b.selections.length, odds: b.totalOdds })) });
@@ -610,6 +612,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
       const res = await api.bookSlip(live.map((s) => legOf(s.outcomeId)));
       setMsg(null);
       setCodeCard({ kind: "booking", codes: [{ code: res.code, count: live.length, odds: total }] });
+      track("bet_booked", { selections: live.length });
     } catch (err) {
       setMsg({ tone: "error", text: err instanceof Error ? err.message : "Couldn't book this slip" });
     } finally {
@@ -626,6 +629,7 @@ export function BetSlipBody({ inSheet = false, onBack }: { inSheet?: boolean; on
     setCodeCard(null);
     try {
       const res = await api.loadSlip(code.trim());
+      track("booking_code_loaded", { from: "bet_slip", selections: res.available.length });
       replaceAll(res.available.map(toSelection));
       setChanged(false);
       const gone = res.unavailable.length;

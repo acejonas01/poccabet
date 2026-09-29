@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties, type FormEvent, type ReactNode
 import { useNavigate } from "react-router-dom";
 import { ApiError, api, type BankAccount, type Profile, type WithdrawInfo, type WithdrawalRow } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { track } from "../lib/analytics";
 import { CodeBoxes, formInput, hiddenPw, primaryBtn } from "./auth";
 import { CheckIcon, ChevronRight, DepositIcon, EyeIcon, EyeOffIcon, GiftIcon, HeadsetIcon, KeyIcon, ListIcon, LiveIcon, LogoutIcon, ReceiptIcon, UserIcon, WithdrawIcon } from "./icons";
 import { ACCENT, Loader1X2, Sheet, SheetTitle, copyText, useHideBalance, useMinLoading } from "./shared";
@@ -302,6 +303,7 @@ function DepositSheet({ onClose }: { onClose: () => void }) {
     setError(null);
     try {
       const r = await api.startDeposit(value);
+      track("deposit_started", { amount: value });
       window.location.href = r.authorizationUrl; // Paystack's secure payment page
     } catch (err) {
       setError(errText(err));
@@ -418,7 +420,7 @@ function WithdrawSheet({ onClose, onChanged }: { onClose: () => void; onChanged:
     if (value > info.balance) return setError("That's more than your balance");
     if (value < info.min || value > info.max) return setError(`Enter an amount from ₦${info.min.toLocaleString("en-US")} to ₦${info.max.toLocaleString("en-US")}`);
     setBusy(true); setError(null);
-    try { await api.requestWithdrawal(value); setAmount(""); await load(); onChanged(); } catch (err) { setError(errText(err)); }
+    try { await api.requestWithdrawal(value); track("withdrawal_requested", { amount: value }); setAmount(""); await load(); onChanged(); } catch (err) { setError(errText(err)); }
     finally { setBusy(false); }
   }
   async function cancel(id: string) {
@@ -569,6 +571,7 @@ export function RedesignAccount({ onSupport, desktop = false }: { onSupport: () 
     const check = (tries: number): void => {
       api.checkDeposit(ref).then((r) => {
         if (r.status === "COMPLETED") {
+          track("deposit_completed", { amount: r.amount });
           setNote(`${naira(r.amount ?? 0)} added to your wallet.`);
           if (typeof r.balance === "number") setBalance(r.balance);
           // Fresh profile + header balance: the page's first loads may have raced the credit.
