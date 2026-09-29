@@ -17,6 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...matchesIn(feed).map((m) => page(`/match/${m.slug}`, 0.6, "hourly")),
     page("/signup", 0.5, "weekly"),
     page("/responsible-gambling", 0.4, "weekly"),
+    page("/privacy", 0.2, "weekly"),
     page("/login", 0.3, "weekly"),
   ];
 }

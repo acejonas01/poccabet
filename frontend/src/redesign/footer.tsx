@@ -93,6 +93,8 @@ export function PlayResponsibly({ center = false, label = true }: { center?: boo
 
 // ---------- footer ----------
 const LINKS = ["Sports", "Live", "Become an agent", "About us", "Contact us", "Help", "Affiliates", "T&Cs", "Privacy policy"];
+// The pages that exist so far; the other links are placeholders.
+const LINK_TO: Record<string, string> = { "Privacy policy": "/privacy" };
 const SOCIALS = [
   { label: "Facebook", d: "M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.1 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.45 2.89h-2.33v6.99A10 10 0 0 0 22 12Z" },
   { label: "X", d: "M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.65l-5.22-6.82-5.96 6.82H1.68l7.73-8.84L1.25 2.25h6.82l4.71 6.23 5.46-6.23Zm-1.16 17.52h1.83L7.01 4.13H5.04l12.04 15.64Z" },
@@ -102,6 +104,7 @@ const SOCIALS = [
 
 // Mobile: stacked. Desktop: full-width band under the page, links in a row.
 export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
+  const navigate = useNavigate();
   return (
     <footer style={{ marginTop: desktop ? 8 : 28, background: "var(--tc-panel)", borderTop: "1px solid var(--tc-line)" }}>
       <div style={{ maxWidth: desktop ? 1440 : undefined, margin: "0 auto", boxSizing: "border-box", padding: desktop ? "32px 24px 24px" : "24px 16px 20px", display: "flex", flexDirection: "column", gap: 18 }}>
@@ -110,7 +113,7 @@ export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
         </span>
         <nav aria-label="Footer" style={desktop ? { display: "flex", flexWrap: "wrap", gap: "10px 28px" } : { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "10px 16px" }}>
           {LINKS.map((l) => (
-            <a key={l} href="#" onClick={(e) => e.preventDefault()} style={{ fontSize: 14, fontWeight: 600, color: "var(--tc-muted)", textDecoration: "none" }}>{l}</a>
+            <a key={l} href={LINK_TO[l] ?? "#"} onClick={(e) => { e.preventDefault(); if (LINK_TO[l]) { navigate(LINK_TO[l]); window.scrollTo(0, 0); } }} style={{ fontSize: 14, fontWeight: 600, color: "var(--tc-muted)", textDecoration: "none" }}>{l}</a>
           ))}
         </nav>
         <div style={{ display: "flex", gap: 10 }}>

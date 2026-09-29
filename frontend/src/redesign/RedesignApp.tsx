@@ -16,6 +16,7 @@ import { LeaguePage, SportListPage, SportPage } from "./sports";
 import { RedesignMyBets, RedesignTicket } from "./mybets";
 import { RedesignAccount } from "./account";
 import { ResponsibleGambling } from "./responsible";
+import { PrivacyPolicy } from "./privacy";
 import { RedesignForgot, RedesignLogin, RedesignSignup } from "./auth";
 import { buildIndex } from "./search";
 import { SearchResultsPage } from "./searchui";
@@ -195,6 +196,7 @@ export function RedesignApp() {
           : <div className="tc-slip-page"><BetSlipBody onBack={back} /></div>} />
         <Route path="/account" element={page(<RedesignAccount desktop={desk} onSupport={() => setSheet("support")} />)} />
         <Route path="/responsible-gambling" element={page(<ResponsibleGambling desktop={desk} onSupport={() => setSheet("support")} />)} />
+        <Route path="/privacy" element={page(<PrivacyPolicy desktop={desk} />)} />
         <Route path="*" element={page(<NotFound onHome={goHome} />)} />
       </Routes>
       {desk && <SiteFooter desktop />}

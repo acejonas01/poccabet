@@ -79,6 +79,7 @@ export function metadataFor(path: string[], feed: InitialFeed | null): Metadata 
     account: ["My account", `Your ${BRAND} account.`, false],
     "forgot-password": ["Reset your password", `Forgot your ${BRAND} password? Get a code and choose a new one.`, false],
     search: ["Search", `Search ${BRAND} for teams, leagues and live games.`, false],
+    privacy: ["Privacy policy", `What ${BRAND} keeps about you, why, who else handles it, and how to see, correct or delete it.`, true],
     "responsible-gambling": ["Play responsibly", `18+ only. Tips for safe betting, warning signs of a gambling problem, and where to get help with ${BRAND}.`, true],
   };
   const f = fixed[first];
