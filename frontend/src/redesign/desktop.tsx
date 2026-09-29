@@ -3,13 +3,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { type TCMatch, TOP_LEAGUES, dateOptions, dayLabel, groupByLeague, hhmm, leagueRank, leagueSlug, matchCode, matchHref, matchesDate } from "./data";
 import {
-  AviatorIcon, CasinoIcon, ChevronLeft, ChevronRight, HeadsetIcon, JackpotIcon, MoonIcon, SportsIcon, StarIcon, VirtualsIcon,
+  ChevronLeft, ChevronRight, HeadsetIcon, MoonIcon, StarIcon,
 } from "./icons";
 import { DESKTOP_PILLS, deriveOdds, desktopCols, marketCount, marketDef } from "./markets";
 import { Crest, Flag, HotGamesStrip, PromoSlider } from "./media";
 import { WinnersStrip } from "./footer";
 import { SPORTS } from "./sports";
-import { ChanceBar, FeaturedCard, HeaderBalance, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, UserMenu, featuredLive, useBack } from "./mobile";
+import { ChanceBar, FeaturedCard, HeaderBalance, NavIcon, type HomeTab, type ListViewProps, QUICK_LINKS, StatBar, UserMenu, featuredLive, useBack } from "./mobile";
 import { featuredUpcoming, usePickOfTheDay } from "./potd";
 import { CAN_SWITCH_THEME, useTheme } from "../context/ThemeContext";
 import { ACCENT, Loader1X2, useMinLoading, useThemeButton, BetSlipBody, CheckBet, DemoTag, OddButton, SHOW_TAB_FEATURE, WELCOME_BONUS_AMOUNT, usePicker } from "./shared";
@@ -21,12 +21,13 @@ const ellipsis: CSSProperties = { whiteSpace: "nowrap", overflow: "hidden", text
 const card: CSSProperties = { background: "var(--tc-panel)", border: "1px solid var(--tc-line)", borderRadius: 14 };
 
 // ---------- header ----------
+// Same icon artwork as the phones' quick nav (NavIcon): recoloured glyphs, Casino in its own colours.
 const NAV = [
-  { label: "Sports", Icon: SportsIcon },
-  { label: "Aviator", Icon: AviatorIcon },
-  { label: "Virtuals", Icon: VirtualsIcon },
-  { label: "Jackpot", Icon: JackpotIcon },
-  { label: "Casino", Icon: CasinoIcon },
+  { label: "Sports", icon: "/icons/soccer-ball.png", original: false },
+  { label: "Aviator", icon: "/icons/aviator.png", original: false },
+  { label: "Virtuals", icon: "/icons/visuals.png", original: false },
+  { label: "Jackpot", icon: "/icons/jackpot.png", original: false },
+  { label: "Casino", icon: "/icons/casino.png", original: true },
 ];
 
 export function DesktopHeader({ searchIndex, onOpenMatch, simulated, onSupport }: { searchIndex: SearchIndex; onOpenMatch: (m: TCMatch) => void; simulated: boolean; onSupport: () => void }) {
@@ -41,13 +42,13 @@ export function DesktopHeader({ searchIndex, onOpenMatch, simulated, onSupport }
         {simulated && <DemoTag />}
       </a>
       <nav aria-label="Sections" style={{ display: "flex", alignItems: "center", flexGrow: 1 }}>
-        {NAV.map(({ label, Icon }, i) => {
+        {NAV.map(({ label, icon, original }, i) => {
           const on = i === 0;
           return (
             <a key={label} href="/" onClick={(e) => { e.preventDefault(); if (on) navigate("/"); }} style={{
               height: 72, display: "flex", alignItems: "center", gap: 8, padding: "0 14px", textDecoration: "none", fontSize: 14,
               fontWeight: on ? 800 : 600, color: on ? ACCENT : "var(--tc-soft)", borderBottom: `2px solid ${on ? ACCENT : "transparent"}`, boxSizing: "border-box",
-            }} aria-label={label}><Icon size={20} /><span className="tc-dnav-label">{label}</span></a>
+            }} aria-label={label}><NavIcon src={icon} original={original} size={22} /><span className="tc-dnav-label">{label}</span></a>
           );
         })}
       </nav>

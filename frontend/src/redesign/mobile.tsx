@@ -138,13 +138,14 @@ const SECTIONS: { key: string; label: string; icon?: string; Svg?: typeof MoreIc
   { key: "more", label: "More", Svg: MoreIcon, original: false },
 ];
 
-function NavIcon({ src, original }: { src: string; original: boolean }) {
+// Also used by the desktop header, so phones and desktop show the same icons.
+export function NavIcon({ src, original, size = 26 }: { src: string; original: boolean; size?: number }) {
   if (original) {
-    return <img src={src} alt="" width={26} height={26} style={{ width: 26, height: 26, objectFit: "contain" }} />;
+    return <img src={src} alt="" width={size} height={size} style={{ width: size, height: size, objectFit: "contain" }} />;
   }
   return (
     <span aria-hidden="true" style={{
-      width: 26, height: 26, display: "block", background: "currentColor",
+      width: size, height: size, flexShrink: 0, display: "block", background: "currentColor",
       WebkitMask: `url(${src}) center / contain no-repeat`, mask: `url(${src}) center / contain no-repeat`,
     }} />
   );
