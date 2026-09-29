@@ -85,7 +85,7 @@ function App() {
 
             <div className="footer-bottom">
               <p>
-                {"©"} {new Date().getFullYear()} Poccabet Technologies Ltd. is regulated by the
+                {"©"} {new Date().getFullYear()} FairPlay Gaming Ltd. is regulated by the
                 National Lottery Regulatory Commission.
               </p>
             </div>

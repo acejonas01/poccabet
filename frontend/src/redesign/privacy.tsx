@@ -42,7 +42,7 @@ export function PrivacyPolicy({ desktop = false }: { desktop?: boolean }) {
           <ChevronLeft size={18} />
         </button>
         <h1 style={{ margin: 0, fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 800, fontStyle: "italic", fontSize: 34, lineHeight: 1 }}>Privacy policy</h1>
-        <p style={p}>This explains what {strong("Poccabet Technologies Ltd.")} keeps about you, why, who else handles it, and how to see, correct or delete it. We never sell your personal data.</p>
+        <p style={p}>This explains what {strong("FairPlay Gaming Ltd.")} keeps about you, why, who else handles it, and how to see, correct or delete it. We never sell your personal data.</p>
         <p style={{ ...p, fontSize: 13, color: "var(--tc-label)" }}>Last updated {UPDATED}</p>
       </header>
 

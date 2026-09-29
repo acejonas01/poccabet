@@ -125,7 +125,7 @@ export function SiteFooter({ desktop = false }: { desktop?: boolean }) {
         </div>
         <PlayResponsibly />
         <p style={{ margin: 0, paddingTop: 14, borderTop: "1px solid var(--tc-line)", fontSize: 12, lineHeight: 1.5, color: "var(--tc-label)" }}>
-          © {new Date().getFullYear()} Poccabet Technologies Ltd. is regulated by the National Lottery Regulatory Commission.
+          © {new Date().getFullYear()} FairPlay Gaming Ltd. is regulated by the National Lottery Regulatory Commission.
         </p>
       </div>
     </footer>
